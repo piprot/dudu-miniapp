@@ -121,9 +121,9 @@ Page({
       this.setData({ emailErr: '邮箱格式不正确，请检查（例：name@example.com）' });
       return;
     }
-    // 故事必填：画师需要按你的文字开工，缺了就没法做
+    // 故事必填：设计师需要按你的文字开工，缺了就没法做
     if (!story) {
-      this.setData({ storyErr: '请写下你想做成画面感内容的故事或要点，画师才能开工' });
+      this.setData({ storyErr: '请写下你想做成画面感内容的故事或要点，设计师才能开工' });
       return;
     }
     this.setData({ submitting: true, err: '' });

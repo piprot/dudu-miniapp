@@ -305,7 +305,7 @@ Page({
       this.setData({ spending: false });
     }
   },
-  // 积分充值：选 pack → 个人虚拟支付（名义=购买虚拟商品/生成额度包）
+  // 积分充值：选 pack → 个人虚拟支付（名义=购买虚拟商品/积分权益包）
   async onRecharge(e) {
     const pack = this.data.packs[Number(e.currentTarget.dataset.idx)];
     if (!pack) return;

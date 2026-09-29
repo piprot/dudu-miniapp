@@ -3,7 +3,7 @@
   <block wx:if="{{step === 'select'}}">
     <view class="hero">
       <view class="hero-title">定制画面感内容 🎨</view>
-      <view class="hero-sub">你写的故事，我们做成完整画面感内容，{{deliveryHours}} 小时内人工交付</view>
+      <view class="hero-sub">提交你的故事需求，设计师按你的描述人工创作，{{deliveryHours}} 小时内回邮交付</view>
     </view>
 
     <!-- 积分兑换的 9 折券在这里"接上"：下单时随订单提交，履约按券退差价 -->
@@ -44,7 +44,7 @@
       <input class="email-input" placeholder="name@example.com" value="{{email}}" bindinput="onInputEmail" />
       <view class="email-err" wx:if="{{emailErr}}">{{emailErr}}</view>
 
-      <view class="label">你的故事（画师按此开工，请写好、可修改）</view>
+      <view class="label">你的故事（设计师按此开工，请写好、可修改）</view>
       <textarea class="story-input" placeholder="写下你想做成画面感内容的故事正文；例如：人物、发生了什么、想表达什么……"
                 value="{{story}}" bindinput="onInputStory" maxlength="{{storyMax}}" auto-height="true" />
       <view class="story-err" wx:if="{{storyErr}}">{{storyErr}}</view>
@@ -67,7 +67,7 @@
     <view class="card done-card">
       <view class="done-line">⏱ 预计 <text class="hl">{{deliveryHours}} 小时内</text>完成，并回邮到你的邮箱</view>
       <view class="done-line">📧 收件邮箱：<text class="hl">{{email}}</text></view>
-      <view class="done-line">📜 邮件内容默认为你写下故事原文，画师完成后再发送成品</view>
+      <view class="done-line">📜 邮件内容默认为你写下故事原文，设计师完成后再发送成品</view>
       <view class="done-coupon" wx:if="{{couponFinal}}">🎫 {{couponFinal}}</view>
       <view class="divider"></view>
       <view class="contact-title">如有问题，随时联系我们</view>

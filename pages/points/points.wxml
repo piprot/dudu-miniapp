@@ -72,7 +72,7 @@
       </view>
       <button class="item-btn recharge" data-idx="{{index}}" bindtap="onRecharge" loading="{{recharging}}" disabled="{{recharging}}">充值</button>
     </view>
-    <view class="tip">充值名义为「购买虚拟商品（生成额度包）」，积分仅用于本小程序内兑换自身服务，不可提现、不可转让。</view>
+    <view class="tip">充值名义为「购买虚拟商品（积分权益包）」，积分仅用于本小程序内兑换自身服务，不可提现、不可转让。</view>
   </view>
 
   <view class="section" wx:if="{{coupons.length}}">
