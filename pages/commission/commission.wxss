@@ -25,11 +25,6 @@
 }
 /* 档位选择 */
 .tier-list { margin-bottom: 24rpx; }
-/* AI 成品示例已外迁 H5：仅文字入口跳转网页版，小程序内不渲染任何 AI 画面 */
-.sample-link {
-  display: inline-block; font-size: 26rpx; color: #6d4fa3; font-weight: 600;
-  padding: 14rpx 0 22rpx; text-decoration: underline;
-}
 .tier {
   display: flex; align-items: center; background: #fff; border: 3rpx solid #eee6f2;
   border-radius: 22rpx; padding: 26rpx; margin-bottom: 18rpx;

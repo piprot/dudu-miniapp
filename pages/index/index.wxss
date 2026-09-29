@@ -79,19 +79,7 @@
   background: #fff; color: #f5793b; font-weight: 800;
   border-radius: 999rpx; padding: 0 48rpx; margin: 0;
 }
-.sample-section { margin-top: 8rpx; }
-.sample-head { display: flex; align-items: baseline; justify-content: space-between; padding: 8rpx 6rpx 16rpx; }
-.sample-title { font-size: 30rpx; font-weight: 700; color: #6b5636; }
-.sample-author { font-size: 24rpx; color: #a89270; }
 .chapter-card { border-radius: 20rpx; border-left: 6rpx solid #ffce7a; box-shadow: 0 4rpx 14rpx rgba(150, 110, 50, 0.08); }
-
-/* ── 2026-09-22 合并示例入口：原「成品示例」卡并入「看看样例」展开区内的行内链接 ── */
-.sample-showcase {
-  margin-top: 16rpx; text-align: center;
-  font-size: 25rpx; font-weight: 600; color: #b86a2c;
-  background: #fdf9f0; border: 2rpx solid #f0e2c8; border-radius: 14rpx; padding: 18rpx;
-  word-break: break-word; overflow-wrap: anywhere;
-}
 
 /* ── 2026-09-20 首页聚焦朋友圈文案（kicker + 文字示例卡 + 样例折叠）── */
 .ai-entry-kicker {
@@ -117,25 +105,7 @@
 }
 .ms-more { font-size: 22rpx; color: #a89270; text-align: center; margin-top: 4rpx; }
 
-/* 样例折叠头 */
-.sample-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 8rpx 6rpx 16rpx;
-}
-.sample-titles { display: flex; flex-direction: column; min-width: 0; }
-.sample-title { font-size: 30rpx; font-weight: 700; color: #6b5636; }
-.sample-author { font-size: 24rpx; color: #a89270; margin-top: 2rpx; }
-.sample-toggle {
-  flex: none; font-size: 23rpx; color: #b3905a; font-weight: 600;
-  background: #fdf9f0; border: 2rpx solid #f0e2c8; border-radius: 999rpx; padding: 8rpx 22rpx;
-}
-/* 预览截断提示：说明只展示了前几页，购买后可读全本 */
-.sample-more {
-  margin-top: 14rpx; padding: 16rpx 20rpx;
-  background: #fdf9f0; border: 2rpx dashed #f0dcbb; border-radius: 16rpx;
-  font-size: 23rpx; color: #a8865c; text-align: center; line-height: 1.7;
-}
-.moments-sample, .ms-title, .ms-item, .demo-title, .demo-sub, .ai-entry-sub, .sample-title, .sample-more {
+.moments-sample, .ms-title, .ms-item, .demo-title, .demo-sub, .ai-entry-sub {
   word-break: break-word; overflow-wrap: anywhere;
 }
 

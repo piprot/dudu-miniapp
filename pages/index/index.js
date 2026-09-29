@@ -1,11 +1,9 @@
-const { PRODUCT, POINTS, COMMISSION } = require('../../utils/config.js');
+const { POINTS, COMMISSION } = require('../../utils/config.js');
 const login = require('../../utils/login.js');
 const points = require('../../utils/points.js');
 
 Page({
   data: {
-    title: PRODUCT.title,
-    author: PRODUCT.author,
     points: 0,             // 积分余额
     streak: 0,             // 连续签到天数
     dailyChecked: false,   // 今日是否已签到
@@ -72,11 +70,6 @@ Page({
   // 卡片 / 海报生成器（B 方向，本地 canvas，零 AI，可配本地图）。
   goCard() {
     wx.navigateTo({ url: '/pages/card/card' });
-  },
-  // 小程序内为纯文案工具（无 AI）。完整作品与定制样板间统一在网页版查看，
-  // 这里跳到 H5 桥接页（个人主体不支持 web-view，页内为「复制链接」）。
-  goH5Sample() {
-    wx.navigateTo({ url: '/pages/h5/h5' });
   },
   // ── 分享能力（个人主体：复制链接 wxaurl.cn 受限，改用「转发给好友 + 朋友圈」传播）──
   onShareAppMessage() {

@@ -7,7 +7,7 @@
 //
 // 检查项：
 //   F1 成品示例页只预览前 N 页（曾整本 54 页全铺开，页面长到滑不到底）
-//   F2 首页不再内联 AI 画格（已外迁 H5，规避个人主体深度合成封堵）
+//   F2 首页不内联 AI 画格，且 H5 桥接已整体下线（2026-09-29：端内不再跳 H5）
 //   F3 复制/选图**不得**预门控（曾经用 requirePrivacyAuthorize 包一层，
 //      把调用挪进异步回调 → 丢掉手势上下文 → 真机必失败且真因被文案掩盖）
 //   F4 app.js 隐私监听必须**新名优先**（旧名 wx.onNeedPrivacyAuthorize 在基础库
@@ -15,8 +15,8 @@
 //   F5 app.js 内部**绝不**调用 wx.requirePrivacyAuthorize（会与自己的弹窗形成死循环）
 //   F6 单行输入框必须显式给 height（原生 <input> 不把 padding 计入高度 → 文字只显示一半）
 //   F7 积分页必须有「隐私待同意」的可点入口 + 头像/昵称为什么要手动选的说明
-//   F8 commission 页不得内联 AI 样图（AI 成品示例已外迁 H5，包内零 AI 图）
-//   F9 h5 承载页必须开启原生分享（onShareAppMessage/onShareTimeline，个人主体正常开放）
+//   F8 commission 页不得内联 AI 样图，且不再有 H5 文字入口（2026-09-29 下线）
+//   F9 pages/h5 桥接页必须保持已删除（端内零 H5 依赖，个人主体纯本地工具）
 //
 // 运行：node test/test_frontend_guards.js      期望：全部通过，退出码 0
 const fs = require('fs');
@@ -84,18 +84,18 @@ console.log('=== 前端回归守卫 ===\n');
     '不给说明的话，用户会以为成品只有 8 页');
 }
 
-// ── F2 首页不再内联 AI 画格（已外迁 H5，规避个人主体深度合成封堵）──
+// ── F2 首页不内联 AI 画格，且 H5 桥接已整体下线（2026-09-29）──
 {
   const src = live('pages/index/index.js');
-  ok('F2a 首页有 goH5Sample 入口（AI 内容改走 H5）',
-    /goH5Sample\s*\(/.test(src),
-    '首页缺少跳 H5 的入口，用户找不到成品示例');
+  ok('F2a 首页已无 goH5Sample（H5 桥接下线，端内纯本地工具）',
+    !/goH5Sample/.test(src),
+    '首页又出现跳 H5 的入口 —— 端内已全面去 H5，别加回来');
   ok('F2b 首页已移除内联 AI 画格预览（无 SAMPLE_PREVIEW/sampleChapters）',
     !/SAMPLE_PREVIEW/.test(src) && !/sampleChapters/.test(src) && !/chapters\.slice/.test(src),
     '首页仍在内联渲染 AI 画格，会被审核判深度合成');
   const wxml = live('pages/index/index.wxml');
-  ok('F2c 首页通过 goH5Sample 打开 H5（不内联 sampleChapters）',
-    /bindtap="goH5Sample"/.test(wxml) && !/wx:for="\{\{\s*sampleChapters\s*\}\}"/.test(wxml),
+  ok('F2c 首页已无 sample-section / 跳 H5 卡片（不内联 sampleChapters）',
+    !/sample-section/.test(wxml) && !/goH5Sample/.test(wxml) && !/wx:for="\{\{\s*sampleChapters\s*\}\}"/.test(wxml),
     '首页仍直接遍历 sampleChapters 内联 AI 内容');
 }
 
@@ -115,27 +115,27 @@ console.log('=== 前端回归守卫 ===\n');
   ok('F8d commission.wxml 已移除「AI 辅助生成」标注',
     !/AI\s*辅助生成/.test(wxml),
     '仍保留 AI 标注 = 仍承认页面内展示了 AI 生成内容');
-  ok('F8e commission 改走 H5 文本入口（goH5Sample）',
-    /goH5Sample/.test(js) && /bindtap="goH5Sample"/.test(wxml),
-    '样例入口丢失，用户从定制页找不到成品示例');
+  ok('F8e commission 已无 goH5Sample / sample-link（H5 文字入口随桥接一并下线）',
+    !/goH5Sample/.test(js) && !/sample-link/.test(wxml),
+    'commission 又出现跳 H5 的入口 —— 端内已全面去 H5，别加回来');
 }
 
-// ── F9 h5 承载页必须开启原生分享（个人主体正常开放，不受 AI 类目封堵影响）──
+// ── F9 pages/h5 桥接页必须保持已删除（2026-09-29 端内去 H5）──
 {
-  const js = live('pages/h5/h5.js');
-  ok('F9a h5.js 声明了 onShareAppMessage（转发给好友）',
-    /onShareAppMessage\s*\(/.test(js),
-    'H5 样例承载页未开启转发，用户无法把成品示例分享出去');
-  ok('F9b h5.js 声明了 onShareTimeline（分享到朋友圈）',
-    /onShareTimeline\s*\(/.test(js),
-    'H5 样例承载页未开启朋友圈分享');
-  ok('F9c h5.js 调用了 wx.showShareMenu 并启用转发+朋友圈菜单',
-    /wx\.showShareMenu\s*\(/.test(js)
-      && /menus\s*:\s*\['shareAppMessage'\s*,\s*'shareTimeline'\]/.test(js),
-    '未在 onReady 里 showShareMenu 启用分享菜单，则「···」里的转发/朋友圈入口真机不出现');
+  const appJson = JSON.parse(read('app.json'));
+  ok('F9a app.json 不再注册 pages/h5/h5',
+    !appJson.pages.some(p => /pages\/h5/.test(p)),
+    'pages/h5 已随端内去 H5 删除，app.json 里别再注册回来');
+  ok('F9b pages/h5 目录保持不存在',
+    !fs.existsSync(path.join(ROOT, 'pages', 'h5')),
+    'pages/h5 目录又回来了 —— 端内零 H5 依赖是审核前提');
+  ok('F9c utils/config.js 已无 H5 桥接字段',
+    !/const\s+H5\s*=/.test(read('utils/config.js')) && !/H5\.comicUrl/.test(read('utils/config.js')),
+    'config.js 又挂回 H5.comicUrl，但已无消费方，只会误导后续开发');
 }
 
 // ── F3 复制 / 选图不得预门控 ──
+// 2026-09-29 起 gen 为纯文本工具（无选图）；选图守卫落点改 pages/card/card.js。
 {
   const src = live('pages/gen/gen.js');
   ok('F3a gen.js 不得使用 withPrivacy 包装（曾经因此真机必失败）',
@@ -145,13 +145,9 @@ console.log('=== 前端回归守卫 ===\n');
   ok('F3b gen.js 不得调用 wx.requirePrivacyAuthorize',
     !/wx\.requirePrivacyAuthorize/.test(src),
     '正解是直接调用受保护 API，由框架触发监听并在同意后自动重跑');
-  const mChoose = src.match(/onChooseImage\(\)\s*\{([\s\S]*?)\}/);
-  ok('F3c onChooseImage 直接调 doChooseImage（无前置授权门）',
-    !!mChoose && /this\.doChooseImage\(\)/.test(mChoose[1]),
-    '选图入口被前置授权挡掉就会「点了没反应」或报未授权');
-  ok('F3d 直接调用 wx.chooseMedia',
-    /wx\.chooseMedia\s*\(/.test(src),
-    '选图 API 丢失');
+  ok('F3c gen.js 保持纯文本：不含任何选图调用（onChooseImage/chooseMedia 不得回潜）',
+    !/onChooseImage|chooseMedia/.test(src),
+    'gen 已无选图功能（图片能力归 pages/card）；要加回必须直接调 API 并带 fail 真因分支');
   ok('F3e 直接调用 wx.setClipboardData',
     /wx\.setClipboardData\s*\(/.test(src),
     '复制 API 丢失');
@@ -159,10 +155,15 @@ console.log('=== 前端回归守卫 ===\n');
   ok('F3f copyText 必须有 fail 反馈分支（不能静默失败）',
     !!mCopy && /fail\s*\(/.test(mCopy[1]),
     '静默失败时用户只看到「点了没反应」，也无从知道能长按手动复制');
-  // 选图 fail 必须能区分「隐私指引缺声明」这种配置问题
-  ok('F3g chooseMedia.fail 能识别 scope is not declared',
-    /scope is not declared/.test(src),
-    '不区分真因时用户只会看到笼统的「失败」，排查无从下手');
+
+  // 选图守卫落点：pages/card/card.js（B 方向卡片生成器，当前唯一选图页）
+  const card = live('pages/card/card.js');
+  ok('F3d card.js 直接调用 wx.chooseMedia（无 withPrivacy / requirePrivacyAuthorize 门控）',
+    /wx\.chooseMedia\s*\(/.test(card) && !/withPrivacy|requirePrivacyAuthorize/.test(card),
+    '选图 API 丢失或被前置授权门挡掉 → 「点了没反应」或报未授权');
+  ok('F3g card.js 存相册 fail 分支能识别 auth/deny（保存失败不静默）',
+    /auth\|deny\|authorize/.test(card),
+    '不区分真因时用户只会看到笼统的「保存失败」，无从知道要去设置开相册权限');
 }
 
 // ── F4/F5 app.js 隐私监听注册 ──

@@ -177,17 +177,4 @@ const POINTS = {
   ]
 };
 
-// ─────────────────────────────────────────────────────────────
-// H5 桥接地址：完整作品 / 画面感内容样板间统一放在网页版查看。
-// B1 合规版小程序内为纯文案工具（无 AI），且个人主体不支持 <web-view> 组件，
-// 故 H5 入口改为「复制链接」桥接页（pages/h5），不在端内嵌网页。
-//
-// ⚠️ 落地前置（须用户手动，AI 沙箱无 tcb 登录态、无 tcb CLI，无法代部署）：
-//   确认云环境 cloudbase-d8ge1hu2324c8fcdf 的「静态网站托管」已开通，并把
-//   comic_miniapp/h5/ 全量上传到根目录（comic.html 可访问）。
-//   验证：curl -k https://cloudbase-d8ge1hu2324c8fcdf.tcloudbaseapp.com/comic.html 应返回 200。
-const H5 = {
-  comicUrl: 'https://cloudbase-d8ge1hu2324c8fcdf.tcloudbaseapp.com/comic.html'
-};
-
-module.exports = { PRODUCT, VIRTUAL_PAY, PAY_CONFIG, BACKEND, COMMISSION, POINTS, H5 };
+module.exports = { PRODUCT, VIRTUAL_PAY, PAY_CONFIG, BACKEND, COMMISSION, POINTS };

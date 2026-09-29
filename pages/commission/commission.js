@@ -178,10 +178,6 @@ Page({
   onBackHome() {
     wx.reLaunch({ url: '/pages/index/index' });
   },
-  // 小程序内为纯文案工具（无 AI）。样板间在网页版查看，这里跳到 H5 桥接页（个人主体不支持 web-view，页内为「复制链接」）。
-  goH5Sample() {
-    wx.navigateTo({ url: '/pages/h5/h5' });
-  },
   // ── 分享能力（个人主体：复制链接 wxaurl.cn 受限，改用「转发给好友 + 朋友圈」传播）──
   onShareAppMessage() {
     return {

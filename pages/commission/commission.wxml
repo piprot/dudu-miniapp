@@ -10,9 +10,6 @@
     <view class="coupon-bar" wx:if="{{couponTip}}">{{couponTip}}</view>
     <view class="coupon-sub" wx:if="{{couponDetail}}">{{couponDetail}}</view>
 
-    <!-- AI 成品示例已整体外迁 H5；小程序内不展示 AI 生成画面，仅留文字入口跳转网页版 -->
-    <view class="sample-link" bindtap="goH5Sample">查看成品示例 →</view>
-
     <view class="tier-list">
       <view
         wx:for="{{tiers}}"
