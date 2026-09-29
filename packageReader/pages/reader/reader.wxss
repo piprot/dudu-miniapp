@@ -1,0 +1,20 @@
+.reader { padding: 16rpx; }
+.reader-title { text-align: center; font-size: 30rpx; color: #8a7f70; padding: 12rpx 0 20rpx; }
+.panel { width: 100%; display: block; margin-bottom: 12rpx; border-radius: 12rpx; }
+.locked-tip { display: flex; flex-direction: column; align-items: center; padding-top: 200rpx; }
+.lock-emoji { font-size: 96rpx; }
+.lock-text { margin: 24rpx 0; font-size: 32rpx; color: #5a5a5a; }
+.lock-btn { background: #e65100; color: #fff; border-radius: 999rpx; padding: 0 60rpx; }
+
+/* 2026-09-18 真机空白排查：加载态 / 失败重试 */
+.reader-loading { display: flex; flex-direction: column; align-items: center; padding: 120rpx 0 60rpx; }
+.loading-spinner {
+  width: 64rpx; height: 64rpx; border: 6rpx solid #e8dcc8; border-top-color: #d99b2b;
+  border-radius: 50%; animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { margin-top: 20rpx; font-size: 24rpx; color: #a89270; text-align: center; line-height: 1.6; }
+.reader-loaderr { display: flex; flex-direction: column; align-items: center; padding: 80rpx 0 40rpx; }
+.loaderr-emoji { font-size: 80rpx; }
+.loaderr-text { margin: 20rpx 0; font-size: 26rpx; color: #8a7f70; text-align: center; line-height: 1.7; }
+.loaderr-btn { background: #f5793b; color: #fff; border-radius: 999rpx; padding: 0 56rpx; font-size: 27rpx; }

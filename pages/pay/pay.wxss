@@ -1,0 +1,22 @@
+.pay-page { padding: 32rpx 28rpx 80rpx; background: linear-gradient(180deg, #fdf3e3 0%, #f7ead6 55%, #f5efe4 100%); min-height: 100vh; box-sizing: border-box; }
+.pay-head { text-align: center; padding: 24rpx 0 32rpx; }
+.pay-title { font-size: 34rpx; font-weight: 700; }
+.pay-amount { font-size: 72rpx; font-weight: 800; color: #e65100; margin: 12rpx 0; }
+.pay-sub { font-size: 26rpx; color: #8a7f70; }
+.owned-tip { text-align: center; color: #2e7d32; margin-bottom: 24rpx; }
+.identity { text-align: center; font-size: 24rpx; color: #5e35b1; margin-bottom: 24rpx; }
+.method { background: #fff; border-radius: 20rpx; padding: 28rpx; margin-bottom: 24rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); }
+.method-title { font-size: 30rpx; font-weight: 600; margin-bottom: 12rpx; }
+.method-desc { font-size: 24rpx; color: #8a7f70; margin-bottom: 20rpx; line-height: 1.6; }
+.qr { width: 360rpx; height: 360rpx; margin: 8rpx auto 8rpx; display: block; background: #f2efe9; border-radius: 12rpx; }
+.qr-tip { font-size: 20rpx; color: #b0a594; text-align: center; margin: 0 0 16rpx; }
+.code-input { border: 1px solid #e0d8cc; border-radius: 12rpx; padding: 20rpx; font-size: 28rpx; margin-bottom: 20rpx; background: #fff; }
+.method-btn { border-radius: 999rpx; color: #fff; font-size: 30rpx; }
+.method-btn.wechat { background: #07c160; }
+.method-btn.virtual { background: #07c160; }
+.method-btn.reward { background: #e65100; }
+.method-btn.contact { background: #f5793b; margin-top: 16rpx; }
+.method-btn[disabled] { opacity: 0.5; }
+.fee-note { font-size: 20rpx; color: #b08968; text-align: center; margin-top: 12rpx; }
+.author-line { font-size: 22rpx; color: #8a7f70; text-align: center; margin-top: 16rpx; line-height: 1.5; }
+.note { font-size: 22rpx; color: #a99e8e; line-height: 1.7; margin-top: 16rpx; }

@@ -1,0 +1,9 @@
+{
+  "name": "vp_query",
+  "version": "1.0.0",
+  "description": "个人虚拟支付·查单兜底",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

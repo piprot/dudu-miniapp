@@ -1,0 +1,9 @@
+{
+  "name": "h5_request",
+  "version": "1.0.0",
+  "description": "H5 定制需求提交（收线索落库 + 飞书通知 + 取件码；不生成任何内容）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

@@ -1,0 +1,44 @@
+<view class="page">
+  <!-- 顶部：品牌（轻量，让位给创作入口） -->
+  <view class="hero">
+    <view class="hero-title">dudu 画面感</view>
+    <view class="hero-author">把你的故事，变成打动人的文字与画面感内容</view>
+    <button class="hero-share" open-type="share">分享给朋友 ›</button>
+  </view>
+
+  <!-- 积分 / 每日签到（进入小程序自动领取，每天一次） -->
+  <view class="points-bar" bindtap="goPoints">
+    <view class="points-left">
+      <text class="points-num">💰 {{points}}</text>
+      <text class="points-label">积分</text>
+    </view>
+    <view class="points-right">
+      <text wx:if="{{dailyChecked}}" class="daily-tag done">✓ 今日已签到 · 连续 {{streak}} 天</text>
+      <text wx:else class="daily-tag todo">每日登录送积分 ›</text>
+    </view>
+  </view>
+
+  <!-- 成品示例入口：AI 画面感内容已整体外迁 H5，小程序内不展示 AI 生成内容 -->
+  <view class="sample-section">
+    <view class="sample-card" bindtap="goH5Sample">
+      <view class="sample-titles">
+        <view class="sample-title">成品示例 · 《{{title}}》</view>
+        <view class="sample-author">作者：{{author}} · 水彩写实风画面感内容</view>
+      </view>
+      <view class="sample-go">在网页查看完整作品 ↗</view>
+    </view>
+    <view class="sample-note">小程序内不生成、不展示 AI 内容；完整作品与定制请到网页版。</view>
+  </view>
+
+  <!-- 创作工具：纯本地，无 AI（B1 文案工具箱 + A 分镜编辑器） -->
+  <view class="tool-section">
+    <view class="tool-card" bindtap="goGen">
+      <view class="tool-title">✍️ 文案工具箱</view>
+      <view class="tool-desc">模板匹配 · 防折叠 · 知识库金句 · 我的素材库</view>
+    </view>
+    <view class="tool-card accent" bindtap="goComic">
+      <view class="tool-title">🎞️ 画面感分镜编辑器</view>
+      <view class="tool-desc">写文字脚本，一键出分镜图 · 全程本地</view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="format-detection" content="telephone=no">
+<title>朋友圈文案 · dudu 画面感</title>
+<meta name="description" content="选一种类型（或贴个文章链接），一键写出 3 条能直接发的朋友圈文案。">
+<meta name="theme-color" content="#fdf3e3">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ══ AI 生成内容标识（法定提示标识 · 常驻可见）══ -->
+  <div class="ai-notice">
+    <span class="ai-badge">AI 生成</span>
+    <span>本页文案由人工智能模型生成。请在使用前自行核对内容，并对最终发布的内容负责。</span>
+  </div>
+
+  <!-- ══ 今日免费次数 ══ -->
+  <div class="quota-bar">
+    <div class="quota-left">
+      <span class="quota-num" id="quotaNum">—</span>
+      <span class="quota-label">今日剩余免费次数</span>
+    </div>
+    <div class="quota-right" id="quotaHint">每天 5 次 · 免费</div>
+  </div>
+
+  <!-- ══ 主输入卡 ══ -->
+  <div class="card">
+
+    <div class="hero">
+      <span class="hero-kicker">✨ 朋友圈文案</span>
+      <div class="hero-title">把你的想法，写成能直接发的朋友圈</div>
+      <div class="hero-sub">选一种类型（或贴个链接）→ 收 <b>3 条</b>像你自己写的文案</div>
+    </div>
+
+    <!-- 三步进度 -->
+    <div class="step-rail">
+      <div class="step-node done" id="step1"><div class="step-dot">1</div><div class="step-txt">选类型</div></div>
+      <div class="step-line on" id="line1"></div>
+      <div class="step-node now" id="step2"><div class="step-dot">2</div><div class="step-txt">填素材</div></div>
+      <div class="step-line" id="line2"></div>
+      <div class="step-node" id="step3"><div class="step-dot">3</div><div class="step-txt">生成 3 条</div></div>
+    </div>
+
+    <!-- ① 类型 -->
+    <div class="sec-label">① 选一种类型<span class="sec-note">决定怎么写</span></div>
+    <div class="kind-grid" id="kindGrid"></div>
+
+    <!-- ② 素材 -->
+    <div class="sec-label" style="margin-top:16px">② 填素材<span class="sec-note">写多少都行，越具体越像你</span></div>
+
+    <div id="writeArea">
+      <div class="sel-banner">
+        <span class="sb-k" id="selKind">价值型</span>
+        <span class="sb-v" id="selDesc"></span>
+      </div>
+      <div class="struct-hint" id="structHint"></div>
+      <div id="fields"></div>
+    </div>
+
+    <div id="urlArea" hidden>
+      <div class="url-row">
+        <input class="input" id="urlInput" type="url" inputmode="url" autocomplete="off"
+               placeholder="粘贴文章链接，帮你提取正文改写">
+        <button class="btn-paste" type="button" id="btnPaste">粘贴</button>
+      </div>
+      <div class="struct-hint" style="margin-top:10px" id="urlStruct"></div>
+      <div class="tone-chips" id="toneChips"></div>
+    </div>
+
+    <!-- 补充一句 -->
+    <div class="field" style="margin-top:12px">
+      <label class="field-label" for="noteInput">补充一句<span class="sec-note">可选 · 想强调的、想避开的</span></label>
+      <textarea class="textarea" id="noteInput" maxlength="300"
+                placeholder="例如：结尾别太文艺；或者：写长一点，我想发长文"></textarea>
+    </div>
+
+    <div class="counter">
+      <span>已填 <b id="lenNum">0</b> 字</span>
+      <span>预计输出 <b id="outLen">100-250</b> 字</span>
+    </div>
+    <div class="len-tip" id="lenTip"></div>
+
+    <div class="media-hint" style="margin-top:12px">
+      <span class="mh-icon">🖼</span>
+      <span>想连图片一起参考？图片理解功能在<b>小程序</b>里，本页暂只支持文字与文章链接。</span>
+    </div>
+
+    <button class="cta-btn" type="button" id="btnGen" style="margin-top:14px">✨ 生成 3 条朋友圈文案</button>
+  </div>
+
+  <!-- ══ 报错 ══ -->
+  <div class="err" id="errBox" hidden></div>
+
+  <!-- ══ 生成中 ══ -->
+  <div class="card" id="loadingCard" hidden>
+    <div class="loading"><span class="spinner"></span><span id="loadingTxt">正在写文案，大约 10-25 秒…</span></div>
+  </div>
+
+  <!-- ══ 结果 ══ -->
+  <div class="card result-card" id="resultCard" hidden>
+    <div class="result-head">
+      <span class="rh-t">为你写了 3 条</span>
+      <span class="rh-tag">AI 生成</span>
+    </div>
+    <div class="result-sub">点一下选中，再复制。文案里已自动做「防折叠」处理，直接粘贴到朋友圈就是完整展开的。</div>
+    <div id="moments"></div>
+    <button class="btn-ghost" type="button" id="btnCopyOne">📋 复制选中的这一条</button>
+    <button class="btn-ghost" type="button" id="btnCopyAll">复制全部 3 条对比</button>
+
+    <div class="revise-box">
+      <div class="rb-label">不满意？说说想改哪里</div>
+      <textarea class="textarea" id="feedbackInput" maxlength="300"
+                placeholder="例如：太文艺了，说人话一点；或者：再来 3 个完全不同的角度"></textarea>
+      <button class="btn-ghost" type="button" id="btnRevise">🔄 换一批（再出 3 条）</button>
+    </div>
+  </div>
+
+  <!-- ══ 须知 ══ -->
+  <details class="notice">
+    <summary>使用说明与免责声明</summary>
+    <div class="nc">
+      <p><b>1. 内容由 AI 生成。</b>本页所有文案均由人工智能模型自动生成，已在页面显著位置标注。生成结果不构成任何事实性承诺，涉及数据、经历、结果的内容请你在发布前自行核实、修改。</p>
+      <p><b>2. 你的输入会被用于生成。</b>你填写的素材、补充说明与文章链接，会经本服务转发给第三方 AI 模型服务（火山方舟）用于本次文案生成。请不要填写身份证号、手机号、银行卡、住址等敏感个人信息，也不要填写他人隐私。</p>
+      <p><b>3. 我们不保存你的文案内容用于其他用途。</b>本页面不要求登录、不收集你的姓名或手机号。为限制滥用，服务端会记录一个由设备标识与网络地址计算出的<b>匿名计数</b>（仅用于每天的免费次数限制，无法反查你的身份），不记录你的输入内容。</p>
+      <p><b>4. 文章链接的抓取。</b>当你粘贴文章链接时，服务端会访问该链接并提取正文用于改写。请确保你有权使用该内容，不要抓取需要登录或无权访问的内容。</p>
+      <p><b>5. 发布责任由你承担。</b>请你遵守《微信朋友圈使用规范》及相关法律法规，勿生成、发布违法违规、侵犯他人权益或误导他人的内容。</p>
+    </div>
+  </details>
+
+  <!-- ══ 导流：本页是「免费钩子」，样板间是「成交页」══ -->
+  <a class="cross-link" href="comic.html">
+    <span class="cl-k">想把你的故事画成一整本画面感内容？</span>
+    <span class="cl-v">看成品示例 → 定制画面感内容</span>
+  </a>
+
+  <div class="foot" id="foot">
+    dudu 画面感 · 朋友圈文案
+  </div>
+
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     配置只有一份：h5/assets/config.js（index.html 与 comic.html 共用）。
+     部署时要改的地址、小程序码都在那个文件里，本页不再各存一份 ——
+     否则改了一处、另一处还指着旧域名，表现是某个页面单独报错。
+     ══════════════════════════════════════════════════════════════ -->
+<script src="assets/config.js"></script>
+<script src="assets/kinds.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

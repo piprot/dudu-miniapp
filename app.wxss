@@ -1,0 +1,10 @@
+page {
+  background: #f5f0e8;
+  font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+  color: #2b2b2b;
+}
+
+/* ⚠️ WXSS 编译器选择器白名单只有 .class / #id / element / element,element / ::after / ::before。
+   不要在这里写 @media / * 通用选择器 / :not() —— 会直接报「编译 .wxss 文件错误」。
+   （曾因 prefers-reduced-motion 兜底块用了 *:not(...) 整个编译挂掉，2026-09-22 移除）
+   装饰性动效影响极小，无需无障碍兜底；如确需降低动效，请在具体页面用类选择器逐条关。 */

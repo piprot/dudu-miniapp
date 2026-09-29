@@ -1,0 +1,9 @@
+{
+  "name": "vp_list_orders",
+  "version": "1.0.0",
+  "description": "个人虚拟支付·我的订单列表（订单中心页）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

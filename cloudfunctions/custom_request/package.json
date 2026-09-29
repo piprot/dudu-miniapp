@@ -1,0 +1,9 @@
+{
+  "name": "custom_request",
+  "version": "1.0.0",
+  "description": "付费定制画面感内容需求收集（邮箱+故事落库，人工 8 小时履约）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

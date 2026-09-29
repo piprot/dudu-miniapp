@@ -1,0 +1,21 @@
+{
+  "__usePrivacyCheck__": true,
+  "pages": [
+    "pages/index/index",
+    "pages/commission/commission",
+    "pages/points/points",
+    "pages/order/order",
+    "pages/h5/h5",
+    "pages/gen/gen",
+    "pages/comic/comic"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#1a1a1a",
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "dudu画面感内容工具",
+    "backgroundColor": "#f5f0e8",
+    "backgroundTextStyle": "dark"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

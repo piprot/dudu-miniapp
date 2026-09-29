@@ -1,0 +1,9 @@
+{
+  "name": "ai_gen",
+  "version": "1.0.0",
+  "description": "用户端文本润色（豆包/火山方舟，路B-文字版）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

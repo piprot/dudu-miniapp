@@ -1,0 +1,9 @@
+{
+  "name": "payNotify",
+  "version": "1.0.0",
+  "description": "微信支付结果通知（HTTP 触发，解密后置解锁）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

@@ -1,0 +1,42 @@
+<view class="page">
+  <view class="hd">
+    <view class="hd-title">🎞️ 画面感分镜编辑器</view>
+    <view class="hd-sub">写一段文字脚本，一键出分镜图 · 全程本地，无 AI</view>
+  </view>
+
+  <view class="chips">
+    <view class="chip" bindtap="onLoadSample" data-kind="story">故事模板</view>
+    <view class="chip" bindtap="onLoadSample" data-kind="sell">种草模板</view>
+    <view class="chip" bindtap="onLoadSample" data-kind="tutorial">教程模板</view>
+    <view class="chip ghost" bindtap="onToggleHelp">{{showHelp ? '收起语法' : '语法说明'}}</view>
+  </view>
+
+  <view class="help" wx:if="{{showHelp}}">
+    <view class="help-line"># 标题（可选，整篇第一个 # 行）</view>
+    <view class="help-line">【分镜标签】 开始一格（或用 --- 另起一格）</view>
+    <view class="help-line">旁白：叙述文字（灰底说明框）</view>
+    <view class="help-line">角色名：对白内容（白色气泡）</view>
+    <view class="help-line">场景：时间 / 地点（头部小字）</view>
+    <view class="help-line">情绪：忧伤 / 欢乐 / 温馨 / 紧张（决定色调，可省略）</view>
+  </view>
+
+  <textarea class="script" value="{{script}}" bindinput="onScriptInput"
+    placeholder="在这里写你的分镜脚本，或点上方模板一键填入…"
+    maxlength="-1" />
+
+  <view class="row">
+    <button class="btn primary" bindtap="onGenComic">生成分镜</button>
+    <button class="btn" bindtap="onClear">清空</button>
+    <button class="btn" bindtap="onToggleCols">{{cols === 2 ? '切单列' : '切双列'}}</button>
+  </view>
+
+  <view class="err" wx:if="{{err}}">{{err}}</view>
+
+  <view class="canvas-wrap">
+    <canvas type="2d" id="comicCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
+    <view wx:if="{{!rendered}}" class="canvas-ph">点「生成分镜」后，分镜图会显示在这里</view>
+    <button wx:if="{{rendered}}" class="btn primary save" bindtap="onSaveImage">保存到相册</button>
+  </view>
+
+  <view class="tip">分镜图保存在你手机本地，可发朋友圈 / 群，无需上传服务器。</view>
+</view>

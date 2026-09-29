@@ -1,0 +1,71 @@
+.page { padding: 24rpx; background: linear-gradient(180deg, #fdf3e3 0%, #f7ead6 40%, #f5efe4 100%); min-height: 100vh; box-sizing: border-box; }
+.balance { background: #fff; border-radius: 24rpx; padding: 32rpx; text-align: center; font-size: 48rpx; font-weight: 700; color: #b8860b; margin-bottom: 24rpx; box-shadow: 0 6rpx 20rpx rgba(150, 110, 50, 0.08), inset 0 2rpx 0 rgba(255, 255, 255, 0.7); }
+.daily-card { display: flex; align-items: center; justify-content: space-between; background: #fff; border-radius: 20rpx; padding: 24rpx; margin-bottom: 24rpx; box-shadow: 0 4rpx 16rpx rgba(150, 110, 50, 0.08), inset 0 2rpx 0 rgba(255, 255, 255, 0.7); }
+.daily-left { flex: 1; padding-right: 16rpx; }
+.daily-title { font-size: 30rpx; font-weight: 600; color: #2b2b2b; }
+.daily-sub { font-size: 24rpx; color: #9a9286; margin-top: 8rpx; }
+.daily-sub.done { color: #2e7d32; }
+.daily-rule { font-size: 22rpx; color: #9a9286; line-height: 1.6; margin-top: 8rpx; }
+.daily-btn { flex: none; background: #f5793b; color: #fff; border-radius: 999rpx; font-size: 26rpx; padding: 0 32rpx; margin: 0; }
+.daily-btn[disabled] { background: #cfc7ba; color: #fff; }
+.section { background: #fff; border-radius: 20rpx; padding: 24rpx; margin-bottom: 24rpx; box-shadow: 0 4rpx 16rpx rgba(150, 110, 50, 0.08), inset 0 2rpx 0 rgba(255, 255, 255, 0.7); }
+.section-title { font-size: 28rpx; font-weight: 600; color: #2b2b2b; margin-bottom: 16rpx; }
+.item { display: flex; align-items: center; justify-content: space-between; padding: 16rpx 0; border-bottom: 1rpx solid #f0e9dc; }
+.item:last-child { border-bottom: none; }
+.item-info { flex: 1; padding-right: 16rpx; }
+.item-name { font-size: 28rpx; color: #2c2c2a; }
+.pack-name { font-size: 28rpx; color: #2c2c2a; }
+.pack-tag { margin-left: 12rpx; font-size: 20rpx; color: #fff; background: #e65100; border-radius: 999rpx; padding: 2rpx 12rpx; }
+.item-desc { font-size: 24rpx; color: #9a9286; margin-top: 6rpx; }
+.item-btn { background: #f5793b; color: #fff; border-radius: 999rpx; font-size: 24rpx; padding: 0 24rpx; margin: 0; white-space: nowrap; }
+.item-btn.recharge { background: #e65100; }
+.tip { font-size: 22rpx; color: #9a9286; line-height: 1.6; margin-top: 12rpx; }
+.coupon {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 26rpx; color: #2e7d32; background: #e8f5e9;
+  border-radius: 12rpx; padding: 16rpx; margin-bottom: 12rpx;
+}
+.coupon-name { font-weight: 600; flex: 1; word-break: break-word; overflow-wrap: anywhere; }
+.coupon-use {
+  flex: none; margin-left: 16rpx; font-size: 24rpx; font-weight: 600; color: #1b5e20;
+  background: #c8e6c9; border-radius: 999rpx; padding: 6rpx 20rpx;
+}
+.item-btn[disabled] { background: #cfcfcf !important; color: #7a7a7a !important; }
+.earn-tip { font-size: 24rpx; color: #6b6358; line-height: 1.6; text-align: center; margin: 8rpx 0 24rpx; }
+/* 我的订单入口（账户中心 → 订单中心页） */
+.order-entry { display: flex; align-items: center; justify-content: space-between; background: #fff; border-radius: 20rpx; padding: 24rpx; margin-bottom: 24rpx; box-shadow: 0 4rpx 16rpx rgba(150, 110, 50, 0.08), inset 0 2rpx 0 rgba(255, 255, 255, 0.7); }
+.order-entry-left { flex: 1; padding-right: 16rpx; }
+.order-entry-title { font-size: 30rpx; font-weight: 600; color: #2b2b2b; }
+.order-entry-sub { font-size: 22rpx; color: #9a9286; margin-top: 8rpx; }
+.order-entry-arrow { flex: none; font-size: 40rpx; color: #c9bfb0; }
+.err { color: #a32d2d; font-size: 26rpx; line-height: 1.6; }
+/* 我的资料（可选，用户主动填写头像/昵称） */
+.profile-card { display: flex; align-items: center; background: #fff; border-radius: 20rpx; padding: 24rpx; margin-bottom: 24rpx; box-shadow: 0 4rpx 16rpx rgba(150, 110, 50, 0.08), inset 0 2rpx 0 rgba(255, 255, 255, 0.7); }
+.avatar-btn { width: 116rpx; height: 116rpx; flex: none; padding: 0; margin: 0 20rpx 0 0; border-radius: 50%; background: #f2eef8; display: flex; align-items: center; justify-content: center; overflow: hidden; line-height: 1; }
+.avatar-btn::after { border: none; }
+.avatar-img { width: 116rpx; height: 116rpx; }
+.avatar-ph { font-size: 52rpx; color: #b9a9d6; }
+.profile-right { flex: 1; }
+.nickname-input { height: 76rpx; background: #f7f4fb; border-radius: 14rpx; padding: 0 20rpx; font-size: 28rpx; color: #3a2f4d; }
+.profile-save { margin: 14rpx 0 0; background: #efe9f8; color: #6b5a8e; font-size: 26rpx; border-radius: 14rpx; padding: 0; line-height: 68rpx; }
+.profile-save::after { border: none; }
+/* 隐私未同意时的可点入口（否则加号点了没有任何反馈，用户会以为页面坏了） */
+.privacy-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #fff4e5; border: 2rpx solid #ffd9a8; border-radius: 14rpx;
+  padding: 18rpx 22rpx; margin-bottom: 20rpx;
+}
+.privacy-txt { flex: 1; font-size: 24rpx; color: #8a5a12; line-height: 1.5; padding-right: 16rpx; }
+.privacy-btn {
+  flex: none; background: #f5793b; color: #fff; font-size: 25rpx; font-weight: 600;
+  border-radius: 999rpx; padding: 10rpx 26rpx;
+}
+/* 「为什么不能自动同步」的说明：微信设计使然，必须讲清楚，否则用户永远在等一个不存在的按钮 */
+.profile-hint { font-size: 22rpx; color: #9a9286; line-height: 1.7; margin: -8rpx 4rpx 24rpx; }
+.profile-hint .em { color: #7a5fb0; font-weight: 700; }
+
+/* 画面感内容定制入口：沿用 .order-entry 骨架，用「付费紫」与暖色免费功能区分层 */
+.custom-entry { background: linear-gradient(135deg, #4b3f6e 0%, #6d5a9e 100%); }
+.custom-entry .order-entry-title { color: #fff; }
+.custom-entry .order-entry-sub { color: #d9d2ea; }
+.custom-entry .order-entry-arrow { color: #d9d2ea; }

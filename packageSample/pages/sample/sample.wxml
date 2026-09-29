@@ -1,0 +1,8 @@
+<view class="sample">
+  <view class="sample-title">{{comicTitle}}</view>
+  <image wx:for="{{panels}}" wx:key="*this"
+         class="panel" src="{{item}}" mode="widthFix"
+         show-menu-by-longpress="{{true}}" />
+  <view class="sample-foot">↑ 以上是成品预览：前 {{preview}} 页 / 全本共 {{total}} 页</view>
+  <view class="sample-cta" bindtap="onBack">← 返回，写我自己的故事</view>
+</view>

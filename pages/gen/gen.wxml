@@ -1,0 +1,160 @@
+<view class="page">
+  <!-- 顶部：余额卡（保留，充值仍可用于「画面感内容定制」付费服务） -->
+  <view class="points-bar" bindtap="onGoPoints">
+    <view class="points-left">
+      <text class="points-num">💰 {{points}}</text>
+      <text class="points-label">积分余额 · 点此兑换/充值</text>
+    </view>
+    <text class="points-arrow">›</text>
+  </view>
+
+  <!-- 输入卡 -->
+  <view class="card input-card">
+    <!-- Hero -->
+    <view class="hero">
+      <view class="hero-kicker">✨ 文案工作台</view>
+      <view class="hero-title">3 秒写出能直接发的朋友圈</view>
+      <view class="hero-sub">套<text class="vp-strong">人工结构模板</text>，或给旧文案做<text class="vp-strong">防折叠排版</text></view>
+    </view>
+
+    <!-- 模块切换 -->
+    <view class="mode-switch">
+      <view class="mode-tab {{mode === 'tpl' ? 'on' : ''}}" data-mode="tpl" bindtap="onSwitchMode">① 模板匹配</view>
+      <view class="mode-tab {{mode === 'opt' ? 'on' : ''}}" data-mode="opt" bindtap="onSwitchMode">② 排版优化</view>
+    </view>
+
+    <!-- ========== ① 模板匹配 ========== -->
+    <block wx:if="{{mode === 'tpl'}}">
+      <!-- 分步引导进度 -->
+      <view class="step-rail">
+        <view class="step-node done"><text class="step-dot">1</text><text class="step-txt">选类型</text></view>
+        <view class="step-line {{filled > 0 ? 'on' : ''}}"></view>
+        <view class="step-node {{filled > 0 ? 'now' : 'done'}}"><text class="step-dot">2</text><text class="step-txt">填内容</text></view>
+        <view class="step-line {{moments.length ? 'on' : ''}}"></view>
+        <view class="step-node {{moments.length ? 'now' : ''}}"><text class="step-dot">3</text><text class="step-txt">套模板出文案</text></view>
+      </view>
+
+      <view class="sec-label">① 选内容目标<text class="sec-note">（点一下选中，可随时换）</text></view>
+      <view class="kind-grid">
+        <view
+          wx:for="{{kinds}}"
+          wx:key="id"
+          class="kind-chip {{kind === item.id ? 'on' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="onSelectKind">
+          <text class="kind-ic">{{item.icon}}</text>
+          <view class="kind-meta">
+            <text class="kind-name">{{item.label}}</text>
+            <text class="kind-tag">{{item.ratio}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="sel-banner">✓ 已选 <text class="sel-name">{{kindInfo.label}}</text> · {{kindInfo.desc}}</view>
+      <view class="struct-hint">这套模板会这样组织：{{kindInfo.struct}}</view>
+
+      <!-- 我的素材库（本地保存，自动填入模板） -->
+      <view class="kb-toggle" bindtap="onToggleProfile">{{showProfile ? '收起素材库 ▲' : '📚 我的素材库（保存后自动填入 · 点此展开）'}}</view>
+      <view class="kb-card" wx:if="{{showProfile}}">
+        <view class="kb-field"><text class="kb-label">身份 / 领域</text><input class="kb-input" placeholder="例如：做知识付费的独立创作者" value="{{pf.identity}}" data-key="identity" bindinput="onPfInput"/></view>
+        <view class="kb-field"><text class="kb-label">我的产品 / 服务</text><input class="kb-input" placeholder="例如：21 天简历精修陪跑" value="{{pf.product}}" data-key="product" bindinput="onPfInput"/></view>
+        <view class="kb-field"><text class="kb-label">核心受众</text><input class="kb-input" placeholder="例如：想做个人品牌的新手" value="{{pf.audience}}" data-key="audience" bindinput="onPfInput"/></view>
+        <view class="kb-field"><text class="kb-label">常讲场景</text><input class="kb-input" placeholder="例如：很多人问我怎么开始" value="{{pf.scene}}" data-key="scene" bindinput="onPfInput"/></view>
+        <view class="kb-field"><text class="kb-label">核心观点</text><input class="kb-input" placeholder="例如：开始比完美重要" value="{{pf.point}}" data-key="point" bindinput="onPfInput"/></view>
+        <view class="kb-field col"><text class="kb-label">常用金句（每行一条）</text><textarea class="kb-area" placeholder="例如：开始比完美重要&#10;你不需要更努力，你需要更清晰" value="{{pf.quotes}}" data-key="quotes" bindinput="onPfInput" maxlength="800" auto-height></textarea></view>
+        <button class="kb-save" bindtap="onSaveProfile">💾 保存素材库（仅存本机）</button>
+      </view>
+
+      <view class="step-head">
+        <text class="step-head-no">②</text>
+        <text class="step-head-txt">填内容 · 共 {{fieldTotal}} 项，已填 {{filled}} 项</text>
+        <text class="step-head-ok" wx:if="{{readyGen}}">✓ 够了</text>
+      </view>
+      <view class="fields">
+        <view class="field" wx:for="{{fields}}" wx:key="key">
+          <view class="field-label"><text class="field-no">{{item.no}}</text>{{item.label}}<text class="req" wx:if="{{item.required}}"> *</text></view>
+          <textarea
+            wx:if="{{item.type === 'textarea'}}"
+            class="field-input field-area"
+            placeholder="{{item.placeholder}}"
+            value="{{form[item.key]}}"
+            bindinput="onFieldInput"
+            data-key="{{item.key}}"
+            maxlength="{{item.max || 500}}"
+            auto-height></textarea>
+          <input
+            wx:else
+            class="field-input"
+            placeholder="{{item.placeholder}}"
+            value="{{form[item.key]}}"
+            bindinput="onFieldInput"
+            data-key="{{item.key}}"></input>
+        </view>
+      </view>
+
+      <view class="step-head gen">
+        <text class="step-head-no">③</text>
+        <text class="step-head-txt">{{readyGen ? '内容够了，点下面套模板' : '先填一两项，模板才好替你套上你的内容'}}</text>
+      </view>
+      <button class="cta-btn" bindtap="onGenMoments">✨ 套模板出文案（免费）</button>
+    </block>
+
+    <!-- ========== ② 排版优化 ========== -->
+    <block wx:if="{{mode === 'opt'}}">
+      <view class="opt-tip">粘贴一段你写好的文字，一键优化排版（纯本地处理，不上传、不调用 AI）。</view>
+      <view class="opt-input-wrap">
+        <textarea class="opt-input" placeholder="粘贴或输入要排版的文字…" value="{{optRaw}}" bindinput="onOptInput" maxlength="2000" auto-height></textarea>
+        <view class="opt-paste" bindtap="onPasteOpt">粘贴</view>
+      </view>
+
+      <view class="opt-tools">
+        <view class="opt-tool" bindtap="onOptAntiFold">📐 防折叠折行</view>
+        <view class="opt-tool" bindtap="onOptEmoji">😊 自动加 emoji</view>
+        <view class="opt-tool" bindtap="onOptSplit">↩️ 自动分段</view>
+      </view>
+
+      <view class="opt-stats" wx:if="{{optResult}}">
+        <text class="opt-stat">字数 {{optStats.chars}}</text>
+        <text class="opt-stat">行数 {{optStats.lines}}</text>
+        <text class="opt-stat">emoji {{optStats.emojiCount}}</text>
+      </view>
+
+      <view class="opt-result" wx:if="{{optResult}}">
+        <view class="opt-result-title">排版结果（长按可复制）</view>
+        <view class="opt-result-text" user-select="true">{{optResult}}</view>
+        <button class="copy-btn primary" bindtap="onCopyOpt">📋 复制排版结果</button>
+      </view>
+    </block>
+  </view>
+
+  <!-- 模板匹配结果区 -->
+  <block wx:if="{{mode === 'tpl' && moments.length}}">
+    <view class="card result-card">
+      <view class="card-title">套模板结果（{{moments.length}} 条，点选你喜欢的）</view>
+      <view class="moments-list">
+        <view
+          wx:for="{{moments}}"
+          wx:key="index"
+          class="moment-card {{selectedMoment === index ? 'sel' : ''}}"
+          data-idx="{{index}}"
+          bindtap="onSelectMoment">
+          <view class="moment-no">方案 {{index + 1}} {{selectedMoment === index ? '· 已选中' : ''}}</view>
+          <view class="moment-text" user-select="true">{{item}}</view>
+        </view>
+      </view>
+      <button class="copy-btn primary" bindtap="onCopyMoment">📋 复制选中的文案</button>
+      <button class="copy-btn" bindtap="onCopyAll">复制全部 {{moments.length}} 条对比</button>
+      <view class="copy-tip">长按文案也能唤出系统复制菜单</view>
+
+      <!-- 知识库金句：点一下插到选中文案末尾（纯本地拼接，非生成） -->
+      <view class="kb-quotes" wx:if="{{kbQuotes.length}}">
+        <view class="kb-quotes-title">💡 知识库金句 · 点一下插到选中文案末尾</view>
+        <view class="kb-q-row">
+          <view class="kb-q" wx:for="{{kbQuotes}}" wx:key="*this" data-q="{{item}}" bindtap="onInsertQuote">{{item}}</view>
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <view class="err" wx:if="{{err}}">{{err}}</view>
+</view>

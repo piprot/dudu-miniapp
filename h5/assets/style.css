@@ -1,0 +1,327 @@
+/* ─────────────────────────────────────────────────────────────
+ * h5/assets/style.css —— 公众号 H5 版（与小程序 gen 页同一套暖色调）
+ * 移动优先：默认按手机排版，最宽 480px 居中，桌面打开也不散。
+ * 零依赖、零构建：直接丢静态托管即可。
+ * ───────────────────────────────────────────────────────────── */
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #f5efe4;
+  color: #2b2b2b;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: linear-gradient(180deg, #fdf3e3 0%, #f7ead6 40%, #f5efe4 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+.wrap {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 14px 14px 40px;
+}
+
+/* ── AI 生成内容标识（法定提示标识：常驻、不可关闭、不进折叠区）── */
+.ai-notice {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  background: #fff8ec;
+  border: 1px solid #ffd9a6;
+  border-left: 4px solid #f5793b;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-size: 12.5px;
+  color: #8a6520;
+  line-height: 1.55;
+}
+.ai-badge {
+  flex: 0 0 auto;
+  display: inline-block;
+  background: #f5793b;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 9px;
+  margin-top: 1px;
+  letter-spacing: .5px;
+}
+
+/* ── 卡片 ── */
+.card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 16px rgba(150, 110, 50, .08), inset 0 1px 0 rgba(255, 255, 255, .7);
+}
+
+/* ── Hero ── */
+.hero {
+  background: linear-gradient(135deg, #fff6e8 0%, #fdeedd 100%);
+  border: 1px solid #ffe3bd;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.hero-kicker {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #f5793b;
+  background: #fff0e0;
+  border-radius: 999px;
+  padding: 3px 12px;
+  margin-bottom: 8px;
+}
+.hero-title { font-size: 21px; font-weight: 800; color: #4a3b28; line-height: 1.35; }
+.hero-sub { font-size: 13.5px; color: #8a7554; margin-top: 6px; line-height: 1.7; }
+.hero-sub b { color: #f5793b; font-weight: 800; }
+
+/* ── 额度条 ── */
+.quota-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #ffd98a 0%, #ffb84d 100%);
+  border-radius: 14px;
+  padding: 11px 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 14px rgba(255, 169, 60, .3);
+}
+.quota-left { display: flex; flex-direction: column; }
+.quota-num { font-size: 19px; font-weight: 800; color: #6b4a0e; line-height: 1.2; }
+.quota-label { font-size: 11.5px; color: #8a6520; margin-top: 2px; }
+.quota-right { font-size: 12px; color: #8a6520; font-weight: 700; }
+
+/* ── 步骤条 ── */
+.step-rail { display: flex; align-items: center; margin: 2px 0 16px; }
+.step-node { display: flex; flex-direction: column; align-items: center; min-width: 62px; }
+.step-dot {
+  width: 22px; height: 22px; line-height: 22px; text-align: center;
+  border-radius: 50%; font-size: 12px; font-weight: 700;
+  background: #efe2cd; color: #a08a68;
+}
+.step-txt { font-size: 10.5px; color: #a08a68; margin-top: 4px; white-space: nowrap; }
+.step-node.done .step-dot { background: #ffd98a; color: #6b4a0e; }
+.step-node.done .step-txt { color: #8a6520; }
+.step-node.now .step-dot { background: #f5793b; color: #fff; box-shadow: 0 0 0 4px rgba(245, 121, 59, .16); }
+.step-node.now .step-txt { color: #f5793b; font-weight: 700; }
+.step-line { flex: 1; height: 2px; background: #efe2cd; border-radius: 2px; margin: 0 3px 18px; }
+.step-line.on { background: #ffc46b; }
+
+/* ── 小节标题 ── */
+.sec-label { font-size: 15px; font-weight: 800; color: #4a3b28; margin: 2px 0 10px; }
+.sec-note { font-size: 11.5px; font-weight: 500; color: #a08a68; margin-left: 5px; }
+
+/* ── 类型 chips ── */
+.kind-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+.kind-chip {
+  flex: 1 1 calc(50% - 4px);
+  /* 最后一个是奇数项时会独占整行；限住 max-width 让它保持半宽，与上面 4 个对齐 */
+  max-width: calc(50% - 4px);
+  min-width: 0;
+  display: flex; flex-direction: column;
+  text-align: left;
+  background: #fffdf9;
+  border: 1.5px solid #efe2cd;
+  border-radius: 12px;
+  padding: 9px 11px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: border-color .15s, background .15s, transform .1s;
+}
+.kind-chip:active { transform: scale(.985); }
+.kind-chip .kc-top { display: flex; align-items: center; gap: 5px; }
+.kind-chip .kc-icon { font-size: 15px; }
+.kind-chip .kc-label { font-size: 14px; font-weight: 800; color: #4a3b28; }
+.kind-chip .kc-desc { font-size: 11.5px; color: #a08a68; margin-top: 3px; line-height: 1.5; }
+.kind-chip.on { border-color: #f5793b; background: #fff4e9; box-shadow: 0 2px 10px rgba(245, 121, 59, .16); }
+.kind-chip.on .kc-label { color: #e2611f; }
+.kind-chip.link { flex: 1 1 100%; max-width: none; flex-direction: row; align-items: center; gap: 8px; }
+.kind-chip.link .kc-desc { margin-top: 0; }
+
+/* ── 已选横幅 ── */
+.sel-banner {
+  display: flex; align-items: baseline; gap: 7px;
+  background: #fff4e9; border: 1px solid #ffddb8; border-radius: 10px;
+  padding: 8px 11px; margin-bottom: 10px;
+}
+.sel-banner .sb-k { font-size: 13px; font-weight: 800; color: #e2611f; }
+.sel-banner .sb-v { font-size: 12px; color: #8a7554; }
+.struct-hint { font-size: 12px; color: #a08a68; background: #faf6ef; border-radius: 8px; padding: 8px 11px; margin-bottom: 12px; line-height: 1.6; }
+
+/* ── 字段 ── */
+.field { margin-bottom: 12px; }
+.field-label { display: block; font-size: 13px; font-weight: 700; color: #4a3b28; margin-bottom: 5px; }
+.field-no {
+  display: inline-block; min-width: 17px; height: 17px; line-height: 17px;
+  text-align: center; border-radius: 50%; background: #ffe9cf; color: #c25a17;
+  font-size: 10.5px; font-weight: 800; margin-right: 5px;
+}
+.field-req { color: #f5793b; font-size: 11.5px; font-weight: 700; margin-left: 3px; }
+.input, .textarea {
+  width: 100%;
+  border: 1.5px solid #e9dcc6;
+  border-radius: 10px;
+  padding: 10px 11px;
+  font-size: 16px;           /* ≥16px：iOS 聚焦时不会自动放大页面 */
+  font-family: inherit;
+  color: #2b2b2b;
+  background: #fffdf9;
+  outline: none;
+  transition: border-color .15s;
+}
+.input:focus, .textarea:focus { border-color: #f5793b; background: #fff; }
+.textarea { min-height: 74px; resize: vertical; line-height: 1.6; }
+
+.counter { display: flex; justify-content: space-between; font-size: 11.5px; color: #a08a68; margin-top: 5px; }
+.counter b { color: #e2611f; font-weight: 800; }
+.len-tip { font-size: 11.5px; color: #a08a68; background: #faf6ef; border-radius: 8px; padding: 8px 10px; margin-top: 8px; line-height: 1.65; }
+
+/* ── 链接模式 ── */
+.url-row { display: flex; gap: 8px; }
+.url-row .input { flex: 1; }
+.btn-paste {
+  flex: 0 0 auto; border: 1.5px solid #ffc46b; background: #fff6e8; color: #c25a17;
+  border-radius: 10px; padding: 0 13px; font-size: 13px; font-weight: 700;
+  font-family: inherit; cursor: pointer;
+}
+.tone-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+.tone-chip {
+  border: 1.5px solid #efe2cd; background: #fffdf9; color: #6f5b3c;
+  border-radius: 999px; padding: 5px 13px; font-size: 12.5px; font-weight: 700;
+  font-family: inherit; cursor: pointer;
+}
+.tone-chip.on { border-color: #f5793b; background: #fff4e9; color: #e2611f; }
+
+/* ── 图片位（H5 v1 不开放上传，仅作说明）── */
+.media-hint {
+  display: flex; gap: 8px; align-items: center;
+  background: #faf6ef; border: 1px dashed #e2d3bb; border-radius: 10px;
+  padding: 10px 12px; font-size: 12px; color: #a08a68; line-height: 1.6;
+}
+.media-hint .mh-icon { font-size: 17px; }
+
+/* ── 按钮 ── */
+.cta-btn {
+  display: block; width: 100%;
+  border: none; border-radius: 13px;
+  background: linear-gradient(135deg, #ffb84d 0%, #f5793b 100%);
+  color: #fff; font-size: 16px; font-weight: 800; font-family: inherit;
+  padding: 14px; margin-top: 4px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(245, 121, 59, .3);
+  transition: opacity .15s, transform .1s;
+}
+.cta-btn:active { transform: scale(.99); }
+.cta-btn[disabled] { background: #e8ddc9; color: #b3a48d; box-shadow: none; cursor: not-allowed; }
+
+.btn-ghost {
+  display: block; width: 100%;
+  border: 1.5px solid #ffc46b; background: #fffdf9; color: #c25a17;
+  border-radius: 12px; padding: 11px; font-size: 14px; font-weight: 700;
+  font-family: inherit; cursor: pointer; margin-top: 9px;
+}
+.btn-ghost[disabled] { border-color: #e8ddc9; color: #b3a48d; cursor: not-allowed; }
+
+/* ── 结果 ── */
+.result-card { border: 1.5px solid #ffe3bd; }
+.result-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.result-head .rh-t { font-size: 15px; font-weight: 800; color: #4a3b28; }
+.result-head .rh-tag {
+  font-size: 10.5px; font-weight: 700; color: #c25a17;
+  background: #ffe9cf; border-radius: 999px; padding: 2px 9px;
+}
+.result-sub { font-size: 11.5px; color: #a08a68; margin-bottom: 11px; line-height: 1.6; }
+
+.moment {
+  border: 1.5px solid #efe2cd;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: #fffdf9;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.moment.on { border-color: #f5793b; background: #fff8f1; }
+.moment-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
+.moment-no { font-size: 12.5px; font-weight: 800; color: #e2611f; }
+.moment-pick { font-size: 11px; font-weight: 700; color: #a08a68; border: 1px solid #e9dcc6; border-radius: 999px; padding: 1px 9px; }
+.moment.on .moment-pick { color: #fff; background: #f5793b; border-color: #f5793b; }
+/* 文案正文：保留真实换行 + 长按可选（复制受限时的兜底路径） */
+.moment-text {
+  font-size: 14.5px;
+  line-height: 1.85;
+  color: #33312d;
+  white-space: pre-wrap;
+  word-break: break-word;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.moment-foot { font-size: 10.5px; color: #b3a48d; margin-top: 8px; }
+
+.revise-box { margin-top: 4px; padding-top: 11px; border-top: 1px dashed #ece0cc; }
+.revise-box .rb-label { font-size: 12.5px; font-weight: 700; color: #4a3b28; margin-bottom: 6px; }
+
+.err {
+  background: #fff1ee; border: 1px solid #ffcfc5; color: #c0392b;
+  border-radius: 10px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px; line-height: 1.6;
+}
+
+/* ── 加载态 ── */
+.loading { display: flex; align-items: center; justify-content: center; gap: 9px; padding: 22px 0; color: #a08a68; font-size: 13.5px; }
+.spinner {
+  width: 17px; height: 17px; border-radius: 50%;
+  border: 2.5px solid #ffe3bd; border-top-color: #f5793b;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 折叠须知 ── */
+details.notice {
+  background: #fffdf9; border: 1px solid #ece0cc; border-radius: 12px;
+  padding: 11px 13px; margin-top: 14px;
+}
+details.notice summary { font-size: 13px; font-weight: 700; color: #6f5b3c; cursor: pointer; outline: none; }
+details.notice .nc { font-size: 12px; color: #8a7554; line-height: 1.75; margin-top: 9px; }
+details.notice .nc p { margin: 0 0 8px; }
+details.notice .nc b { color: #4a3b28; }
+
+/* ── 页面互链（文案工具 ↔ 定制样板间）：把两个页面接成一条漏斗 ── */
+.cross-link {
+  display: block;
+  text-decoration: none;
+  background: #fffdf9; border: 1.5px solid #ffe3bd; border-radius: 12px;
+  padding: 12px 14px; margin-top: 14px;
+}
+.cross-link .cl-k { display: block; font-size: 13.5px; font-weight: 800; color: #4a3b28; }
+.cross-link .cl-v { display: block; font-size: 12px; color: #c25a17; font-weight: 700; margin-top: 3px; }
+
+.foot { text-align: center; font-size: 11.5px; color: #b3a48d; margin-top: 18px; line-height: 1.8; }
+.foot a { color: #c25a17; text-decoration: none; }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; left: 50%; bottom: 34px; transform: translate(-50%, 14px);
+  background: rgba(40, 34, 26, .93); color: #fff;
+  font-size: 13.5px; border-radius: 10px; padding: 10px 18px;
+  max-width: 84vw; text-align: center; line-height: 1.5;
+  opacity: 0; pointer-events: none; transition: opacity .22s, transform .22s; z-index: 99;
+}
+#toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 340px) {
+  .kind-chip { flex: 1 1 100%; }
+}

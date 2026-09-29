@@ -1,0 +1,40 @@
+<view class="pay-page">
+  <view class="pay-head">
+    <view class="pay-title">购买《{{title}}》整本</view>
+    <view class="pay-amount">{{currency}}{{price}}</view>
+    <view class="pay-sub">一次购买，全部 {{chapterCount}} 话永久解锁</view>
+  </view>
+
+  <view class="owned-tip" wx:if="{{owned}}">✅ 你已购买，全部章节已解锁</view>
+  <view class="identity" wx:elif="{{identityText}}">{{identityText}}</view>
+
+  <!-- 方式一：个人虚拟支付（无需公司，需类目「工具」+认证备案+云开发） -->
+  <view class="method">
+    <view class="method-title">方式一 · 微信支付（个人虚拟支付）</view>
+    <view class="method-desc" wx:if="{{!virtualEnabled}}">
+      未启用。需先在微信公众平台开通「虚拟支付」（前提：服务类目含「工具」、小程序已完成认证与备案），部署云函数并把 VIRTUAL_PAY 的 offerId/cloudEnv 等填好。详见 README.md。
+    </view>
+    <button class="method-btn virtual" disabled="{{!virtualEnabled || owned}}" bindtap="onVirtualPay">
+      {{virtualEnabled ? '微信支付 '+currency+price : '未启用（需开通虚拟支付）'}}
+    </button>
+    <view class="fee-note" wx:if="{{virtualEnabled}}">费率：Android 1% / iOS 12%（Apple 内购）· 全终端月限额 10 万元</view>
+  </view>
+
+  <!-- 方式二：赞赏码 / 兑换码（个人主体上线默认关闭 rewardEnabled，避免审核因应用内收款码被拒） -->
+  <view class="method" wx:if="{{rewardEnabled}}">
+    <view class="method-title">方式二 · 赞赏码解锁（兜底）</view>
+    <view class="method-desc">若虚拟支付暂时不可用，可走此路：① 长按/扫码赞赏上方二维码 → ② 点「联系作者」把付款截图发客服 → ③ 作者发你兑换码 → ④ 输入解锁整本。</view>
+    <image class="qr" src="{{rewardQr}}" mode="aspectFit" show-menu-by-longpress="{{true}}" />
+    <view class="qr-tip">请替换为你的微信赞赏码截图（images/reward_qr.png）</view>
+    <input class="code-input" placeholder="输入作者发放的兑换码" value="{{code}}" bindinput="onInputCode" disabled="{{owned}}" />
+    <button class="method-btn reward" disabled="{{owned}}" bindtap="onRewardPay">用兑换码解锁整本</button>
+    <button class="method-btn contact" open-type="contact">联系作者取兑换码</button>
+    <view class="author-line" wx:if="{{authorWechat}}">作者微信：{{authorWechat}}（也可直接加好友获取兑换码）</view>
+  </view>
+
+  <!-- 个体户标准微信支付（JSAPI 支付接口）已移除：个人主体禁用，仅保留虚拟支付 + 兑换码兜底 -->
+
+  <view class="note">
+    说明：个人主体小程序现已支持「虚拟支付」直接收钱（无需注册公司），但前提是服务类目含「工具」且已完成认证与备案，并用微信云开发做服务端签名与发货。标准微信支付与手机号一键登录仍仅限个体户/企业主体；本作以 openid 标识用户，足以完成发货与解锁。
+  </view>
+</view>

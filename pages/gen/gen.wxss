@@ -1,0 +1,313 @@
+/* ── gen 页（2026-09-19 重设计：朋友圈文案聚焦 + 内容目标网格 + 链接并行）── */
+.page {
+  padding: 24rpx;
+  min-height: 100vh;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #fdf3e3 0%, #f7ead6 40%, #f5efe4 100%);
+}
+
+/* 通用卡片 */
+.card {
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 6rpx 24rpx rgba(150, 110, 50, 0.08), inset 0 2rpx 0 rgba(255, 255, 255, 0.7);
+}
+.card-title { font-size: 32rpx; font-weight: 700; color: #4a3b28; margin-bottom: 12rpx; }
+
+/* 余额卡 */
+.points-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(135deg, #ffd98a 0%, #ffb84d 100%);
+  border-radius: 24rpx; padding: 24rpx 28rpx; margin-bottom: 24rpx;
+  box-shadow: 0 6rpx 20rpx rgba(255, 169, 60, 0.35);
+}
+.points-left { display: flex; flex-direction: column; }
+.points-num { font-size: 40rpx; font-weight: 800; color: #6b4a0e; }
+.points-label { font-size: 22rpx; color: #8a6520; margin-top: 4rpx; }
+.points-arrow { font-size: 44rpx; color: #8a6520; font-weight: 700; }
+
+/* 输入卡 */
+.hero {
+  background: linear-gradient(135deg, #fff6e8 0%, #fdeedd 100%);
+  border: 2rpx solid #ffe3bd; border-radius: 18rpx; padding: 24rpx; margin-bottom: 22rpx;
+}
+.hero-kicker { display: inline-block; font-size: 22rpx; font-weight: 700; color: #f5793b; background: #fff0e0; border-radius: 999rpx; padding: 4rpx 18rpx; margin-bottom: 12rpx; }
+.hero-title { font-size: 36rpx; font-weight: 800; color: #4a3b28; line-height: 1.35; }
+.hero-sub { font-size: 24rpx; color: #8a7554; margin-top: 10rpx; line-height: 1.6; }
+.vp-strong { color: #f5793b; font-weight: 800; }
+
+/* 步骤标签 */
+.sec-label { font-size: 28rpx; font-weight: 800; color: #4a3b28; margin: 8rpx 0 16rpx; }
+.sec-note { font-size: 22rpx; font-weight: 500; color: #a08a68; margin-left: 8rpx; }
+
+/* ── 分步引导（2026-09-20 新增）：顶部步骤条 + 每步小标题 + 字段序号 ── */
+.step-rail { display: flex; align-items: center; margin: 4rpx 0 22rpx; }
+.step-node { display: flex; flex-direction: column; align-items: center; min-width: 100rpx; }
+.step-dot {
+  width: 40rpx; height: 40rpx; line-height: 40rpx; text-align: center;
+  border-radius: 50%; font-size: 22rpx; font-weight: 700;
+  background: #efe2cd; color: #a08a68;
+}
+.step-txt { font-size: 20rpx; color: #a08a68; margin-top: 6rpx; }
+.step-node.done .step-dot { background: #ffd98a; color: #6b4a0e; }
+.step-node.done .step-txt { color: #8a6520; }
+.step-node.now .step-dot { background: #f5793b; color: #ffffff; box-shadow: 0 0 0 6rpx rgba(245, 121, 59, 0.18); }
+.step-node.now .step-txt { color: #f5793b; font-weight: 700; }
+.step-line { flex: 1; height: 4rpx; background: #efe2cd; border-radius: 2rpx; margin: 0 4rpx 26rpx; }
+.step-line.on { background: #ffc46b; }
+
+.step-head { display: flex; align-items: center; margin: 20rpx 0 14rpx; }
+.step-head.gen { margin: 6rpx 0 14rpx; }
+.step-head-no { font-size: 26rpx; font-weight: 800; color: #f5793b; margin-right: 10rpx; }
+.step-head-txt { font-size: 25rpx; font-weight: 700; color: #4a3b28; flex: 1; }
+.step-head-ok { font-size: 22rpx; font-weight: 700; color: #2e9e5b; }
+
+.field-no {
+  display: inline-block; min-width: 30rpx; height: 30rpx; line-height: 30rpx;
+  text-align: center; border-radius: 50%; background: #f7ead6; color: #a0703a;
+  font-size: 20rpx; font-weight: 700; margin-right: 8rpx;
+}
+
+/* ── 内容目标网格：6 类 + 粘贴文章链接（并行）── */
+.kind-grid { display: flex; flex-wrap: wrap; gap: 14rpx; }
+.kind-chip {
+  display: flex; align-items: center; gap: 12rpx;
+  width: calc(50% - 7rpx);
+  box-sizing: border-box;
+  background: #faf6ee; border: 2rpx solid #ece0cb; border-radius: 18rpx;
+  padding: 18rpx 20rpx; transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, background-color .16s ease;
+}
+.kind-chip.on { background: #fff6e8; border-color: #f5793b; box-shadow: 0 6rpx 16rpx rgba(245, 121, 59, 0.16); }
+.kind-ic { flex: none; font-size: 36rpx; width: 44rpx; text-align: center; }
+.kind-meta { display: flex; flex-direction: column; min-width: 0; }
+.kind-name { font-size: 27rpx; color: #4a3b28; font-weight: 700; }
+.kind-tag { font-size: 20rpx; color: #b06a2c; margin-top: 2rpx; }
+.kind-chip.link {
+  width: 100%;
+  background: #eef4fb; border-color: #cfe0f2;
+}
+.kind-chip.link.on { background: #e3eefb; border-color: #378ADD; box-shadow: 0 6rpx 16rpx rgba(55, 138, 221, 0.18); }
+.kind-chip.link .kind-tag { color: #378ADD; }
+
+/* 已选类型横幅 + 结构暗示 */
+.sel-banner {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6rpx;
+  margin: 16rpx 0 0; font-size: 22rpx; color: #9a8868; line-height: 1.6;
+  background: #fbf4e8; border: 2rpx solid #f3e6d2; border-radius: 16rpx; padding: 12rpx 18rpx;
+}
+.sel-name { color: #f5793b; font-weight: 700; }
+.struct-hint {
+  margin: 10rpx 0 0; font-size: 21rpx; color: #9279b0; line-height: 1.6;
+  background: #f8f3fc; border: 2rpx solid #ece2f4; border-radius: 16rpx; padding: 10rpx 16rpx;
+}
+
+/* ── 引导字段 ── */
+.fields { margin: 16rpx 0 4rpx; }
+.field { margin-bottom: 18rpx; }
+.field-label { font-size: 25rpx; color: #6b5636; font-weight: 600; margin-bottom: 8rpx; }
+.req { color: #e0742a; font-weight: 700; }
+/* 单行输入：**必须显式给 height**。
+   小程序 <input> 是原生组件，不像常规块元素那样把 padding 计入自身高度 ——
+   只设 padding 不设 height 会挤压内容区，表现就是「文字只显示一半」
+   （2026-09-21 真机反馈：4 种类型的每一行输入框都只剩半截字）。 */
+.field-input {
+  width: 100%; box-sizing: border-box;
+  height: 92rpx; line-height: 92rpx; padding: 0 22rpx;
+  background: #faf6ee; border: 2rpx solid #ece0cb; border-radius: 16rpx;
+  font-size: 27rpx; color: #3a332a;
+}
+/* 多行输入（textarea）：高度交给 auto-height 自适应，内边距用 padding 撑 */
+.field-area {
+  height: auto; min-height: 170rpx;
+  line-height: 1.6; padding: 20rpx 22rpx;
+}
+.field-input:focus { border-color: #f5793b; }
+
+.counter { display: flex; align-items: center; justify-content: space-between; font-size: 22rpx; color: #b3a68f; margin: 8rpx 4rpx 0; }
+.counter-len { font-size: 22rpx; color: #b3a68f; }
+.counter-out { font-size: 22rpx; color: #d99b2b; font-weight: 600; }
+.len-tip { margin: 12rpx 4rpx 0; font-size: 21rpx; color: #b3905a; line-height: 1.6; }
+
+/* ── 贴链接：URL 输入 + 调性 ── */
+.url-card {
+  display: flex; align-items: center; background: #eef4fb; border: 2rpx solid #cfe0f2;
+  border-radius: 18rpx; padding-left: 22rpx; margin: 16rpx 0 0; box-sizing: border-box;
+}
+.url-input { flex: 1; height: 88rpx; font-size: 26rpx; color: #3a332a; min-width: 0; background: transparent; }
+.url-paste { flex: none; padding: 0 26rpx; height: 88rpx; line-height: 88rpx; font-size: 26rpx; color: #378ADD; font-weight: 600; }
+.url-tone { margin-top: 16rpx; }
+.url-tone-label { font-size: 23rpx; color: #6b5636; font-weight: 600; }
+.tone-row { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 12rpx; }
+.tone-chip {
+  font-size: 23rpx; color: #5b6b7a; background: #f3f7fc; border: 2rpx solid #dce7f2;
+  border-radius: 999rpx; padding: 10rpx 20rpx;
+}
+.tone-chip.on { color: #fff; background: #378ADD; border-color: #378ADD; font-weight: 600; }
+
+/* ── 常驻：添加图片 ── */
+.media-block { margin-top: 22rpx; }
+.media-label { font-size: 23rpx; color: #6b5636; font-weight: 600; margin-bottom: 12rpx; }
+.media-row { display: flex; align-items: center; flex-wrap: wrap; }
+.add-img {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 150rpx; height: 150rpx; border: 2rpx dashed #d8b878; border-radius: 18rpx;
+  background: #fdf8ec; margin: 8rpx 16rpx 8rpx 0;
+}
+.add-img-plus { font-size: 48rpx; color: #d99b2b; line-height: 1; }
+.add-img-txt { font-size: 22rpx; color: #b3905a; margin-top: 6rpx; }
+.img-item { position: relative; width: 150rpx; height: 150rpx; margin: 8rpx 16rpx 8rpx 0; }
+.img-thumb { width: 150rpx; height: 150rpx; border-radius: 18rpx; background: #efe6d4; }
+.img-state {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  font-size: 20rpx; color: #fff; text-align: center; line-height: 36rpx;
+  background: rgba(90, 60, 20, 0.55); border-bottom-left-radius: 18rpx; border-bottom-right-radius: 18rpx;
+}
+.img-state.fail { background: rgba(176, 58, 46, 0.78); }
+.img-del {
+  position: absolute; top: -12rpx; right: -12rpx; width: 44rpx; height: 44rpx;
+  line-height: 40rpx; text-align: center; font-size: 32rpx; color: #fff;
+  background: rgba(90, 60, 20, 0.65); border-radius: 50%;
+}
+
+/* 补充一句（可选） */
+.note-input {
+  width: 100%; min-height: 92rpx; background: #fff; border: 2rpx solid #ece0cb; border-radius: 16rpx;
+  padding: 18rpx; font-size: 26rpx; color: #3a332a; box-sizing: border-box; line-height: 1.6; margin-top: 18rpx;
+}
+
+/* 主 CTA：琥珀渐变 */
+.cta-btn {  margin-top: 22rpx; color: #fff; font-size: 30rpx; font-weight: 700;
+  background: linear-gradient(135deg, #ff9d42 0%, #f5793b 100%);
+  border-radius: 999rpx; padding: 8rpx 0;
+  box-shadow: 0 8rpx 24rpx rgba(245, 121, 59, 0.35);
+}
+.cta-btn[disabled] { background: #e0d5c2; color: #fff; box-shadow: none; }
+
+/* 结果卡 */
+.result-card { border: 2rpx solid #ffe3bd; }
+.moments-list { margin: 8rpx 0 16rpx; }
+.moment-card {
+  background: #fbf7ee; border: 3rpx solid #eee2cc; border-radius: 20rpx;
+  padding: 22rpx; margin-bottom: 18rpx; transition: transform .15s ease, border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
+}
+.moment-card.sel { border-color: #f5793b; background: #fff6e8; box-shadow: 0 4rpx 16rpx rgba(245, 121, 59, 0.15); }
+.moment-no { font-size: 24rpx; color: #c07a2e; font-weight: 700; margin-bottom: 10rpx; }
+.moment-text { font-size: 28rpx; color: #3a332a; line-height: 1.75; white-space: pre-wrap; word-break: break-all; }
+
+/* 复制按钮 */
+.copy-btn {
+  margin-top: 16rpx; background: #f1e9d8; color: #6b5d47;
+  border-radius: 999rpx; font-size: 27rpx; padding: 4rpx 0;
+}
+.copy-btn.primary {
+  background: linear-gradient(135deg, #ffb84d 0%, #f59b2b 100%);
+  color: #fff; font-size: 30rpx; font-weight: 700;
+  box-shadow: 0 6rpx 18rpx rgba(245, 155, 43, 0.35);
+}
+.copy-tip { margin-top: 14rpx; font-size: 22rpx; color: #b3a68f; text-align: center; }
+
+/* ── 「我的故事」专属：选中文案 → 做成画面感内容 ── */
+.story-cta {
+  margin-top: 26rpx; padding: 26rpx;
+  background: linear-gradient(135deg, #4b3f6e 0%, #6d5a9e 100%);
+  border-radius: 20rpx;
+}
+.story-cta-title { font-size: 28rpx; font-weight: 700; color: #fff; margin-bottom: 10rpx; }
+.story-cta-sub { font-size: 23rpx; color: #d9d2ea; line-height: 1.7; margin-bottom: 18rpx; }
+.story-cta-btn {
+  width: 100%; height: 84rpx; line-height: 84rpx;
+  background: #fff; color: #4b3f6e; font-size: 27rpx; font-weight: 700;
+  border-radius: 999rpx; border: none; padding: 0;
+}
+.story-cta-btn::after { border: none; }
+
+/* 换一批 */
+.revise-box { margin-top: 28rpx; background: #fdf9f0; border: 2rpx dashed #e2c894; border-radius: 20rpx; padding: 24rpx; }
+.revise-title { font-size: 27rpx; color: #6b5636; font-weight: 600; margin-bottom: 10rpx; }
+.revise-hint { font-size: 22rpx; color: #a89270; line-height: 1.6; margin-bottom: 14rpx; }
+.revise-deal {
+  display: inline-block; margin-left: 10rpx; font-size: 22rpx; color: #b06a2c;
+  background: #fdeedd; border: 2rpx solid #f0d3a8; border-radius: 10rpx; padding: 2rpx 12rpx;
+}
+.revise-input {
+  width: 100%; min-height: 110rpx; background: #fff; border-radius: 16rpx;
+  padding: 18rpx; font-size: 27rpx; color: #3a332a; box-sizing: border-box; line-height: 1.6;
+}
+.revise-btn {
+  margin-top: 18rpx; background: linear-gradient(135deg, #7ba3d0 0%, #5b87bb 100%);
+  color: #fff; border-radius: 999rpx; font-size: 28rpx; padding: 4rpx 0;
+}
+.revise-btn[disabled] { background: #d8d2c6; color: #fff; }
+
+/* 定制画面感内容入口卡 */
+.custom-card { background: linear-gradient(135deg, #4b3f6e 0%, #6d5a9e 100%); }
+.custom-title { font-size: 32rpx; font-weight: 700; color: #fff; margin-bottom: 10rpx; }
+.custom-sub { font-size: 24rpx; color: #d9d2ea; line-height: 1.7; margin-bottom: 18rpx; }
+.custom-btn {
+  background: rgba(255, 255, 255, 0.16); color: #ffd98a; font-size: 29rpx; font-weight: 700;
+  border: 2rpx solid rgba(255, 217, 138, 0.6); border-radius: 999rpx; padding: 6rpx 0;
+}
+
+.err { margin: 8rpx 4rpx 24rpx; color: #b03a2e; font-size: 26rpx; line-height: 1.6; }
+
+/* ── 防截断加固（解决真机「显示一半」：长串/无空格文本/链接强制换行，按钮盒模型不溢出）── */
+.hero-sub, .kind-name, .kind-tag, .kind-meta,
+.sel-banner, .sel-name, .struct-hint, .len-tip, .step-txt, .step-head-txt,
+.counter-len, .counter-out, .sec-label, .media-label,
+.revise-hint, .story-cta-sub, .custom-sub, .copy-tip,
+.moment-no, .moment-text, .url-tone-label {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+.cta-btn, .copy-btn, .copy-btn.primary, .revise-btn, .custom-btn, .story-cta-btn {
+  box-sizing: border-box;
+}
+.url-card { box-sizing: border-box; padding-right: 22rpx; }
+
+/* ── 按钮微动效（按压回弹 + 主 CTA 流光，简洁但有反馈）── */
+.cta-btn, .copy-btn, .copy-btn.primary, .revise-btn, .custom-btn, .story-cta-btn, .add-img {
+  transition: transform .12s ease, box-shadow .2s ease, filter .15s ease;
+}
+.cta-btn:active, .copy-btn:active, .copy-btn.primary:active,
+.revise-btn:active, .custom-btn:active, .story-cta-btn:active, .add-img:active {
+  transform: scale(0.96);
+  filter: brightness(0.95);
+}
+/* 主 CTA：靠渐变 + 按压回弹做反馈，不再做永久流光（Apple 风：主转化按钮不靠 shimmer 博眼球） */
+
+/* ── 模块切换（2026-09-29 B1 合规重构：模板匹配 / 排版优化）── */
+.mode-switch { display: flex; background: #f3e9d8; border-radius: 999rpx; padding: 6rpx; margin-bottom: 22rpx; }
+.mode-tab { flex: 1; text-align: center; font-size: 26rpx; font-weight: 700; color: #9a8054; padding: 16rpx 0; border-radius: 999rpx; }
+.mode-tab.on { background: #ffffff; color: #f5793b; box-shadow: 0 4rpx 12rpx rgba(150,110,50,0.12); }
+
+/* ── 排版优化器 ── */
+.opt-tip { font-size: 24rpx; color: #8a7554; line-height: 1.6; margin-bottom: 16rpx; }
+.opt-input-wrap { position: relative; margin-bottom: 18rpx; }
+.opt-input { width: 100%; box-sizing: border-box; min-height: 220rpx; background: #fbf6ee; border: 2rpx solid #f0e2c8; border-radius: 16rpx; padding: 22rpx; font-size: 28rpx; color: #4a3b28; line-height: 1.7; }
+.opt-paste { position: absolute; right: 20rpx; bottom: 18rpx; font-size: 24rpx; color: #f5793b; font-weight: 700; background: #fff0e0; border-radius: 999rpx; padding: 8rpx 22rpx; }
+.opt-tools { display: flex; gap: 16rpx; margin-bottom: 18rpx; }
+.opt-tool { flex: 1; text-align: center; font-size: 24rpx; font-weight: 700; color: #6b4a0e; background: #fff6e8; border: 2rpx solid #ffe3bd; border-radius: 14rpx; padding: 22rpx 0; }
+.opt-tool:active { background: #ffeccc; }
+.opt-stats { display: flex; gap: 14rpx; margin-bottom: 16rpx; }
+.opt-stat { font-size: 22rpx; color: #8a7554; background: #f3e9d8; border-radius: 999rpx; padding: 6rpx 18rpx; }
+.opt-result { background: #fbf6ee; border: 2rpx solid #f0e2c8; border-radius: 16rpx; padding: 22rpx; }
+.opt-result-title { font-size: 24rpx; font-weight: 700; color: #4a3b28; margin-bottom: 12rpx; }
+.opt-result-text { font-size: 28rpx; color: #4a3b28; line-height: 1.8; white-space: pre-wrap; word-break: break-word; }
+
+/* ── 我的素材库 + 知识库金句（2026-09-29）── */
+.kb-toggle { font-size: 24rpx; font-weight: 700; color: #6b4a0e; background: #fff6e8; border: 2rpx dashed #ffd9a0; border-radius: 14rpx; padding: 18rpx 22rpx; margin-bottom: 16rpx; }
+.kb-card { background: #fbf6ee; border: 2rpx solid #f0e2c8; border-radius: 16rpx; padding: 22rpx; margin-bottom: 18rpx; }
+.kb-field { margin-bottom: 16rpx; }
+.kb-field.col { display: flex; flex-direction: column; }
+.kb-label { font-size: 24rpx; color: #8a7554; margin-bottom: 8rpx; display: block; }
+.kb-input { background: #ffffff; border: 2rpx solid #ece0c8; border-radius: 12rpx; padding: 16rpx 18rpx; font-size: 28rpx; color: #4a3b28; }
+.kb-area { background: #ffffff; border: 2rpx solid #ece0c8; border-radius: 12rpx; padding: 16rpx 18rpx; font-size: 28rpx; color: #4a3b28; min-height: 160rpx; width: 100%; box-sizing: border-box; }
+.kb-save { background: linear-gradient(135deg, #ffd98a, #ffb84d); color: #6b4a0e; font-weight: 700; border-radius: 14rpx; font-size: 28rpx; margin-top: 6rpx; }
+
+.kb-quotes { margin-top: 18rpx; background: #f3f7fb; border: 2rpx solid #d7e6f5; border-radius: 16rpx; padding: 20rpx; }
+.kb-quotes-title { font-size: 24rpx; font-weight: 700; color: #2f6fb0; margin-bottom: 14rpx; }
+.kb-q-row { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.kb-q { font-size: 24rpx; color: #4a3b28; background: #ffffff; border: 2rpx solid #d7e6f5; border-radius: 999rpx; padding: 10rpx 20rpx; }
+.kb-q:active { background: #e3eefb; }

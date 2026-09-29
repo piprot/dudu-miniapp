@@ -1,0 +1,9 @@
+{
+  "name": "vp_create_order",
+  "version": "1.0.0",
+  "description": "个人虚拟支付·下单签名",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "points",
+  "version": "1.0.0",
+  "description": "积分账本 + 每日签到（服务端原子增减，余额守卫扣费）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

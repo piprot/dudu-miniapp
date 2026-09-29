@@ -1,0 +1,12 @@
+.sample { padding: 16rpx 0 40rpx; background: #fbf6ef; min-height: 100vh; }
+.sample-title { text-align: center; font-size: 30rpx; color: #6b5f4f; padding: 16rpx 24rpx 20rpx; letter-spacing: 1px; }
+.panel { width: calc(100% - 24rpx); display: block; margin: 0 auto 10rpx; border-radius: 12rpx; box-shadow: 0 4rpx 14rpx rgba(120,100,80,.12); }
+.sample-foot { text-align: center; font-size: 24rpx; color: #a89270; padding: 30rpx 24rpx 0; line-height: 1.7; }
+/* 预览结束后的回程入口（整本不再铺开，用户需要有下一步可走） */
+.sample-cta {
+  margin: 28rpx auto 20rpx; width: 460rpx; text-align: center;
+  background: linear-gradient(135deg, #ffd98a 0%, #ffb84d 100%);
+  color: #6b4a0e; font-size: 28rpx; font-weight: 700;
+  border-radius: 999rpx; padding: 22rpx 0;
+  box-shadow: 0 6rpx 18rpx rgba(255, 169, 60, 0.32);
+}

@@ -1,0 +1,9 @@
+{
+  "name": "vp_get_profile",
+  "version": "1.0.0",
+  "description": "个人虚拟支付·解锁态查询",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

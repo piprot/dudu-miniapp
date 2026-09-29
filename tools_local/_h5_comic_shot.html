@@ -1,0 +1,75 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>h5-comic-shot</title>
+<!-- 视觉验证用：把 h5/comic.html 放进固定 390px 的 iframe 里截图。
+     为什么绕这一层：Windows 上 Chrome 窗口有最小宽度限制，直接 --window-size=390
+     会被抬到更大的宽度布局再裁到 390 —— 截图看着像"右侧被切"，其实页面本身没问题。
+
+     参数：
+       h=<高度>      iframe 高度（默认 1600）
+       fill=1        把需求表单填满（看"填好待提交"的样子）
+       mock=1        stub 掉 fetch 并点提交，返回假取件码（看"提交成功"的样子）
+       y=<px>        向上滚动 iframe 内页面 N 像素（看中部/底部，不用把 iframe 拉很高）
+
+     用法：
+       python -m http.server 8124 --directory <项目根>
+       chrome --headless=new --window-size=520,2400 --screenshot=out.png \
+         "http://127.0.0.1:8124/tools_local/_h5_comic_shot.html?h=2400&y=1200" -->
+<body style="margin:0;background:#d8cfc0">
+<script>
+var q = location.search || '';
+function num(k, dflt) { var m = new RegExp('(?:^|[?&])' + k + '=(\\d+)').exec(q); return m ? Number(m[1]) : dflt; }
+var H = num('h', 1600);
+var Y = num('y', 0);
+var FILL = /(?:^|[?&])fill=1/.test(q);
+var MOCK = /(?:^|[?&])mock=1/.test(q);
+var PROBE = /(?:^|[?&])probe=1/.test(q);
+
+document.write('<iframe id="f" src="../h5/comic.html" scrolling="no" '
+  + 'style="width:390px;height:' + H + 'px;border:0;display:block;margin:0 auto;background:#fff"></iframe>');
+
+document.getElementById('f').onload = function () {
+  var w = this.contentWindow, d = w.document;
+  if (Y) {
+    // 用负 margin 顶上去，比 scrollTo 可靠（iframe 里 scrollTo 在 headless 下有时不生效）
+    d.documentElement.style.marginTop = '-' + Y + 'px';
+  }
+
+  function report() {
+    try {
+      var h = Math.max(d.documentElement.scrollHeight, d.body.scrollHeight);
+      document.title = 'H=' + h;
+    } catch (e) { document.title = 'H=err ' + e.message; }
+  }
+
+  if (!FILL && !MOCK) { if (PROBE) report(); return; }
+
+  function set(id, v) {
+    var e = d.getElementById(id);
+    if (!e) return;
+    e.value = v;
+    e.dispatchEvent(new w.Event('input', { bubbles: true }));
+  }
+  set('storyInput', '我是一名护士，去年辞职开了家小店。最难的三个月差点关门，'
+    + '后来靠老顾客一句一句的口碑慢慢活了下来。想把这段写给女儿看。');
+  set('mailInput', 'meixi@example.com');
+  set('wxInput', 'meixi_2026');
+  set('noteInput', '希望能画到我妈；画面别太苦。');
+
+  if (MOCK) {
+    w.fetch = function () {
+      return Promise.resolve({
+        text: function () {
+          return Promise.resolve(JSON.stringify({
+            ok: true, pickupCode: 'K7F3QM', notified: true, notify: '已推送飞书'
+          }));
+        }
+      });
+    };
+    d.getElementById('btnSubmit').click();
+  }
+  // 提交是异步的（Promise），等一拍再量高度
+  if (PROBE) w.setTimeout(report, 400);
+};
+</script>
+</body>

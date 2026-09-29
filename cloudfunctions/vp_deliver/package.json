@@ -1,0 +1,9 @@
+{
+  "name": "vp_deliver",
+  "version": "1.0.0",
+  "description": "个人虚拟支付·发货推送（HTTP 触发）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

@@ -1,0 +1,187 @@
+/* ─────────────────────────────────────────────────────────────
+ * h5/assets/comic.css —— 定制画面感内容 · 样板间（comic.html 专用）
+ * ─────────────────────────────────────────────────────────────
+ * 复用 assets/style.css 的暖色设计令牌（卡片 / 按钮 / 输入框 / 提示），
+ * 本文件只加「样板间」特有的两块：
+ *   ① 成品排版还原（.sx-*）—— 复刻网页版交付物的真实版面：2 列宫格 +
+ *      画格 + 下沿旁白条 + 右上气泡 + 音效字。用户看到的即是他会拿到的东西。
+ *      ⚠️ 类名统一加 sx- 前缀，**不复用交付物的 .panel / .bubble**：
+ *        那些是通用词，撞上页面自身的样式就会互相污染。
+ *   ② 付费墙 / 价格档 / 流程步 / 需求表单 / 取件码 等成交区块。
+ * ───────────────────────────────────────────────────────────── */
+
+/* ══════════ ① 封面 ══════════ */
+.cv {
+  background: linear-gradient(135deg, #fce4d6 0%, #f8d7da 50%, #e8d5f0 100%);
+  border-radius: 16px; padding: 26px 18px 22px; text-align: center;
+  position: relative; overflow: hidden;
+}
+.cv::before {
+  content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,.35) 0%, transparent 60%);
+}
+.cv > * { position: relative; }
+.cv h1 { margin: 0; font-size: 21px; color: #5c4033; letter-spacing: 2px; line-height: 1.45; }
+.cv .cv-div { width: 60px; height: 2px; margin: 12px auto;
+  background: linear-gradient(90deg, transparent, #c9a87c, transparent); }
+.cv .cv-sub { margin: 0; font-size: 13px; color: #8b7355; line-height: 1.7; }
+.cv .cv-author { margin: 10px 0 0; font-size: 11.5px; color: #a08060; }
+
+.cv-meta { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; margin-top: 14px; }
+.cv-meta span {
+  font-size: 11.5px; font-weight: 700; color: #8a6520;
+  background: #fff8ec; border: 1px solid #ffd9a6; border-radius: 999px; padding: 4px 11px;
+}
+
+/* ══════════ ② 成品排版还原（.sx-*）══════════ */
+.sx-host { margin: 4px 0 6px; }
+.sx-ep { text-align: center; margin: 26px 0 16px; }
+.sx-ep .sx-num {
+  display: inline-block; font-size: 11px; color: #fff; letter-spacing: 2px;
+  background: linear-gradient(135deg, #c9a87c, #a08060);
+  border-radius: 20px; padding: 4px 16px; margin-bottom: 8px;
+}
+.sx-ep h2 { margin: 0; font-size: 18px; color: #5c4033; letter-spacing: 4px; font-weight: 800; }
+.sx-ep::after { content: '❦'; display: block; color: #c9a87c; font-size: 14px; margin-top: 7px; }
+
+.sx-page { margin-bottom: 22px; }
+.sx-label { text-align: center; font-size: 11px; color: #a08060; letter-spacing: 4px; margin-bottom: 10px; }
+.sx-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  border: 3px solid #3a3025; border-radius: 8px; overflow: hidden; background: #3a3025;
+}
+.sx-cell { background: #fff; border: 1.5px solid #3a3025; position: relative; }
+.sx-panel { position: relative; width: 100%; overflow: hidden; }
+.sx-panel img {
+  display: block; width: 100%; height: auto; aspect-ratio: 1 / 1;
+  object-fit: cover; background: #f3ece2;
+}
+/* 旁白条：贴在画格下沿，与交付物一致（min-height 让空旁白的格也不塌） */
+.sx-narr {
+  background: #fdf8f3; border-top: 1px solid #e8d5c4;
+  padding: 8px 12px; min-height: 36px;
+  font-size: 12px; line-height: 1.5; color: #5c4033;
+}
+/* 气泡：叠在画格上 */
+.sx-bubble {
+  position: absolute; z-index: 10; max-width: 58%;
+  background: rgba(255,255,255,.95); border: 2px solid #3a3025; border-radius: 12px;
+  padding: 6px 10px; font-size: 12px; line-height: 1.4; color: #3a3025;
+}
+.sx-bubble.speech::after {
+  content: ''; position: absolute; bottom: -8px; left: 20px;
+  border-left: 6px solid transparent; border-right: 6px solid transparent;
+  border-top: 8px solid #3a3025;
+}
+.sx-bubble.thought { background: rgba(253,248,243,.95); border: 2px dashed #a08060; border-radius: 16px; }
+.sx-bubble.thought::after {
+  content: ''; position: absolute; bottom: -6px; left: 20px; width: 8px; height: 8px;
+  background: rgba(253,248,243,.95); border: 2px dashed #a08060; border-radius: 50%;
+}
+.sx-pos-tl { top: 8px; left: 8px; }
+.sx-pos-tr { top: 8px; right: 8px; }
+.sx-pos-bl { bottom: 8px; left: 8px; }
+.sx-pos-br { bottom: 8px; right: 8px; }
+/* 音效字 */
+.sx-sfx {
+  position: absolute; z-index: 10; transform: rotate(-5deg);
+  font-size: 18px; font-weight: 700; color: #c0392b;
+  text-shadow: 1px 1px 2px rgba(255,255,255,.8);
+}
+.sx-tag {
+  display: inline-block; margin: 14px auto 0; font-size: 11.5px; color: #8a6520;
+  background: #fff8ec; border: 1px solid #ffd9a6; border-radius: 999px; padding: 4px 12px;
+}
+.sx-taghost { text-align: center; }
+
+/* 手机端：与交付物同一套缩字号策略（宫格仍是 2 列，这是原设计） */
+@media (max-width: 600px) {
+  .sx-bubble { font-size: 10px; padding: 4px 7px; max-width: 62%; }
+  .sx-narr { font-size: 10.5px; padding: 6px 8px; min-height: 32px; }
+  .sx-sfx { font-size: 14px; }
+  .sx-ep h2 { font-size: 16px; }
+}
+@media (max-width: 380px) {
+  .sx-bubble { font-size: 9px; padding: 3px 6px; }
+  .sx-narr { font-size: 9.5px; }
+}
+
+/* ══════════ ③ 付费墙（未解锁分集）══════════ */
+.gate {
+  background: linear-gradient(180deg, #fffaf3 0%, #fff4e9 100%);
+  border: 1.5px dashed #e8c9a0; border-radius: 14px;
+  padding: 15px 14px; margin-top: 18px;
+}
+.gate-title { font-size: 14px; font-weight: 800; color: #4a3b28; }
+.gate-sub { font-size: 11.5px; color: #a08a68; margin-top: 4px; line-height: 1.65; }
+.lock-list { margin: 11px 0 12px; }
+.lock-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 0; border-bottom: 1px dashed #f0e2cd;
+  font-size: 12.5px; color: #8a7554;
+}
+.lock-row:last-child { border-bottom: none; }
+.lock-row .lk-i { flex: 0 0 auto; font-size: 12px; opacity: .75; }
+.lock-row .lk-n { flex: 0 0 auto; font-weight: 700; color: #6f5b3c; }
+.lock-row .lk-m { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lock-row .lk-c { flex: 0 0 auto; font-size: 11px; color: #b3a48d; }
+
+/* ══════════ ④ 价格档 ══════════ */
+.tier {
+  border: 1.5px solid #efe2cd; border-radius: 13px; padding: 13px 14px;
+  margin-bottom: 10px; background: #fffdf9;
+}
+.tier.on { border-color: #f5793b; background: #fff8f1; box-shadow: 0 3px 14px rgba(245,121,59,.13); }
+.tier-head { display: flex; align-items: baseline; gap: 8px; }
+.tier-name { font-size: 14.5px; font-weight: 800; color: #4a3b28; }
+.tier-price { margin-left: auto; font-size: 17px; font-weight: 800; color: #e2611f; }
+.tier-desc { font-size: 12px; color: #8a7554; margin-top: 5px; line-height: 1.7; }
+.tier-badge {
+  display: inline-block; font-size: 10.5px; font-weight: 700; color: #fff;
+  background: #f5793b; border-radius: 999px; padding: 1px 8px; margin-left: 6px;
+}
+.tier-pick { font-size: 11.5px; color: #a08a68; margin-top: 8px; }
+
+/* ══════════ ⑤ 流程步 ══════════ */
+.steps { margin: 4px 0 2px; }
+.step { display: flex; gap: 10px; padding: 8px 0; }
+.step .st-no {
+  flex: 0 0 auto; width: 21px; height: 21px; line-height: 21px; text-align: center;
+  border-radius: 50%; background: #ffe9cf; color: #c25a17;
+  font-size: 11.5px; font-weight: 800;
+}
+.step .st-tx { font-size: 12.5px; color: #6f5b3c; line-height: 1.65; }
+.step .st-tx b { color: #4a3b28; }
+
+/* ══════════ ⑥ 小程序码 ══════════ */
+.qr-box { text-align: center; margin: 14px 0 2px; }
+.qr-box img { width: 150px; height: 150px; border-radius: 10px; display: block; margin: 0 auto 6px; }
+.qr-box .qr-cap { font-size: 11.5px; color: #a08a68; line-height: 1.7; }
+.qr-fallback {
+  font-size: 12px; color: #8a6520; background: #fff8ec;
+  border: 1px dashed #ffd9a6; border-radius: 10px; padding: 10px 12px; line-height: 1.7;
+}
+/* 只在 localhost 出现的开发提示（客户看不到） */
+.qr-devhit { font-size: 11px; color: #a08a68; margin-top: 7px; line-height: 1.6; }
+
+/* ══════════ ⑦ 需求表单 ══════════ */
+.pick-row { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 13px; }
+.pick {
+  flex: 1 1 auto; min-width: 0;
+  border: 1.5px solid #efe2cd; background: #fffdf9; color: #6f5b3c;
+  border-radius: 999px; padding: 7px 13px; font-size: 12.5px; font-weight: 700;
+  font-family: inherit; cursor: pointer; white-space: nowrap;
+}
+.pick.on { border-color: #f5793b; background: #fff4e9; color: #e2611f; }
+
+/* ══════════ ⑧ 取件码 ══════════ */
+.pickup {
+  text-align: center; background: linear-gradient(135deg, #fff6e8, #fdeedd);
+  border: 1px solid #ffe3bd; border-radius: 13px; padding: 16px 14px;
+}
+.pickup .pu-label { font-size: 12px; color: #8a6520; }
+.pickup .pu-code {
+  font-size: 27px; font-weight: 800; letter-spacing: 5px; color: #e2611f;
+  margin: 7px 0 3px; font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+.pickup .pu-tip { font-size: 11.5px; color: #a08a68; line-height: 1.7; }

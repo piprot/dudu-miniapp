@@ -1,0 +1,55 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>h5-shot</title>
+<!-- 视觉验证用：把 h5/index.html 放进固定 390px 的 iframe 里截图。
+     为什么绕这一层：Windows 上 Chrome 窗口有最小宽度限制，直接 --window-size=390
+     会被抬到更大的宽度布局再裁到 390 —— 截图看着像"右侧被切"，其实页面本身没问题。
+     参数：u=<urlencoded 的 query>（透传给 index.html）· mock=1（塞假数据，拍"有结果"的样子）· h=<高度>
+     用法：
+       python -m http.server 8124 --directory <项目根>
+       chrome --headless=new --window-size=520,2400 \
+         --screenshot=out.png "http://127.0.0.1:8124/tools_local/_h5_shot.html?mock=1&u=%3Fk%3Dlife" -->
+<body style="margin:0;background:#d8cfc0">
+<script>
+var q = location.search || '';
+var u = (/(?:^|[?&])u=([^&]*)/.exec(q) || [])[1];
+u = u ? decodeURIComponent(u) : '';
+var mock = /(?:^|[?&])mock=1/.test(q);
+var hm = /(?:^|[?&])h=(\d+)/.exec(q);
+var H = hm ? hm[1] : 1900;
+
+document.write('<iframe id="f" src="../h5/index.html' + u + '" scrolling="no" '
+  + 'style="width:390px;height:' + H + 'px;border:0;display:block;margin:0 auto;background:#fff"></iframe>');
+
+var OPTS = [
+  '傍晚六点从公司出来，\n江边的风刚好把一天的燥热气吹散了。\n长椅上一位老人在练字，一笔一划比我还慢。🌿\n\n#下班以后 #慢一点也没关系',
+  '今天没加班。\n沿着江边走了一站路才想起要回家。\n路灯亮起来的时候，水面像被谁轻轻翻了一页。\n\n#生活切片 #江边散步',
+  '路过的老人在写毛笔字，\n墨汁用一只旧搪瓷杯装着。\n我站了五分钟，什么也没想，\n却比刷一小时手机更清醒。✨\n\n#日常 #给自己一点喘息'
+];
+
+document.getElementById('f').onload = function () {
+  if (!mock) return;
+  var w = this.contentWindow, d = w.document;
+  w.fetch = function () {
+    return Promise.resolve({
+      text: function () {
+        return Promise.resolve(JSON.stringify({
+          ok: true, channel: 'h5', kind: 'life', revised: false,
+          options: OPTS, quota: { used: 1, limit: 5, left: 4 }
+        }));
+      }
+    });
+  };
+  function set(id, v) {
+    var e = d.getElementById(id);
+    if (!e) return;
+    e.value = v;
+    e.dispatchEvent(new w.Event('input', { bubbles: true }));
+  }
+  set('fld_moment', '下班后去江边散步，看到一位老人蹲在长椅边练书法');
+  set('fld_feeling', '风很轻，突然觉得慢下来也不是浪费时间');
+  set('fld_meaning', '忙碌之外，也要给自己一点喘息');
+  set('noteInput', '结尾别太文艺，像随手记的');
+  d.getElementById('btnGen').click();
+};
+</script>

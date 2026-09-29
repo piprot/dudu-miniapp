@@ -1,0 +1,18 @@
+# 密钥与敏感文件（绝不提交到仓库）
+private.*.key
+*.pem
+secrets*.json
+
+# 依赖
+node_modules/
+
+# 本地工作区元数据 / 缓存 / 历史备份（不属应用源码；_backup 可能含过期密钥）
+.workbuddy/
+__pycache__/
+_backup/
+*.log
+*.pyc
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db

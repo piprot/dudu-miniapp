@@ -1,0 +1,91 @@
+<view class="page">
+  <view class="balance">💰 {{points}} 积分</view>
+
+  <!-- 我的订单（交易类小程序提审刚需的订单中心页入口） -->
+  <view class="order-entry" bindtap="goOrder">
+    <view class="order-entry-left">
+      <view class="order-entry-title">我的订单</view>
+      <view class="order-entry-sub">查看虚拟支付订单与到账状态</view>
+    </view>
+    <view class="order-entry-arrow">›</view>
+  </view>
+
+  <!-- 画面感内容定制（2026-09-23 从「朋友圈文案」页迁来：付费交付与积分/订单同域，文案页只留文案） -->
+  <view class="order-entry custom-entry" bindtap="goCommission">
+    <view class="order-entry-left">
+      <view class="order-entry-title">🎨 画面感内容定制</view>
+      <view class="order-entry-sub">画面感内容PDF ¥66 · 画面感内容HTML ¥88 · 8 小时内交付到邮箱</view>
+    </view>
+    <view class="order-entry-arrow">›</view>
+  </view>
+
+  <!-- 隐私未授权时给一个**可点**的入口，别让用户面对「点了没反应」的加号 -->
+  <view class="privacy-bar" wx:if="{{privacyNeed}}">
+    <view class="privacy-txt">选头像 / 复制文案前，需先同意{{privacyName}}</view>
+    <view class="privacy-btn" bindtap="onAgreePrivacy">去同意</view>
+  </view>
+
+  <!-- 我的资料（可选）：头像/昵称只能由用户主动填写（个人主体不可用手机号/静默获取） -->
+  <view class="profile-card">
+    <!-- bindtap 与 open-type 可共存：chooseAvatar 成功会先触发 bindchooseavatar，
+         若超时没触发就说明被拦了（多为隐私协议未声明「微信昵称、头像」）→ 给一次可读的说明 -->
+    <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar" bindtap="onAvatarTap">
+      <image class="avatar-img" wx:if="{{avatar}}" src="{{avatar}}" mode="aspectFill" />
+      <view class="avatar-ph" wx:else>+</view>
+    </button>
+    <view class="profile-right">
+      <!-- bindinput 实时同步 + bindblur 收尾（微信「使用微信昵称」快捷填充在 blur 才落值） -->
+      <input class="nickname-input" type="nickname" placeholder="点此填微信昵称" value="{{nickname}}" bindinput="onNicknameInput" bindblur="onNicknameBlur" />
+      <button class="profile-save" bindtap="onSaveProfile">保存资料</button>
+    </view>
+  </view>
+  <view class="profile-hint">微信不允许小程序自动读取你的微信头像/昵称，需要你亲手选一次：点左侧 <text class="em">+</text> 选「使用微信头像」；点昵称输入框会弹出系统「使用微信昵称」。选好即自动保存，下次进来自动回填。</view>
+
+  <!-- 每日登录奖励（进小程序自动发放，每天一次） -->
+  <view class="daily-card" wx:if="{{dailyOn}}">
+    <view class="daily-left">
+      <view class="daily-title">每日签到</view>
+      <view class="daily-sub done" wx:if="{{dailyChecked}}">✓ 今日已签到 · 已连续 {{streak}} 天</view>
+      <view class="daily-sub" wx:else>登录即送积分，今天还没领</view>
+      <view class="daily-rule">{{dailyRule}}</view>
+    </view>
+    <button class="daily-btn" bindtap="onClaimDaily" loading="{{claiming}}" disabled="{{claiming || dailyChecked}}">{{dailyChecked ? '已签到' : '签到'}}</button>
+  </view>
+
+  <view class="section" wx:if="{{redeem.length}}">
+    <view class="section-title">积分兑换</view>
+    <view class="item" wx:for="{{redeem}}" wx:key="id">
+      <view class="item-info">
+        <view class="item-name">{{item.name}}</view>
+        <view class="item-desc">{{item.desc}}</view>
+      </view>
+      <button class="item-btn" data-idx="{{index}}" bindtap="onRedeem" loading="{{spending}}" disabled="{{spending || points < item.cost}}">{{item.cost}} 积分兑换</button>
+    </view>
+  </view>
+
+  <view class="section" wx:if="{{rechargeEnabled && packs.length}}">
+    <view class="section-title">积分充值</view>
+    <view class="item" wx:for="{{packs}}" wx:key="productId">
+      <view class="item-info">
+        <view class="pack-name">{{item.name}}<text class="pack-tag" wx:if="{{item.tag}}">{{item.tag}}</text></view>
+        <view class="item-desc">{{item.priceText}}</view>
+      </view>
+      <button class="item-btn recharge" data-idx="{{index}}" bindtap="onRecharge" loading="{{recharging}}" disabled="{{recharging}}">充值</button>
+    </view>
+    <view class="tip">充值名义为「购买虚拟商品（生成额度包）」，积分仅用于本小程序内兑换自身服务，不可提现、不可转让。</view>
+  </view>
+
+  <view class="section" wx:if="{{coupons.length}}">
+    <view class="section-title">我的权益</view>
+    <view class="coupon" wx:for="{{coupons}}" wx:key="grantedAt">
+      <text class="coupon-name">🎫 {{item.label}}</text>
+      <text class="coupon-use" wx:if="{{item.type === 'comic_discount'}}" catchtap="goCommission">去使用 ›</text>
+    </view>
+    <view class="tip">权益会在下单时随订单一起提交，客服按券为你减免对应差价。</view>
+  </view>
+
+  <!-- 费用说明由 points.js 按 config.POINTS 计算（earnTip），改价不会漂 -->
+  <view class="earn-tip">{{earnTip}}</view>
+
+  <view class="err" wx:if="{{err}}">{{err}}</view>
+</view>

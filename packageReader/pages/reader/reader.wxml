@@ -1,0 +1,22 @@
+<view class="reader" wx:if="{{!showPay}}">
+  <view class="reader-title">{{chapterName}}</view>
+  <view class="reader-loading" wx:if="{{!subReady && !showError}}">
+    <view class="loading-spinner"></view>
+    <view class="loading-text">漫画加载中…（首次进入需下载分包，请稍候）</view>
+  </view>
+  <view class="reader-loaderr" wx:if="{{showError}}">
+    <view class="loaderr-emoji">😴</view>
+    <view class="loaderr-text">部分画面加载失败（{{loadErr}} 张），请检查网络后重试</view>
+    <button class="loaderr-btn" bindtap="onRetryLoad">重新加载</button>
+  </view>
+  <image wx:if="{{subReady}}" wx:for="{{panels}}" wx:key="*this"
+         class="panel" src="{{item}}" mode="widthFix"
+         binderror="onPanelError" bindload="onPanelLoad"
+         show-menu-by-longpress="{{true}}" />
+</view>
+
+<view class="locked-tip" wx:else>
+  <view class="lock-emoji">🔒</view>
+  <view class="lock-text">《{{chapterName}}》为付费内容</view>
+  <button class="lock-btn" bindtap="goPay">去购买整本</button>
+</view>

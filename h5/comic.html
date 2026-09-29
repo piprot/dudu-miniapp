@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="format-detection" content="telephone=no">
+<title>定制画面感内容 · 成品示例｜dudu 画面感</title>
+<meta name="description" content="先看成品：水彩写实风连环画《真正的底气，从来都是自己挣来的》免费试读两集。喜欢就把你的故事交给我们，PDF ¥66 / 网页版 ¥88。">
+<meta name="theme-color" content="#fdf3e3">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/comic.css">
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ══ AI 生成内容标识（法定提示标识 · 常驻可见）══ -->
+  <div class="ai-notice">
+    <span class="ai-badge">AI 生成</span>
+    <span>本页示例的画面与文字均由人工智能生成合成，仅用于展示成品效果；情节为真实故事的故事化演绎，画面非真实照片。你定制的作品同样由 AI 生成合成，交付时会一并附上标识。</span>
+  </div>
+
+  <!-- ══ 封面 ══ -->
+  <div class="card">
+    <div class="cv" id="cover">
+      <h1>真正的底气，从来都是自己挣来的</h1>
+      <div class="cv-div"></div>
+      <p class="cv-sub">正在载入示例…</p>
+    </div>
+    <div class="cv-meta" id="coverMeta"></div>
+  </div>
+
+  <!-- ══ 免费试读：成品原样 ══ -->
+  <div class="sec-label">免费试读<span class="sec-note">下面就是你将拿到的成品的真实版面</span></div>
+  <div class="sx-host" id="sampleHost"></div>
+
+  <!-- ══ 付费墙 ══ -->
+  <div class="gate" id="gate">
+    <div class="gate-title">试读到这里</div>
+    <div class="gate-sub">上面两集是完整交付形态，一字未改。后面的故事，以及<b>你自己的故事</b>，都从这里开始。</div>
+    <div class="lock-list" id="lockList"></div>
+    <button class="cta-btn" type="button" id="btnGoReq">想这样画我的故事 →</button>
+  </div>
+
+  <!-- ══ 价格与流程 ══ -->
+  <div class="card">
+    <div class="sec-label">两档成品<span class="sec-note">同一套画面与文字，两种交付形态</span></div>
+
+    <div class="tier" id="tierWeb">
+      <div class="tier-head">
+        <span class="tier-name">网页版<span class="tier-badge">推荐</span></span>
+        <span class="tier-price">¥88</span>
+      </div>
+      <div class="tier-desc">在线 HTML 页面，随时打开翻阅、便于分享给家人朋友；手机上排版与上面试读完全一致。</div>
+    </div>
+
+    <div class="tier" id="tierPdf">
+      <div class="tier-head">
+        <span class="tier-name">PDF 版</span>
+        <span class="tier-price">¥66</span>
+      </div>
+      <div class="tier-desc">高清 PDF 文件，可下载保存、方便打印成纸质册子，送人留档都合适。</div>
+    </div>
+
+    <div class="sec-label" style="margin-top:16px">怎么拿到成品<span class="sec-note">三步，付款在小程序里完成</span></div>
+    <div class="steps">
+      <div class="step"><div class="st-no">1</div><div class="st-tx"><b>在下面留个需求</b>（故事大概讲什么 + 邮箱），你会拿到一个取件码。</div></div>
+      <div class="step"><div class="st-no">2</div><div class="st-tx"><b>进小程序选档下单</b>（网页版 ¥88 / PDF ¥66），在定制页把完整故事和同一个邮箱填上。</div></div>
+      <div class="step"><div class="st-no">3</div><div class="st-tx"><b>我们制作好后发到你邮箱</b>，一般 8 小时内送达。</div></div>
+    </div>
+
+    <div class="qr-box" id="qrBox"></div>
+  </div>
+
+  <!-- ══ 需求提交 ══ -->
+  <div class="card" id="reqCard">
+    <div class="sec-label">留下你的需求<span class="sec-note">先聊清楚，再谈下单</span></div>
+
+    <div class="field">
+      <label class="field-label">你想要哪一档</label>
+      <div class="pick-row" id="tierPick"></div>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="storyInput">你的故事大概讲什么<span class="field-req">*</span></label>
+      <textarea class="textarea" id="storyInput" maxlength="1500" rows="5"
+        placeholder="写个梗概就行，不用写全文。例如：我是一名护士，去年辞职开了家小店，最难的三个月差点关门，后来靠老顾客的口碑活了下来……"></textarea>
+      <div class="counter"><span>已写 <b id="storyLen">0</b> / 1500 字</span><span>20 字以上即可</span></div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">希望的篇幅</label>
+      <div class="pick-row" id="lenPick"></div>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="mailInput">你的邮箱<span class="field-req">*</span><span class="sec-note">成品发到这里</span></label>
+      <input class="input" id="mailInput" type="email" inputmode="email" autocomplete="email"
+        placeholder="例如 you@example.com">
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="wxInput">微信号<span class="sec-note">可选 · 方便我们联系你</span></label>
+      <input class="input" id="wxInput" type="text" autocomplete="off" placeholder="选填">
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="noteInput">想补充点什么<span class="sec-note">可选</span></label>
+      <textarea class="textarea" id="noteInput" maxlength="300" rows="3"
+        placeholder="例如：希望能画到我妈妈；画面别太苦；孩子的名字用化名……"></textarea>
+    </div>
+
+    <button class="cta-btn" type="button" id="btnSubmit">提交需求</button>
+    <button class="btn-ghost" type="button" id="btnCopyReq">复制我填的内容（进小程序粘贴）</button>
+    <div class="struct-hint" style="margin-top:10px">
+      提交只是把你的需求记下来，<b>这一步不收费、也不会立刻生成任何东西</b>。
+      付款与制作都在下一步的小程序里完成。
+    </div>
+  </div>
+
+  <div class="err" id="errBox" hidden></div>
+
+  <!-- ══ 提交成功 ══ -->
+  <div class="card" id="doneCard" hidden>
+    <div class="pickup">
+      <div class="pu-label">你的取件码</div>
+      <div class="pu-code" id="pickupCode">------</div>
+      <div class="pu-tip">下单时把小程序的定制页填上<b>同一个邮箱</b>就够了，我们按邮箱把需求和订单对上。</div>
+    </div>
+    <button class="btn-ghost" type="button" id="btnCopyCode">📋 复制取件码</button>
+    <div class="qr-box" id="doneQr"></div>
+    <div class="steps" style="margin-top:12px">
+      <div class="step"><div class="st-no">1</div><div class="st-tx" id="doneStep1"></div></div>
+      <div class="step"><div class="st-no">2</div><div class="st-tx"><b>邮箱填同一个</b>（我们按邮箱把需求与订单对上），再补上故事的完整版本。</div></div>
+      <div class="step"><div class="st-no">3</div><div class="st-tx">剩下的交给我们，成品发到你的邮箱。</div></div>
+    </div>
+  </div>
+
+  <!-- ══ 须知 ══ -->
+  <details class="notice">
+    <summary>关于定制、交付与你的信息</summary>
+    <div class="nc">
+      <p><b>1. 成品是 AI 生成合成的。</b>画面与文字由人工智能模型生成，我们会做人工筛选与排版，但不能保证每一个细节都符合你的预期，也无法保证人物外貌与你或你提到的人相似。请不要用于需要真实肖像、真实影像的场合。</p>
+      <p><b>2. 交付时间与形态。</b>网页版为在线 HTML 页面（可分享、可长期访问），PDF 版为可下载的高清文件。一般在你提交完整故事后 <b>8 小时内</b>发到你留的邮箱；遇到需求集中或需要沟通细节时会提前说明。</p>
+      <p><b>3. 你提交的内容怎么被使用。</b>你在本页填的故事梗概、邮箱、微信号会记录下来，用于我们与你联系、并把需求与订单对上。页面不要求登录，服务端会记录一个由设备标识与网络地址计算出的<b>匿名计数</b>（仅用于限制重复提交，无法反查你的身份）。请不要在梗概里填写身份证号、银行卡、住址等敏感信息，也不要填写他人的隐私。</p>
+      <p><b>4. 本页不生成任何内容。</b>这个页面只展示已完成的成品示例，并记录你提交的需求。真正的制作与付款都在小程序里进行 —— 所以在此页填写的任何内容都不会被即时加工成作品。</p>
+      <p><b>5. 关于付款。</b>本页不收款。款项通过小程序的官方支付能力完成，退款与售后也走小程序内的订单。</p>
+      <p><b>6. 请你保证故事的权利。</b>请提交你有权讲述、有权使用的内容；涉及他人时请先取得对方同意，或对姓名、特征做化名与模糊处理。</p>
+    </div>
+  </details>
+
+  <!-- ══ 互链 ══ -->
+  <a class="cross-link" href="index.html">
+    <span class="cl-k">还没想好要不要定制？先白拿点东西</span>
+    <span class="cl-v">去用免费的「朋友圈文案」工具 →</span>
+  </a>
+
+  <div class="foot" id="foot">
+    dudu 画面感 · 定制画面感内容
+  </div>
+
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     配置只有一份：h5/assets/config.js（index.html 与 comic.html 共用）。
+     部署时要改的服务地址、小程序码都在那个文件里，本页不再各存一份。
+     ══════════════════════════════════════════════════════════════ -->
+<script src="assets/config.js"></script>
+<!-- 示例清单（由 tools/make_h5_sample.py 从权威示例 HTML 抽出） -->
+<script src="assets/sample/manifest.js"></script>
+<script src="assets/comic.js"></script>
+</body>
+</html>
