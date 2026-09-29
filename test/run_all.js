@@ -45,12 +45,15 @@ function syntaxCheck() {
 }
 
 // ② 各套件：进程内 require 执行 + 捕获 stdout，抓"结果："行
+// 2026-09-29：摘除 test_h5_parity.js —— 端内 H5 桥接已整体下线（pages/h5 删除、config.H5 移除），
+// h5/ 成为独立演化的产品，与小程序的同规则同步（parity）已无业务意义；
+// 「h5 不进小程序包」改由 packOptions.ignore + test_frontend_guards.js 的 F9/F10 守卫。
+// 若日后两端重新对齐，可从 git 历史恢复该文件（git log -- test/test_h5_parity.js）。
 const SUITES = [
   'test/check_audit_redlines.js',
   'test/smoke_cloudfunctions.js',
   'test/test_frontend_guards.js',
   'test/test_constants_sync.js',
-  'test/test_h5_parity.js',
   'test/test_h5_comic.js',
   'test/test_ai_gen_units.js',
   'test/test_points_daily.js',

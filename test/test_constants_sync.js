@@ -138,16 +138,20 @@ t('config.POINTS.cost / earn 与 ai_gen 云函数 POINTS_COST / POINTS_EARN 一�
   });
 });
 
-// 8) 前端展示价格：gen 页「换一批」按钮用的是 config 值，而云函数是权威扣费点
-//    （gen.js 读 config，云函数读自己的常量 → 两者必须一致，否则按钮写 15 实际扣 20）
-t('前端 gen.js 的 REVISE_COST / MOMENTS_COST 回退默认值与 config 一致', () => {
+// 8) gen 页必须保持「零扣分」（2026-09-29 B1 合规版新事实）
+//    gen 页已重写为纯本地工具箱（模板匹配 + 排版优化 + 知识库），不调云端、不扣积分。
+//    这既是过审关键（个人主体零 AI 调用），也是「免费体验 → 付费定制」漏斗的入口设计。
+//    若 gen.js 重新出现扣分常量或云端调用，必须同步恢复成本一致性校验（第 7 条），
+//    并在用户可见处标清价格 —— 本断言负责拦住「悄悄扣分」。
+t('gen 页保持零扣分（纯本地免费工具，不调云端不扣积分）', () => {
   const src = fs.readFileSync(path.join(ROOT, 'pages', 'gen', 'gen.js'), 'utf8');
-  const mMoments = /MOMENTS_COST\s*=\s*COST\.momentsGen\s*\|\|\s*(\d+)/.exec(src);
-  const mRevise = /REVISE_COST\s*=\s*COST\.momentsRevise\s*\|\|\s*(\d+)/.exec(src);
-  assert.ok(mMoments, 'gen.js 应从 config 读 momentsGen（未找到匹配写法，若改了实现请同步本测试）');
-  assert.ok(mRevise, 'gen.js 应从 config 读 momentsRevise（未找到匹配写法，若改了实现请同步本测试）');
-  assert.strictEqual(Number(mMoments[1]), config.POINTS.cost.momentsGen, 'gen.js MOMENTS_COST 回退默认值与 config 不一致');
-  assert.strictEqual(Number(mRevise[1]), config.POINTS.cost.momentsRevise, 'gen.js REVISE_COST 回退默认值与 config 不一致');
+  assert.ok(!/MOMENTS_COST|REVISE_COST/.test(src),
+    'gen.js 又出现了 MOMENTS_COST/REVISE_COST 扣分常量 —— gen 页已定位为纯本地免费工具，'
+    + '若产品上要恢复扣分，请同步第 7 条的成本一致性校验与用户可见价目标注，不要静默加回');
+  assert.ok(!/points\.spend\s*\(|\.spend\s*\(/.test(src),
+    'gen.js 出现了 spend( 调用 —— 模板匹配/排版优化不应扣积分，免费体验是转化漏斗入口');
+  assert.ok(!/ai_gen/.test(src),
+    'gen.js 出现了 ai_gen 调用 —— gen 页零 AI 调用是个人主体过审红线，恢复前必须重新过合规评估');
 });
 
 // 9) productId 的数字后缀必须等于到账积分数
@@ -208,15 +212,17 @@ t('「换一批」必须比「首次」便宜（有意设计的复购优惠，�
     '云函数 POINTS_COST 的换一批价(' + fnCost.momentsRevise + ') 不再低于首次价(' + fnCost.moments + ')，复购优惠设计已被破坏');
 });
 
-// 13) 复购优惠必须在用户可见处标注出来 —— 用户感知不到的优惠不会改变行为
-//     （只锁数值不锁展示，等于白设：用户仍以为"每次都是 20"，就不会因为便宜而多试一次）
-t('「复购优惠」在用户可见文案中有标注（优惠要被看见才有效）', () => {
-  const genWxml = fs.readFileSync(path.join(ROOT, 'pages', 'gen', 'gen.wxml'), 'utf8');
-  const ptsWxml = fs.readFileSync(path.join(ROOT, 'pages', 'points', 'points.wxml'), 'utf8');
-  const hit = (s) => s.indexOf('复购优惠') >= 0 || s.indexOf('复购更') >= 0;
-  assert.ok(hit(genWxml) || hit(ptsWxml),
-    'pages/gen/gen.wxml 与 pages/points/points.wxml 都没有"复购优惠"字样 —— '
-    + '换一批更便宜这件事用户看不到，优惠就起不到作用。若确定不展示，请删除本条断言并说明原因。');
+// 13) 「复购优惠」承诺必须与产品现实同步（2026-09-29 改为反向守卫）
+//     「换一批更便宜」的复购优惠随 AI 生成一起下线了（gen 页已纯本地免费，不存在换一批扣分）。
+//     反向锁死：用户可见文案**不得**再出现「复购优惠/换一批更便宜」承诺 ——
+//     承诺一个不存在的优惠 = 界面撒谎（真踩过同款：earn 清空后文案仍写「生成 +30」）。
+t('用户可见文案不得承诺已下线的「复购优惠」（界面不得与现实脱钩）', () => {
+  ['pages/gen/gen.wxml', 'pages/points/points.wxml'].forEach(f => {
+    const wxml = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    assert.ok(wxml.indexOf('复购优惠') < 0 && wxml.indexOf('换一批更便宜') < 0,
+      f + ' 仍承诺「复购优惠/换一批更便宜」—— 换一批扣分已随 AI 生成下线（gen 页纯本地免费），'
+      + '承诺不存在的优惠等于界面撒谎。若产品上真恢复了该优惠，请同步第 7/8 条的成本校验并更新本断言。');
+  });
 });
 
 // 14) config.PRODUCT.chapters 声明的面板文件必须真实存在
@@ -268,57 +274,52 @@ t('config.POINTS.earn 每项都有云函数实际发放（无空头赚分承诺�
   });
 });
 
-// 16) OUT_LEN_TIERS（输出长度档位）前后端必须逐字一致
-//     为什么需要这条：字数规则"跟随用户原文长度"在两处各存了一份——
-//       服务端 cloudfunctions/ai_gen/index.js → 真正写进模型输入的约束（权威）
-//       前端 pages/gen/gen.js               → 输入框下「预计输出 X-Y 字」的实时提示
-//     两份不一致的后果很具体：**界面提示 80-150，实际生成 350-700**，
-//     用户会认为功能撒谎 —— 而所有既有测试仍全绿（因为各自内部自洽）。
-//     这里做**源码级**比对：归一化空白后要求两边出现完全相同的字面量。
-t('OUT_LEN_TIERS 前后端逐字一致（界面提示不得与实际约束漂移）', () => {
+// 16) OUT_LEN_TIERS（输出长度档位）服务端基准自洽（2026-09-29 更新）
+//     前端 gen 页已重写为纯本地工具箱，「预计输出 X-Y 字」提示随 AI 生成一起下线 ——
+//     gen.js **不得**再含 OUT_LEN_TIERS（留着必是死代码或过时提示）。
+//     ai_gen 云函数尚未从云端下架（手动待办），只要它还部署着，其内部档位就应与拍板基准一致
+//     （万一被调用，字数仍按拍板规则工作）。待 ai_gen 真正停用/删除后，本条与第 17/22 条一起退役。
+t('OUT_LEN_TIERS：ai_gen 服务端基准自洽；前端 gen.js 不得再有字数档位', () => {
   const CANON = '[[50,80,150],[200,150,300],[500,250,450],[null,350,700]]';
-  const files = {
-    'cloudfunctions/ai_gen/index.js': '服务端（权威约束）',
-    'pages/gen/gen.js': '前端（界面提示）'
-  };
-  Object.keys(files).forEach(f => {
-    const src = fs.readFileSync(path.join(ROOT, f), 'utf8').replace(/\s/g, '');
-    assert.ok(src.indexOf('OUT_LEN_TIERS=' + CANON) >= 0,
-      files[f] + '（' + f + '）的 OUT_LEN_TIERS 与基准不一致。\n'
-      + '基准（归一化空白后）：OUT_LEN_TIERS=' + CANON + '\n'
-      + '改长度档位时必须两处同改，否则界面会提示一个与实际生成不符的字数。');
-  });
+  const aiSrc = fs.readFileSync(path.join(ROOT, 'cloudfunctions/ai_gen/index.js'), 'utf8').replace(/\s/g, '');
+  assert.ok(aiSrc.indexOf('OUT_LEN_TIERS=' + CANON) >= 0,
+    'cloudfunctions/ai_gen/index.js 的 OUT_LEN_TIERS 与拍板基准不一致。\n'
+    + '基准（归一化空白后）：OUT_LEN_TIERS=' + CANON);
+  const genSrc = fs.readFileSync(path.join(ROOT, 'pages/gen/gen.js'), 'utf8');
+  assert.ok(!/OUT_LEN_TIERS/.test(genSrc),
+    'pages/gen/gen.js 仍含 OUT_LEN_TIERS —— 前端字数档位提示已随 AI 生成下线，'
+    + '留着必是死代码或与实际行为不符的过时提示，请删除');
 });
 
-// 17) 80 字硬下限也必须两处都在（这是用户拍板的"至少 80 字才有细节"）
-t('OUT_LEN_FLOOR = 80 前后端一致且 ≥ 下限要求', () => {
-  ['cloudfunctions/ai_gen/index.js', 'pages/gen/gen.js'].forEach(f => {
-    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
-    assert.ok(/OUT_LEN_FLOOR\s*=\s*80\s*;/.test(src), f + ' 未声明 OUT_LEN_FLOOR = 80；' + '用户拍板"至少 80 字"，不可下调或删除');
-  });
+// 17) 80 字硬下限：ai_gen 侧保留；前端不得再声明（同第 16 条的新事实）
+t('OUT_LEN_FLOOR = 80：ai_gen 侧一致且 ≥ 下限；前端 gen.js 不得再声明', () => {
+  const aiSrc = fs.readFileSync(path.join(ROOT, 'cloudfunctions/ai_gen/index.js'), 'utf8');
+  assert.ok(/OUT_LEN_FLOOR\s*=\s*80\s*;/.test(aiSrc),
+    'ai_gen 未声明 OUT_LEN_FLOOR = 80；用户拍板"至少 80 字"，不可下调或删除');
   // 每个档位的下限都不得低于 80（防止有人只改末档忘了首档）
-  const aiGenSrc = fs.readFileSync(path.join(ROOT, 'cloudfunctions/ai_gen/index.js'), 'utf8');
-  const m = /OUT_LEN_TIERS\s*=\s*(\[[\s\S]*?\]);/.exec(aiGenSrc);
+  const m = /OUT_LEN_TIERS\s*=\s*(\[[\s\S]*?\]);/.exec(aiSrc);
   assert.ok(m, '未找到 OUT_LEN_TIERS 字面量');
   const tiers = eval(m[1]);   // 受控来源（本仓库源码），仅用于断言
   tiers.forEach(tr => {
     assert.ok(tr[1] >= 80, '档位 ' + JSON.stringify(tr) + ' 的下限低于 80 字，违反"至少 80 字"的硬规则');
   });
+  const genSrc = fs.readFileSync(path.join(ROOT, 'pages/gen/gen.js'), 'utf8');
+  assert.ok(!/OUT_LEN_FLOOR/.test(genSrc),
+    'pages/gen/gen.js 仍含 OUT_LEN_FLOOR —— 前端字数硬规则已随 AI 生成下线，请删除');
 });
 
-// 22) 4 类「固定字数区间」前后端必须一致（2026-09-19 字数策略分叉：4 类固定、auto/story 跟随原文）
-//     漏改后果与 #16 同：界面提示一套、服务端实际另一套，用户觉得功能撒谎。两处 KIND_LEN_FIXED 必须逐字同。
-t('KIND_LEN_FIXED（4 类固定字数区间）前后端一致', () => {
+// 22) KIND_LEN_FIXED（4 类固定字数区间）：ai_gen 侧基准自洽；前端不得再声明（同第 16 条）
+t('KIND_LEN_FIXED：ai_gen 侧基准自洽；前端 gen.js 不得再声明', () => {
   const CANON = { value: [100, 250], persona: [150, 280], deal: [150, 320], life: [80, 200] };
-  const front = extractObject('pages/gen/gen.js', 'KIND_LEN_FIXED');
-  assert.deepStrictEqual(front, CANON,
-    '前端 gen.js 的 KIND_LEN_FIXED 与基准不一致:\n' + JSON.stringify(front) + '\n应等于 ' + JSON.stringify(CANON));
   const svr = extractObject('cloudfunctions/ai_gen/index.js', 'KIND_LEN_FIXED');
   assert.deepStrictEqual(svr, CANON,
     '服务端 ai_gen 的 KIND_LEN_FIXED 与基准不一致:\n' + JSON.stringify(svr) + '\n应等于 ' + JSON.stringify(CANON));
   // 固定区间的下限必须 ≥ 80（与 OUT_LEN_FLOOR 一致，否则破坏"至少 80 字"硬规则）
   Object.keys(CANON).forEach(k => assert.ok(CANON[k][0] >= 80,
     'KIND_LEN_FIXED.' + k + ' 的下限(' + CANON[k][0] + ')低于 80 字，违反"至少 80 字"硬规则'));
+  const genSrc = fs.readFileSync(path.join(ROOT, 'pages/gen/gen.js'), 'utf8');
+  assert.ok(!/KIND_LEN_FIXED/.test(genSrc),
+    'pages/gen/gen.js 仍含 KIND_LEN_FIXED —— 前端固定字数区间已随 AI 生成下线，请删除');
 });
 
 // 23) 「更长」关键词升档（③ 2026-09-20 用户拍板）：加长区间必须真的更长，关键词不得误触发

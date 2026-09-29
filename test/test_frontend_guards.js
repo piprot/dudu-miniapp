@@ -240,5 +240,37 @@ console.log('=== 前端回归守卫 ===\n');
   }
 }
 
+// ── F10 打包完整性：packOptions.ignore 不得吃掉 app.json 注册的页面 ──
+// 真踩过：gen 页曾是 AI 生成页，合规清理时被临时加进 packOptions.ignore「下线」；
+// 后 B1 改造把它重写为纯本地工具箱、app.json 注册 + 首页加入口，却忘了从 ignore 移除 ——
+// 开发者工具里一切正常（预览不受 ignore 影响的程度取决于版本），**上传的线上包里 pages/gen 根本不存在**，
+// 用户点「文案工具箱」直接白屏。所有既有测试仍全绿（没有任何测试读 project.config.json）。
+{
+  const appJson = JSON.parse(live('app.json'));
+  const pages = appJson.pages || [];
+  ok('F10a app.json 至少注册了一个页面', pages.length > 0, 'pages 为空，包里将没有任何可打开页面');
+
+  // F10b 每个注册页面的 js/wxml 必须真实存在（少了就是线上白屏，且无编译报错）
+  pages.forEach(p => {
+    ['.js', '.wxml'].forEach(ext => {
+      ok('F10b 页面文件齐全 ' + p + ext, fs.existsSync(path.join(ROOT, p + ext)),
+        'app.json 注册了 ' + p + '，但磁盘上找不到 ' + p + ext + ' —— 线上打开该页必然白屏');
+    });
+  });
+
+  // F10c packOptions.ignore 不得忽略任何注册页面（前缀匹配：目录级忽略也算）
+  {
+    const pc = JSON.parse(live('project.config.json'));
+    const ignored = ((pc.packOptions && pc.packOptions.ignore) || []).map(x => String(x.value || ''));
+    pages.forEach(p => {
+      const hit = ignored.find(ig => ig && (p === ig || p.indexOf(ig + '/') === 0 || ig.indexOf(p + '/') === 0));
+      ok('F10c 注册页面未被 ignore 排除 ' + p, !hit,
+        'packOptions.ignore 的 "' + hit + '" 会把注册页面 ' + p + ' 排除出线上包 —— '
+        + '预览时正常、上传后白屏（真踩过：pages/gen 被临时下线后忘了移除）。'
+        + '若确要下线该页，请先从 app.json.pages 摘除再 ignore。');
+    });
+  }
+}
+
 console.log('\n──────── 结果：' + pass + ' PASS / ' + fail + ' FAIL ────────');
 process.exitCode = fail ? 1 : 0;

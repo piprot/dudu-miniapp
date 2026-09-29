@@ -11,10 +11,6 @@
         "type": "folder"
       },
       {
-        "value": "pages/gen",
-        "type": "folder"
-      },
-      {
         "value": "cloudfunctions_deprecated",
         "type": "folder"
       },
