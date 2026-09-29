@@ -1,0 +1,71 @@
+<view class="page">
+  <view class="hd">
+    <view class="hd-title">🪪 画面感卡片生成器</view>
+    <view class="hd-sub">选模板，填文字，一键出卡片海报 · 全程本地，无 AI</view>
+  </view>
+
+  <!-- 模板选择 -->
+  <view class="types">
+    <view wx:for="{{types}}" wx:key="key"
+      class="type {{type === item.key ? 'on' : ''}}"
+      bindtap="onSelectType" data-key="{{item.key}}">
+      <view class="type-name">{{item.name}}</view>
+      <view class="type-hint">{{item.hint}}</view>
+    </view>
+  </view>
+
+  <view class="help-toggle" bindtap="onToggleHelp">{{showHelp ? '收起说明' : '怎么用'}}</view>
+  <view class="help" wx:if="{{showHelp}}">
+    <view class="help-line">① 选上方模板（金句 / 种草 / 公告 / 清单 / 图文）</view>
+    <view class="help-line">② 在下方填文字；种草 / 图文可点「选择图片」取本地照片</view>
+    <view class="help-line">③ 点「生成卡片」，再「保存到相册」即可发朋友圈 / 群</view>
+    <view class="help-line">图片只存在你手机本地，不会上传任何服务器。</view>
+  </view>
+
+  <!-- 表单 -->
+  <view class="form">
+    <view class="field" wx:if="{{type !== 'quote'}}">
+      <view class="label">标题</view>
+      <input class="input" value="{{form.title}}" bindinput="onField" data-field="title" placeholder="卡片主标题" />
+    </view>
+
+    <view class="field" wx:if="{{type !== 'checklist'}}">
+      <view class="label">{{type === 'quote' ? '金句内容' : '正文'}}</view>
+      <textarea class="ta" value="{{form.body}}" bindinput="onField" data-field="body"
+        placeholder="{{type === 'quote' ? '写一句打动人的话' : '写点什么…'}}" maxlength="-1" />
+    </view>
+
+    <view class="field" wx:if="{{type === 'checklist'}}">
+      <view class="label">清单条目（每行一条）</view>
+      <textarea class="ta" value="{{form.items}}" bindinput="onField" data-field="items"
+        placeholder="每行写一条待办" maxlength="-1" />
+    </view>
+
+    <view class="field" wx:if="{{type === 'recommend'}}">
+      <view class="label">价格 / 卖点标签</view>
+      <input class="input" value="{{form.tag}}" bindinput="onField" data-field="tag" placeholder="如：¥ 39 起 / 限时好物" />
+    </view>
+
+    <view class="field" wx:if="{{type === 'notice' || type === 'quote'}}">
+      <view class="label">落款 / 出处</view>
+      <input class="input" value="{{form.author}}" bindinput="onField" data-field="author" placeholder="如：dudu 画面感 · 9 月" />
+    </view>
+
+    <view class="field" wx:if="{{type === 'recommend' || type === 'imagetext'}}">
+      <view class="label">配图（取本地照片，不上传）</view>
+      <button class="btn ghost" bindtap="onChooseImage">{{cover ? '重新选择图片' : '选择图片'}}</button>
+      <view wx:if="{{cover}}" class="cover-mini">已选本地图片 ✓</view>
+    </view>
+  </view>
+
+  <button class="btn primary gen" bindtap="onGenCard">生成卡片</button>
+  <view class="err" wx:if="{{err}}">{{err}}</view>
+
+  <view class="canvas-wrap">
+    <canvas type="2d" id="cardCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
+    <view wx:if="{{!rendered}}" class="canvas-ph">点「生成卡片」后，卡片会显示在这里</view>
+    <button wx:if="{{rendered}}" class="btn primary save" bindtap="onSaveImage">保存到相册</button>
+  </view>
+
+  <view class="tip">卡片保存在你手机本地，可发朋友圈 / 群，无需上传服务器。</view>
+</view>

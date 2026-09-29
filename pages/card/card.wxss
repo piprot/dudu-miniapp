@@ -1,0 +1,74 @@
+.page {
+  min-height: 100vh;
+  background: #f5f0e8;
+  padding: 24rpx 28rpx 60rpx;
+  box-sizing: border-box;
+}
+
+.hd { margin-bottom: 18rpx; }
+.hd-title { font-size: 38rpx; font-weight: 700; color: #2b2b2b; }
+.hd-sub { font-size: 24rpx; color: #8a8378; margin-top: 8rpx; }
+
+.types {
+  display: flex; flex-wrap: wrap; gap: 14rpx; margin-bottom: 14rpx;
+}
+.type {
+  width: calc((100% - 28rpx) / 3);
+  box-sizing: border-box;
+  background: #fffdf8; border: 2rpx solid #e0d6c2; border-radius: 16rpx;
+  padding: 16rpx 18rpx;
+}
+.type.on {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe6c2 100%);
+  border-color: #f5793b;
+}
+.type-name { font-size: 27rpx; font-weight: 700; color: #4a3b28; }
+.type-hint { font-size: 20rpx; color: #9a8b74; margin-top: 6rpx; line-height: 1.5; }
+
+.help-toggle {
+  display: inline-block; font-size: 23rpx; color: #b3905a; font-weight: 600;
+  background: #fdf9f0; border: 2rpx solid #f0e2c8; border-radius: 999rpx; padding: 8rpx 22rpx;
+  margin-bottom: 12rpx;
+}
+.help {
+  background: #fffdf8; border: 1rpx solid #e7ddca; border-radius: 16rpx;
+  padding: 18rpx 22rpx; margin-bottom: 16rpx;
+}
+.help-line { font-size: 24rpx; color: #6f6555; line-height: 1.7; }
+
+.form { margin-bottom: 16rpx; }
+.field { margin-bottom: 16rpx; }
+.label { font-size: 25rpx; font-weight: 600; color: #6b5636; margin-bottom: 8rpx; }
+.input {
+  width: 100%; box-sizing: border-box; background: #fffdf8;
+  border: 1rpx solid #e0d6c2; border-radius: 14rpx; padding: 16rpx 18rpx;
+  font-size: 27rpx; color: #2b2b2b;
+}
+.ta {
+  width: 100%; box-sizing: border-box; min-height: 140rpx; background: #fffdf8;
+  border: 1rpx solid #e0d6c2; border-radius: 14rpx; padding: 16rpx 18rpx;
+  font-size: 27rpx; line-height: 1.6; color: #2b2b2b;
+}
+.cover-mini { font-size: 22rpx; color: #2e7d32; margin-top: 8rpx; }
+
+.btn {
+  font-size: 28rpx; color: #5b5346; background: #ece4d6;
+  border-radius: 14rpx; padding: 18rpx 0; line-height: 1.4; margin: 0;
+}
+.btn.ghost { flex: none; padding: 14rpx 32rpx; font-size: 26rpx; }
+.btn.primary { background: #2b2b2b; color: #fffdf8; }
+.btn.gen { width: 100%; margin-top: 4rpx; }
+.btn.save { flex: none; margin-top: 20rpx; padding: 18rpx 60rpx; }
+
+.err { margin-top: 16rpx; font-size: 24rpx; color: #c0504d; line-height: 1.6; }
+
+.canvas-wrap { margin-top: 24rpx; }
+.canvas {
+  width: 100%; background: #f5f0e8; border-radius: 16rpx; display: block;
+}
+.tip { margin-top: 24rpx; font-size: 22rpx; color: #9a8f7c; line-height: 1.6; }
+
+.canvas-ph {
+  margin-top: 8rpx; font-size: 24rpx; color: #b3a890;
+  text-align: center; padding: 40rpx 0;
+}

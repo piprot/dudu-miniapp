@@ -69,6 +69,10 @@ Page({
   goComic() {
     wx.navigateTo({ url: '/pages/comic/comic' });
   },
+  // 卡片 / 海报生成器（B 方向，本地 canvas，零 AI，可配本地图）。
+  goCard() {
+    wx.navigateTo({ url: '/pages/card/card' });
+  },
   // 小程序内为纯文案工具（无 AI）。完整作品与定制样板间统一在网页版查看，
   // 这里跳到 H5 桥接页（个人主体不支持 web-view，页内为「复制链接」）。
   goH5Sample() {
