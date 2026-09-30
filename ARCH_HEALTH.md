@@ -732,3 +732,10 @@ errCode: -504002 functions execute fail | Error: Cannot find module 'wx-server-s
 - 进程内测试运行器 `run_all.js` 的缓存清理范围扩至 `../h5_backend`——否则 smoke 的哑 Stub 加载 ai_gen 后残留 require 缓存，units/e2e 拿到被污染模块会挂起、被误判「无条件失败」（本轮实测踩坑）。
 - 历史文档（本文件历史区、变更报告_*、深度合成盘查_*、不删评估_*）中提到 `cloudfunctions/ai_gen` 的均为当时事实，不回改。
 ```
+
+## 2026-09-30 · 提审前清理 + vp_refund 退款链
+- 删除 `pages/pay/` 孤儿页（未注册 app.json、无入口，comic_full 售卖风险随之解除）。
+- 新增 `cloudfunctions/vp_refund`：管理端退款（9 折券退差价 / 客诉全额退）。`/xpay/refund_order` + pay_sig 签名；wx_order_id 用微信交易单号（vp_deliver 新落库 `wxTransactionId`，缺失时查单补取）；状态机 pending→delivered→refunding→refunded（CAS 幂等）；adminKey 管理口令（环境变量 VP_ADMIN_KEY）。小程序端无调用入口。
+- `vp_deliver` 增 `xpay_refund_notify` 终态回写分支 + TransactionId 落库；需随 vp_refund 一并重新部署。
+- 测试：新增 test_vp_refund_units.js（11 用例），run_all 12 套件全绿；test_vp_units「非发货事件」用例改用 xpay_complaint_notify（xpay_refund_notify 已是受支持事件）。
+- 提审材料见 `提审材料_2026-09-30.md`（隐私指引 4 项声明 / 类目 / 道具对照 / 提审说明粘贴文本）。

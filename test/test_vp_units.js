@@ -287,12 +287,16 @@ const sha1Sign = (token, ts, nonce) => crypto.createHash('sha1').update([token, 
     assert.ok(queryOrderHits >= before + 1, '至少真的要查过一次单');
   });
 
-  await t('云函数模式：非发货事件 → 忽略；缺 OutTradeNo → 返回 1', async () => {
+  await t('云函数模式：无关事件 → 忽略；refund 推送缺 OutTradeNo → 返回 1；发货缺 OutTradeNo → 返回 1', async () => {
     reset();
+    // 2026-09-30 起 xpay_refund_notify 已是受支持事件（vp_refund 的终态回写），
+    // 不能再当「无关事件」用 —— 无关事件改用 xpay_complaint_notify。
+    const r0 = await deliver.main({ MsgType: 'event', Event: 'xpay_complaint_notify' });
+    assert.strictEqual(errCode(r0), '0', '无关事件应直接 ack');
     const r1 = await deliver.main({ MsgType: 'event', Event: 'xpay_refund_notify' });
-    assert.strictEqual(errCode(r1), '0', '非发货事件应直接 ack');
+    assert.strictEqual(errCode(r1), '1', 'refund 推送缺 OutTradeNo 应返回 1 让平台重试');
     const r2 = await cfPush({ OpenId: 'u9', ProductId: 'points_200' });
-    assert.strictEqual(errCode(r2), '1', '缺 OutTradeNo 应返回 1');
+    assert.strictEqual(errCode(r2), '1', '发货缺 OutTradeNo 应返回 1');
   });
 
   // ── vp_create_order ──

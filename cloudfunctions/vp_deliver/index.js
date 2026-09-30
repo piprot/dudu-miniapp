@@ -215,6 +215,19 @@ exports.main = async (event) => {
   }
 
   const eventName = httpMode ? extract(body, 'Event') : pick(event, 'Event');
+  // 退款完成推送：把 vp_orders 从 refunding 置为 refunded（vp_refund 启动的退款任务终态回写）。
+  // 幂等：CAS 只认「refunding」态；已 refunded/未在退款中的订单一概不动。
+  if (eventName === 'xpay_refund_notify') {
+    const refOutTradeNo = httpMode ? extract(body, 'OutTradeNo') : pick(event, 'OutTradeNo');
+    if (!refOutTradeNo) return ack(1, 'bad refund notify: no OutTradeNo');
+    const db2 = cloud.database();
+    const done = await db2.collection('vp_orders')
+      .where({ outTradeNo: refOutTradeNo, status: 'refunding' })
+      .update({ data: { status: 'refunded', refundDoneTime: db2.serverDate() } })
+      .catch(e => { console.error('[vp_deliver] refund 回写失败:', e && e.message); return { stats: { updated: 0 } }; });
+    console.log('[vp_deliver] xpay_refund_notify:', refOutTradeNo, 'updated=', done && done.stats && done.stats.updated);
+    return ack(0, 'success');
+  }
   if (eventName !== 'xpay_goods_deliver_notify') {
     return ack(0, 'ignored');
   }
@@ -260,10 +273,16 @@ exports.main = async (event) => {
       return ack(1, 'not paid');
     }
 
-    // 闸③（后半）：CAS 认领发货权 —— 只把「我读到的那个状态」改成 delivered，
+    // CAS 认领发货权 —— 只把「我读到的那个状态」改成 delivered，
     // 并发/重复推送时 CAS 必然失败（updated=0），于是不再发货。
+    // wxTransactionId（微信支付交易单号）：退款 API /xpay/refund_order 的 wx_order_id
+    // 要求传**它**而不是商户单号 —— 必须在发货时存下，否则退款时只能靠查单补取。
+    const wxTransactionId = httpMode
+      ? extract(body, 'TransactionId')
+      : (pick(event, 'WeChatPayInfo.TransactionId') || pick(event, 'TransactionId'));
     const update = { status: 'delivered', deliverTime: db.serverDate() };
     if (wxOrderId) update.wxOrderId = wxOrderId;
+    if (wxTransactionId) update.wxTransactionId = wxTransactionId;
     const claim = await db.collection('vp_orders')
       .where({ outTradeNo, status: order.status })
       .update({ data: update })

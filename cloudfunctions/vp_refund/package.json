@@ -1,0 +1,9 @@
+{
+  "name": "vp_refund",
+  "version": "1.0.0",
+  "description": "个人虚拟支付·退款（管理端，9折券退差价/客诉全额退）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

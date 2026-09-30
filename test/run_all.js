@@ -58,6 +58,7 @@ const SUITES = [
   'test/test_ai_gen_units.js',
   'test/test_points_daily.js',
   'test/test_vp_units.js',
+  'test/test_vp_refund_units.js',
   'test/test_custom_request.js',
   'test/test_e2e_flow.js'
 ];
