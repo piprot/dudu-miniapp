@@ -246,7 +246,7 @@ process.env.LLM_MODEL = 'ep-e2e-test';
 process.env.LLM_BASE_URL = ARK_BASE;
 
 const CF = (n) => require(path.join(__dirname, '..', 'cloudfunctions', n, 'index.js'));
-const aiGen = CF('ai_gen');
+const aiGen = require(path.join(__dirname, '..', '..', 'h5_backend', 'ai_gen', 'index.js')); // 2026-09-30：ai_gen 已移出 cloudfunctions/（H5 专用后端）
 const pointsFn = CF('points');
 const createOrder = CF('vp_create_order');
 const deliver = CF('vp_deliver');

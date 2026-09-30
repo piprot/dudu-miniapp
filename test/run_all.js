@@ -88,8 +88,11 @@ async function runSuite(rel) {
   // 进程内执行的代价：所有套件共享同一份 require 缓存与全局 Stub。原 spawn 版本每个套件是
   // 独立进程、零污染；这里必须在每个套件前清掉项目内模块缓存，让它像在独立进程里从零加载，
   // 否则上一个套件的模块级状态/Stub 会污染下一个（实测会令 test_points_daily 等误报失败、异步套件卡死）。
+  // 2026-09-30：ai_gen 源码移出仓库（../h5_backend/），在 ROOT 之外 —— 缓存清理必须一并覆盖，
+  // 否则 smoke 用自己的 Stub 加载后残留缓存，units/e2e 拿到被污染的模块 → 套件挂起 → 「无条件失败」。
+  const EXTERNAL_ROOTS = [ROOT, path.join(ROOT, '..', 'h5_backend')];
   for (const k of Object.keys(require.cache)) {
-    if (k.indexOf(ROOT) === 0) delete require.cache[k];
+    if (EXTERNAL_ROOTS.some(r => k.indexOf(r) === 0)) delete require.cache[k];
   }
   try {
     require(abs);

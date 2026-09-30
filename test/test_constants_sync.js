@@ -7,8 +7,8 @@
 //              ↔ cloudfunctions/vp_deliver      → PRODUCTS（发货推送）
 //              ↔ cloudfunctions/vp_query        → PRODUCTS（兜底查单补发货）
 //   【积分规则】utils/config.js → POINTS.daily ↔ cloudfunctions/points/index.js → DAILY
-//              utils/config.js → POINTS.cost  ↔ cloudfunctions/ai_gen/index.js  → POINTS_COST
-//              utils/config.js → POINTS.earn  ↔ cloudfunctions/ai_gen/index.js  → POINTS_EARN
+//              utils/config.js → POINTS.cost  ↔ ../h5_backend/ai_gen/index.js（2026-09-30 移出仓库）  → POINTS_COST
+//              utils/config.js → POINTS.earn  ↔ ../h5_backend/ai_gen/index.js（2026-09-30 移出仓库）  → POINTS_EARN
 //                （第 15 条：earn 的每一项都必须真有云函数发放，防"空头赚分承诺"）
 // 改价格/加档位后**必须跑**：node test/test_constants_sync.js
 const assert = require('assert');
@@ -110,8 +110,8 @@ t('config.POINTS.daily 与 points 云函数 DAILY 一致', () => {
 // 7) 积分单价：config.POINTS.cost ↔ ai_gen 云函数 POINTS_COST / POINTS_EARN
 //    漏改的后果：前端显示"消耗 20"但服务端只扣 15（或反之），用户直接看到余额对不上。
 t('config.POINTS.cost / earn 与 ai_gen 云函数 POINTS_COST / POINTS_EARN 一致', () => {
-  const fnCost = extractObject('cloudfunctions/ai_gen/index.js', 'POINTS_COST');
-  const fnEarn = extractObject('cloudfunctions/ai_gen/index.js', 'POINTS_EARN');
+  const fnCost = extractObject('../h5_backend/ai_gen/index.js', 'POINTS_COST');
+  const fnEarn = extractObject('../h5_backend/ai_gen/index.js', 'POINTS_EARN');
   const cfgCost = config.POINTS.cost || {};
   const cfgEarn = config.POINTS.earn || {};
 
@@ -207,7 +207,7 @@ t('「换一批」必须比「首次」便宜（有意设计的复购优惠，�
     + '这**是有意设计的复购优惠**（用户 2026-09-17 确认）：让用户不满意时更愿意再试一次。'
     + '若确实要取消该优惠，请先确认产品意图，再同步注释与本文档。');
   // 云函数侧同样守住（云函数是权威扣费点，前端只是展示）
-  const fnCost = extractObject('cloudfunctions/ai_gen/index.js', 'POINTS_COST');
+  const fnCost = extractObject('../h5_backend/ai_gen/index.js', 'POINTS_COST');
   assert.ok(fnCost.momentsRevise < fnCost.moments,
     '云函数 POINTS_COST 的换一批价(' + fnCost.momentsRevise + ') 不再低于首次价(' + fnCost.moments + ')，复购优惠设计已被破坏');
 });
@@ -257,7 +257,7 @@ t('章节声明与实际面板文件一致（无缺失、无多余）', () => {
 //     界面就会继续承诺一个用户**永远赚不到**的积分 —— 用户会当成 bug，而所有既有测试仍全绿。
 //     本断言把"承诺"与"发放"钉在一起：config 新增任何 earn 键，必须同步进 MAP 并真有云函数发放。
 t('config.POINTS.earn 每项都有云函数实际发放（无空头赚分承诺）', () => {
-  const fnEarn = extractObject('cloudfunctions/ai_gen/index.js', 'POINTS_EARN');
+  const fnEarn = extractObject('../h5_backend/ai_gen/index.js', 'POINTS_EARN');
   // config 键名 → 云函数键名（两处命名不同，显式映射；新增赚分行为时两处都要加）
   // 当前 config.POINTS.earn 为空（生成一律扣分，不存在任何"赚分"行为）⇒ 映射表也应为空。
   // 保留映射机制：将来若真的加回赚分项，必须在此登记，否则下面断言会以"空头承诺"直接 FAIL。
@@ -281,9 +281,9 @@ t('config.POINTS.earn 每项都有云函数实际发放（无空头赚分承诺�
 //     （万一被调用，字数仍按拍板规则工作）。待 ai_gen 真正停用/删除后，本条与第 17/22 条一起退役。
 t('OUT_LEN_TIERS：ai_gen 服务端基准自洽；前端 gen.js 不得再有字数档位', () => {
   const CANON = '[[50,80,150],[200,150,300],[500,250,450],[null,350,700]]';
-  const aiSrc = fs.readFileSync(path.join(ROOT, 'cloudfunctions/ai_gen/index.js'), 'utf8').replace(/\s/g, '');
+  const aiSrc = fs.readFileSync(path.join(ROOT, '../h5_backend/ai_gen/index.js'), 'utf8').replace(/\s/g, '');
   assert.ok(aiSrc.indexOf('OUT_LEN_TIERS=' + CANON) >= 0,
-    'cloudfunctions/ai_gen/index.js 的 OUT_LEN_TIERS 与拍板基准不一致。\n'
+    '../h5_backend/ai_gen/index.js 的 OUT_LEN_TIERS 与拍板基准不一致。\n'
     + '基准（归一化空白后）：OUT_LEN_TIERS=' + CANON);
   const genSrc = fs.readFileSync(path.join(ROOT, 'pages/gen/gen.js'), 'utf8');
   assert.ok(!/OUT_LEN_TIERS/.test(genSrc),
@@ -293,7 +293,7 @@ t('OUT_LEN_TIERS：ai_gen 服务端基准自洽；前端 gen.js 不得再有字�
 
 // 17) 80 字硬下限：ai_gen 侧保留；前端不得再声明（同第 16 条的新事实）
 t('OUT_LEN_FLOOR = 80：ai_gen 侧一致且 ≥ 下限；前端 gen.js 不得再声明', () => {
-  const aiSrc = fs.readFileSync(path.join(ROOT, 'cloudfunctions/ai_gen/index.js'), 'utf8');
+  const aiSrc = fs.readFileSync(path.join(ROOT, '../h5_backend/ai_gen/index.js'), 'utf8');
   assert.ok(/OUT_LEN_FLOOR\s*=\s*80\s*;/.test(aiSrc),
     'ai_gen 未声明 OUT_LEN_FLOOR = 80；用户拍板"至少 80 字"，不可下调或删除');
   // 每个档位的下限都不得低于 80（防止有人只改末档忘了首档）
@@ -311,7 +311,7 @@ t('OUT_LEN_FLOOR = 80：ai_gen 侧一致且 ≥ 下限；前端 gen.js 不得再
 // 22) KIND_LEN_FIXED（4 类固定字数区间）：ai_gen 侧基准自洽；前端不得再声明（同第 16 条）
 t('KIND_LEN_FIXED：ai_gen 侧基准自洽；前端 gen.js 不得再声明', () => {
   const CANON = { value: [100, 250], persona: [150, 280], deal: [150, 320], life: [80, 200] };
-  const svr = extractObject('cloudfunctions/ai_gen/index.js', 'KIND_LEN_FIXED');
+  const svr = extractObject('../h5_backend/ai_gen/index.js', 'KIND_LEN_FIXED');
   assert.deepStrictEqual(svr, CANON,
     '服务端 ai_gen 的 KIND_LEN_FIXED 与基准不一致:\n' + JSON.stringify(svr) + '\n应等于 ' + JSON.stringify(CANON));
   // 固定区间的下限必须 ≥ 80（与 OUT_LEN_FLOOR 一致，否则破坏"至少 80 字"硬规则）
@@ -326,8 +326,8 @@ t('KIND_LEN_FIXED：ai_gen 侧基准自洽；前端 gen.js 不得再声明', () 
 //     漏改后果有两头：① 用户说「再长一点」却拿不到更长的文案（功能形同虚设）；
 //     ② 关键词过宽（例如把「具体」也算上）会命中生活型指令里的"具体感官细节"，篇幅被无故拉长。
 t('「更长」关键词升档：加长区间更长、关键词不误触发', () => {
-  const base = extractObject('cloudfunctions/ai_gen/index.js', 'KIND_LEN_FIXED');
-  const long = extractObject('cloudfunctions/ai_gen/index.js', 'KIND_LEN_FIXED_LONG');
+  const base = extractObject('../h5_backend/ai_gen/index.js', 'KIND_LEN_FIXED');
+  const long = extractObject('../h5_backend/ai_gen/index.js', 'KIND_LEN_FIXED_LONG');
   Object.keys(base).forEach(k => {
     assert.ok(long[k], 'KIND_LEN_FIXED_LONG 缺类型 ' + k + '（该类型无法因"更长"而加长）');
     assert.ok(long[k][0] >= 80, 'KIND_LEN_FIXED_LONG.' + k + ' 下限(' + long[k][0] + ')低于 80，违反"至少 80 字"');
@@ -336,7 +336,7 @@ t('「更长」关键词升档：加长区间更长、关键词不误触发', ()
     assert.ok(long[k][0] >= base[k][0], 'KIND_LEN_FIXED_LONG.' + k + ' 下限小于基准下限，升档后反而可能更短');
   });
   // 关键词正则：从源码抠出后**实测**（不能只断言"存在"，否则又是空转断言）
-  const src = fs.readFileSync(path.join(ROOT, 'cloudfunctions', 'ai_gen', 'index.js'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, '..', 'h5_backend', 'ai_gen', 'index.js'), 'utf8');
   const m = /LEN_UP_RE\s*=\s*(\/[\s\S]*?\/[a-z]*)\s*;/.exec(src);
   assert.ok(m, 'ai_gen 未声明 LEN_UP_RE（「更长」升档的识别器）');
   const re = eval(m[1]);
@@ -360,7 +360,7 @@ t('前端 KINDS 的 id 全部在服务端 MOMENTS_KINDS 白名单内', () => {
   assert.ok(block, '未能在 pages/gen/gen.js 找到 const KINDS = [ ... ];');
   const ids = (block[1].match(/id:\s*'([^']+)'/g) || []).map(s => /'([^']+)'/.exec(s)[1]);
   assert.ok(ids.length >= 5, 'KINDS 至少应有 5 个类型，实际 ' + ids.length);
-  const aiSrc = fs.readFileSync(path.join(ROOT, 'cloudfunctions', 'ai_gen', 'index.js'), 'utf8');
+  const aiSrc = fs.readFileSync(path.join(ROOT, '..', 'h5_backend', 'ai_gen', 'index.js'), 'utf8');
   const wl = /MOMENTS_KINDS\s*=\s*\[([\s\S]*?)\];/.exec(aiSrc);
   assert.ok(wl, '未能在 ai_gen 找到 MOMENTS_KINDS 白名单');
   const allow = (wl[1].match(/'([^']+)'/g) || []).map(s => s.replace(/'/g, ''));

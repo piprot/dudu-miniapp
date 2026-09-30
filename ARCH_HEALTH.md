@@ -723,4 +723,12 @@ errCode: -504002 functions execute fail | Error: Cannot find module 'wx-server-s
 ✓ JS 语法检查 35 个文件 · 红线+R9+R10 · smoke 7 OK
 ✓ constants 18 · ai_gen 35 · points 12 · vp 23 · custom_request 9 · e2e 22
 ════ SUMMARY：全部通过 ════
+
+## 2026-09-30 · ai_gen 源码移出小程序仓库（6 点去 AI 清单第 1 条彻底闭环）
+
+- `cloudfunctions/ai_gen` 整目录（index.js + package.json）移出 → `../h5_backend/ai_gen/`（H5 专用 LLM 后端，独立 git 仓 + README，含重部署三步法）。小程序仓库 `cloudfunctions/` 自此零 LLM 函数；客户端本就零调用（gen 页 B1 纯本地）。
+- 云端已部署副本不受影响：HTTP `/h5api` 继续服务站外 H5；日后 `cli cloud functions deploy` 名单 8 → 7，ai_gen 不再随本项目维护。
+- 测试同步并复跑全绿：`test_ai_gen_units`（50 PASS，改从新址 require）/ `test_e2e_flow`（23 PASS）/ `test_constants_sync`（24 PASS，7 处路径引用全部改指新址）/ `smoke_cloudfunctions`（目录自动发现 + 显式补挂已移出函数，require 后即弃缓存）。
+- 进程内测试运行器 `run_all.js` 的缓存清理范围扩至 `../h5_backend`——否则 smoke 的哑 Stub 加载 ai_gen 后残留 require 缓存，units/e2e 拿到被污染模块会挂起、被误判「无条件失败」（本轮实测踩坑）。
+- 历史文档（本文件历史区、变更报告_*、深度合成盘查_*、不删评估_*）中提到 `cloudfunctions/ai_gen` 的均为当时事实，不回改。
 ```

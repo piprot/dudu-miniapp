@@ -148,7 +148,8 @@ process.env.LLM_API_KEY = 'test-key';
 process.env.LLM_MODEL = 'ep-test';
 process.env.LLM_BASE_URL = 'https://ark.example.com/api/v3';
 
-const aiGen = require(path.join(__dirname, '..', 'cloudfunctions', 'ai_gen', 'index.js'));
+const aiGen = require(path.join(__dirname, '..', '..', 'h5_backend', 'ai_gen', 'index.js'));
+// 2026-09-30：ai_gen 源码已移出小程序仓库 → ../../h5_backend/ai_gen（H5 专用后端），测试仍从新址加载守护。
 
 // ───────────────────────── 4. 用例 ─────────────────────────
 let pass = 0, fail = 0;
