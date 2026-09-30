@@ -14,7 +14,7 @@ function getDpr() {
 
 // 各模板的默认占位文本，降低首用门槛。
 const SEED = {
-  quote: { type: 'quote', body: '把复杂的事，讲简单；把简单的事，做扎实。', author: '—— dudu 画面感' },
+  quote: { type: 'quote', title: '', body: '把复杂的事，讲简单；把简单的事，做扎实。', author: '—— dudu 画面感' },
   recommend: { type: 'recommend', title: '推荐一件好物', body: '用了就回不去的小确幸，今天安利给你。', tag: '¥ 39 起', cover: '' },
   notice: { type: 'notice', title: '活动公告', body: '本周六晚 8 点，社群分享会准时开始，欢迎来聊。', author: 'dudu 画面感 · 9 月' },
   checklist: { type: 'checklist', title: '今日待办', items: ['梳理今天的三件要事', '写下一条朋友圈文案', '读 10 页书'], cover: '' },

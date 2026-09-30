@@ -67,6 +67,17 @@ console.log('— 容错：空内容也返回合法高度 —');
 const empty = computeCardLayout({}, { width: 340 }, measure);
 ok('空模型高度合法', empty.height > 0 && empty.width === 340);
 
+console.log('— 每日日签场景（quote 模板 + 标题写日期）—');
+const sign = computeCardLayout({
+  type: 'quote', title: '9月30日 · 星期三', body: '把复杂的事，讲简单；把简单的事，做扎实。', author: 'dudu 画面感 · 每日日签'
+}, { width: 340 }, measure);
+const signTitle = sign.blocks.find(b => b.kind === 'title');
+const signBody = sign.blocks.find(b => b.kind === 'body');
+const signFooter = sign.blocks.find(b => b.kind === 'footer');
+ok('日签：quote 模板含标题块（日期可独立成行）', !!signTitle && signTitle.text.length === 1);
+ok('日签：含金句正文与落款', !!signBody && !!signFooter);
+ok('日签：卡片高度合理（不溢出）', sign.height > 0 && sign.height < 400);
+
 console.log('— 金句截断：超过 maxQuoteLines 只取前 N 行 —');
 const longBody = Array.from({ length: 12 }, (_, i) => '金句行' + i).join('');
 const ql = computeCardLayout({ type: 'quote', body: longBody }, { width: 340 }, measure);
