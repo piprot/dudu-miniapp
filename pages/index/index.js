@@ -67,7 +67,7 @@ Page({
   goComic() {
     wx.navigateTo({ url: '/pages/comic/comic' });
   },
-  // 卡片 / 海报生成器（B 方向，本地 canvas，零 AI，可配本地图）。
+  // 卡片 / 日签生成器（B 方向，本地 canvas，零 AI，可配本地图）。
   goCard() {
     wx.navigateTo({ url: '/pages/card/card' });
   },

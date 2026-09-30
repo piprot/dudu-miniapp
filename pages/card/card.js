@@ -1,4 +1,4 @@
-// pages/card/card.js —— 画面感卡片 / 海报生成器（B 方向，纯本地 canvas，零 AI）
+// pages/card/card.js —— 画面感卡片 / 日签生成器（B 方向，纯本地 canvas，零 AI）
 // 选模板 → 填文字（可选本地选图）→ 本地 canvas 渲染卡片 → 存相册。
 // 全程不调用云端 / 不生成内容，不构成深度合成，个人主体可过审。
 const { CARD_TEMPLATES, computeCardLayout, drawCard } = require('../../utils/card_render');
@@ -195,9 +195,9 @@ Page({
   },
 
   onShareAppMessage() {
-    return { title: '选模板填文字，一键出卡片海报 · dudu 画面感', path: '/pages/card/card' };
+    return { title: '选模板填文字，一键出日签卡片 · dudu 画面感', path: '/pages/card/card' };
   },
   onShareTimeline() {
-    return { title: '选模板填文字，一键出卡片海报 · dudu 画面感', query: '' };
+    return { title: '选模板填文字，一键出日签卡片 · dudu 画面感', query: '' };
   }
 });

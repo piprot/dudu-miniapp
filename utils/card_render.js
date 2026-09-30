@@ -1,6 +1,6 @@
 // utils/card_render.js
 // ─────────────────────────────────────────────────────────────────────────
-// 「画面感卡片 / 海报生成器」布局 + canvas 2d 渲染器（B 方向，纯本地、零 AI）。
+// 「画面感卡片 / 日签生成器」布局 + canvas 2d 渲染器（B 方向，纯本地、零 AI）。
 //   - CARD_TEMPLATES：5 类模板元信息（金句 / 种草 / 公告 / 清单 / 图文）。
 //   - computeCardLayout(model, opts, measure)：纯函数，接收 measure(text,font)→px，
 //     不依赖真实 ctx，可在 Node 下单测。返回布局树（每区块坐标 + 卡片总高）。

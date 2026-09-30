@@ -29,7 +29,7 @@
       <view class="tool-desc">写文字脚本，一键出分镜图 · 全程本地</view>
     </view>
     <view class="tool-card card2" bindtap="goCard">
-      <view class="tool-title">🪪 卡片制作 / 海报生成器</view>
+      <view class="tool-title">🎴 卡片制作 / 日签生成器</view>
       <view class="tool-desc">选模板填文字，一键出卡片 · 可配本地图</view>
     </view>
   </view>
