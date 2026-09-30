@@ -101,7 +101,7 @@
 
     <!-- ========== ② 排版优化 ========== -->
     <block wx:if="{{mode === 'opt'}}">
-      <view class="opt-tip">粘贴一段你写好的文字，一键优化排版（纯本地处理，不上传、不调用 AI）。</view>
+      <view class="opt-tip">粘贴一段你写好的文字，一键优化排版（纯本地处理，不上传服务器）。</view>
       <view class="opt-input-wrap">
         <textarea class="opt-input" placeholder="粘贴或输入要排版的文字…" value="{{optRaw}}" bindinput="onOptInput" maxlength="2000" auto-height></textarea>
         <view class="opt-paste" bindtap="onPasteOpt">粘贴</view>

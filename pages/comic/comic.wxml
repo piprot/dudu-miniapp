@@ -1,7 +1,7 @@
 <view class="page">
   <view class="hd">
     <view class="hd-title">🎞️ 画面感分镜编辑器</view>
-    <view class="hd-sub">写一段文字脚本，一键出分镜图 · 全程本地，无 AI</view>
+    <view class="hd-sub">写一段文字脚本，一键出分镜图 · 全程本地完成</view>
   </view>
 
   <view class="chips">

@@ -1,7 +1,7 @@
 <view class="page">
   <view class="hd">
     <view class="hd-title">🎴 画面感卡片制作 / 日签生成器</view>
-    <view class="hd-sub">选模板，填文字，一键出日签卡片 · 全程本地，无 AI</view>
+    <view class="hd-sub">选模板，填文字，一键出日签卡片 · 全程本地完成</view>
   </view>
 
   <!-- 模板选择 -->
