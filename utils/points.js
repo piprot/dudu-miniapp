@@ -1,5 +1,5 @@
 // 积分前端助手：封装对 points 云函数的调用
-// 仅余额查询 + 花费 + 每日登录奖励；赚取由服务端在 ai_gen 内完成（真实调通模型后才加分）
+// 仅余额查询 + 花费 + 每日登录奖励；赚取由服务端 points 云函数幂等发放（签到 / 新人礼），与 AI 无关
 function callPoints(action, extra) {
   return new Promise((resolve, reject) => {
     wx.cloud.callFunction({

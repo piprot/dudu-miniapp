@@ -67,7 +67,7 @@
 
 | 云函数 | 触发方式 | 职责 |
 |---|---|---|
-| `ai_gen` | ① 小程序 `wx.cloud.callFunction`（走积分）② **HTTP 访问服务**（H5 通道，走日额度） | 朋友圈文案生成。同一份函数按调用形态分叉：小程序侧扣积分、H5 侧按「设备标识 + IP」双桶日额度限流（`H5_FREE_DAILY`，计数落 `h5_usage`）。H5 分支**不碰积分**（`test/test_h5_parity.js` 第 9/10 条守）。 |
+| `ai_gen` | **仅 HTTP 访问服务**（`/h5api`，站外 H5 通道，按「设备标识 + IP」双桶日额度 `H5_FREE_DAILY` 限流，计数落 `h5_usage`） | 朋友圈文案生成（LLM）。⚠️ 2026-09-30 起小程序客户端**零调用**（`pages/gen` 已是纯本地模板工具，B1 合规版），小程序侧积分计费分支为已部署副本中的死代码。此函数是全仓库唯一 LLM 云函数；`cloudfunctionRoot` 不参与小程序前端打包，审核包内无此代码。H5 分支不碰积分（`test/test_h5_parity.js` 第 9/10 条守）。 |
 | `custom_request` | 小程序云函数 | **付费后**收「完整故事 + 邮箱」（`STORY_MAX=30000`），带 `outTradeNo`，落 `custom_comic_requests`，推飞书群，人工 8 小时回邮履约。依赖 `cloud.getWXContext().OPENID`，故**只在小程序里可用**。 |
 | `h5_request` | **HTTP 访问服务**（建议路径 `/h5req`） | **付款前**收「故事梗概 + 邮箱 + 档位偏好」= **线索**，落 `h5_requests`（`paid:false` / `status:'lead'`），返回 6 位取件码，推飞书群。⛔ **不调用任何生成接口**——H5 前台不开放自助生成（自助文生图属深度合成服务，须企业主体算法备案）。 |
 | `points` | 小程序云函数 | 积分账本（余额在 `vp_users.points`，openid 维度原子增减）。 |

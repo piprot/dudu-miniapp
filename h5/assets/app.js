@@ -5,7 +5,7 @@
  *   ① 没有积分体系 → 改为「今日剩余免费次数」，额度由服务端按 设备标识 + IP 计算，
  *      前端只展示、不算数（前端改了也没用，真正的判定在 ai_gen 云函数里）。
  *   ② 没有图片上传 → H5 拿不到云存储写权限，硬做只会造出一堆失败态；
- *      图片类能力（小程序「卡片制作」本地完成）不在此页；本页专注文字 / 链接 → 朋友圈文案。
+ *      图片类能力（小程序「卡片制作 / 海报生成器」本地完成）不在此页；本页专注文字 / 链接 → 朋友圈文案。
  *
  * 零依赖、零构建。全部 DOM 用 createElement + textContent 构建 ——
  * 文案是模型生成的，任何情况都不能当 HTML 解析（防注入）。
@@ -459,7 +459,7 @@
       img.alt = (CFG.mpName || '小程序') + ' 小程序码';
       img.style.cssText = 'width:150px;height:150px;border-radius:10px;margin:12px auto 4px;display:block';
       f.insertBefore(img, f.firstChild);
-      f.insertBefore(el('div', null, '想做图文卡片 / 每日日签，或看真人定制成品？长按识别进小程序'), f.firstChild);
+      f.insertBefore(el('div', null, '想做卡片 / 海报，或看真人定制成品？长按识别进小程序'), f.firstChild);
     }
   }
 
