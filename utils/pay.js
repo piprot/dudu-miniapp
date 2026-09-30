@@ -88,7 +88,7 @@ function payByReward(code) {
   return new Promise((resolve, reject) => {
     const valid = PAY_CONFIG.redeemCodes.includes((code || '').trim().toUpperCase());
     if (!valid) {
-      reject(new Error('兑换码无效，请确认后重试；或先完成赞赏后联系作者获取兑换码。'));
+      reject(new Error('兑换码无效，请确认后重试，或联系作者获取兑换码。'));
       return;
     }
     store.unlockAll();
