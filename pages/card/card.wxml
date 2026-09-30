@@ -16,8 +16,8 @@
 
   <view class="help-toggle" bindtap="onToggleHelp">{{showHelp ? '收起说明' : '怎么用'}}</view>
   <view class="help" wx:if="{{showHelp}}">
-    <view class="help-line">① 选上方模板（金句 / 种草 / 公告 / 清单 / 图文）</view>
-    <view class="help-line">② 在下方填文字；种草 / 图文可点「选择图片」取本地照片</view>
+    <view class="help-line">① 选上方模板（每日日签 / 金句 / 种草 / 公告 / 清单 / 图文）</view>
+    <view class="help-line">② 在下方填文字；种草 / 图文可点「选择图片」取本地照片；日签自动带日期与小程序码</view>
     <view class="help-line">③ 点「生成卡片」，再「保存到相册」即可发朋友圈 / 群</view>
     <view class="help-line">图片只存在你手机本地，不会上传任何服务器。</view>
   </view>
@@ -26,13 +26,13 @@
   <view class="form">
     <view class="field">
       <view class="label">标题</view>
-      <input class="input" value="{{form.title}}" bindinput="onField" data-field="title" placeholder="{{type === 'quote' ? '如：9月30日 星期三 / 今日日签' : '卡片主标题'}}" />
+      <input class="input" value="{{form.title}}" bindinput="onField" data-field="title" placeholder="{{type === 'quote' || type === 'dailysign' ? '如：9月30日 星期三（留空自动填今天）' : '卡片主标题'}}" />
     </view>
 
     <view class="field" wx:if="{{type !== 'checklist'}}">
-      <view class="label">{{type === 'quote' ? '金句内容' : '正文'}}</view>
+      <view class="label">{{type === 'quote' || type === 'dailysign' ? '金句内容' : '正文'}}</view>
       <textarea class="ta" value="{{form.body}}" bindinput="onField" data-field="body"
-        placeholder="{{type === 'quote' ? '写一句打动人的话' : '写点什么…'}}" maxlength="-1" />
+        placeholder="{{type === 'quote' || type === 'dailysign' ? '写一句打动人的话' : '写点什么…'}}" maxlength="-1" />
     </view>
 
     <view class="field" wx:if="{{type === 'checklist'}}">

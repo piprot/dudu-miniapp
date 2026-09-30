@@ -3,7 +3,17 @@
 // 全程不调用云端 / 不生成内容，不构成深度合成，个人主体可过审。
 const { CARD_TEMPLATES, computeCardLayout, drawCard } = require('../../utils/card_render');
 
-const TYPE_KEYS = ['quote', 'recommend', 'notice', 'checklist', 'imagetext'];
+const TYPE_KEYS = ['dailysign', 'quote', 'recommend', 'notice', 'checklist', 'imagetext'];
+
+// 每日日签的二维码（打包进小程序包内，绘制到卡片右下角）。
+const QR_PATH = '/images/qrcode_miniapp.png';
+
+// 今日日期标签：「9月30日 · 星期三」。
+function todayLabel() {
+  const d = new Date();
+  const wk = '日一二三四五六'.charAt(d.getDay());
+  return (d.getMonth() + 1) + '月' + d.getDate() + '日 · 星期' + wk;
+}
 
 function getDpr() {
   try {
@@ -14,9 +24,10 @@ function getDpr() {
 
 // 各模板的默认占位文本，降低首用门槛。
 const SEED = {
-  quote: { type: 'quote', title: '', body: '把复杂的事，讲简单；把简单的事，做扎实。', author: '—— dudu 画面感' },
+  dailysign: { type: 'dailysign', title: todayLabel(), body: '把日子过成自己喜欢的样子。' },
+  quote: { type: 'quote', title: '', body: '把复杂的事，讲简单；把简单的事，做扎实。', author: '' },
   recommend: { type: 'recommend', title: '推荐一件好物', body: '用了就回不去的小确幸，今天安利给你。', tag: '¥ 39 起', cover: '' },
-  notice: { type: 'notice', title: '活动公告', body: '本周六晚 8 点，社群分享会准时开始，欢迎来聊。', author: 'dudu 画面感 · 9 月' },
+  notice: { type: 'notice', title: '活动公告', body: '本周六晚 8 点，社群分享会准时开始，欢迎来聊。', author: '' },
   checklist: { type: 'checklist', title: '今日待办', items: ['梳理今天的三件要事', '写下一条朋友圈文案', '读 10 页书'], cover: '' },
   imagetext: { type: 'imagetext', title: '一张图，一段话', body: '记录此刻，分享给在意的人。', cover: '' }
 };
@@ -24,8 +35,8 @@ const SEED = {
 Page({
   data: {
     types: TYPE_KEYS.map(k => ({ key: k, name: CARD_TEMPLATES[k].name, hint: CARD_TEMPLATES[k].hint })),
-    type: 'quote',
-    form: SEED.quote,
+    type: 'dailysign',
+    form: SEED.dailysign,
     cover: '',
     showHelp: false,
     err: '',
@@ -86,6 +97,11 @@ Page({
     if (this.data.type === 'checklist') {
       model.items = String(f.items || '').split('\n').map(s => s.trim()).filter(Boolean);
     }
+    // 每日日签：右下角固定叠加包内小程序码（全自动，无需选图）。
+    if (this.data.type === 'dailysign') {
+      model.qr = QR_PATH;
+      model.title = model.title || todayLabel();   // 标题留空时自动用今天日期
+    }
     return model;
   },
 
@@ -119,25 +135,29 @@ Page({
         return ctx.measureText(t).width;
       });
 
-      // 加载本地封面（若有）。加载完再绘制，避免空白。
+      // 加载本地图片（封面 / 二维码）。全部加载完（失败也继续，对应槽位置 null）再绘制。
+      const loadImg = (src) => new Promise(resolve => {
+        const img = canvas.createImage();
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = src;
+      });
+      const jobs = [];
+      if (m.cover) jobs.push(loadImg(m.cover).then(im => { self._coverImg = im; }));
+      else self._coverImg = null;
+      if (m.qr) jobs.push(loadImg(m.qr).then(im => { self._qrImg = im; }));
+      else self._qrImg = null;
+
       const drawAll = () => {
         canvas.width = Math.round(layout.width * dpr);
         canvas.height = Math.round(layout.height * dpr);
         ctx.scale(dpr, dpr);
-        drawCard(ctx, layout, { model: m, coverImg: self._coverImg });
+        drawCard(ctx, layout, { model: m, coverImg: self._coverImg, qrImg: self._qrImg });
         self.canvasNode = canvas;
         self.setData({ canvasH: layout.height, rendered: true });
       };
 
-      if (m.cover) {
-        const img = canvas.createImage();
-        img.onload = () => { self._coverImg = img; drawAll(); };
-        img.onerror = () => { self._coverImg = null; drawAll(); };
-        img.src = m.cover;
-      } else {
-        self._coverImg = null;
-        drawAll();
-      }
+      Promise.all(jobs).then(drawAll);
     });
   },
 

@@ -1,6 +1,8 @@
 // test_card.js —— 卡片渲染器纯函数单测（Node 环境，无需小程序运行时）。
 // 运行：node test_card.js
 const assert = require('assert');
+const path = require('path');
+const fs = require('fs');
 const {
   CARD_TEMPLATES, computeCardLayout, drawCard, roundRectPath, wrapText
 } = require('./utils/card_render');
@@ -25,7 +27,7 @@ const FONT = 16; // 近似正文字号用于估算
 const measure = mkMeasure(FONT);
 
 console.log('— 模板元信息 —');
-ok('5 类模板齐全', Object.keys(CARD_TEMPLATES).length === 5);
+ok('6 类模板齐全（含每日日签）', Object.keys(CARD_TEMPLATES).length === 6 && !!CARD_TEMPLATES.dailysign);
 ok('quote 无 cover', CARD_TEMPLATES.quote.hasCover === false);
 ok('recommend 需 cover', CARD_TEMPLATES.recommend.hasCover === true);
 ok('checklist 字段含 items', CARD_TEMPLATES.checklist.fields.indexOf('items') >= 0);
@@ -77,6 +79,25 @@ const signFooter = sign.blocks.find(b => b.kind === 'footer');
 ok('日签：quote 模板含标题块（日期可独立成行）', !!signTitle && signTitle.text.length === 1);
 ok('日签：含金句正文与落款', !!signBody && !!signFooter);
 ok('日签：卡片高度合理（不溢出）', sign.height > 0 && sign.height < 400);
+
+console.log('— 每日日签：自动小程序码（右下角，全自动）—');
+ok('日签：包内二维码图片存在（images/qrcode_miniapp.png）',
+  fs.existsSync(path.join(__dirname, 'images', 'qrcode_miniapp.png')),
+  '二维码图丢失 → 日签右下角只画占位框；重新把小程序码放进 images/qrcode_miniapp.png');
+const signQr = computeCardLayout({
+  type: 'dailysign', title: '', body: '把日子过成自己喜欢的样子。', qr: '/images/qrcode_miniapp.png'
+}, { width: 340 }, measure);
+ok('日签：类型识别为 dailysign、角标为「每日日签」', signQr.type === 'dailysign' && signQr.pill === '每日日签');
+ok('日签：右下角二维码区块（56×56，右对齐）',
+  signQr.qr && signQr.qr.w === 56 && signQr.qr.h === 56 && Math.abs(signQr.qr.x + signQr.qr.w - (340 - 22)) < 1);
+ok('日签：标题留空时不产生标题块（运行时由 card.js 自动填今天日期）', !signQr.blocks.some(b => b.kind === 'title'));
+ok('日签：无文字落款（author 为空即无 footer）', !signQr.blocks.some(b => b.kind === 'footer'));
+try {
+  drawCard(fakeCtx(), signQr, { model: signQr, coverImg: null, qrImg: { width: 430, height: 429 } });
+  ok('日签：drawCard 带二维码图不抛错', true);
+} catch (e) {
+  ok('日签：drawCard 带二维码图不抛错 -> ' + e.message, false);
+}
 
 console.log('— 金句截断：超过 maxQuoteLines 只取前 N 行 —');
 const longBody = Array.from({ length: 12 }, (_, i) => '金句行' + i).join('');

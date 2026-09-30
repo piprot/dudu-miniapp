@@ -12,6 +12,12 @@
 
 // 模板元信息：name 角标、hint 引导、hasCover 是否需要配图、fields 需要的字段。
 const CARD_TEMPLATES = {
+  dailysign: {
+    name: '每日日签',
+    hint: '日期 + 一句金句，自动带小程序码',
+    hasCover: false,
+    fields: ['title', 'body']
+  },
   quote: {
     name: '金句卡',
     hint: '一句打动人的话 + 出处',
@@ -151,7 +157,7 @@ function computeCardLayout(model, opts, measure) {
 
   // ④ 正文 / 金句。
   if (m.body) {
-    const isQuote = (type === 'quote');
+    const isQuote = (type === 'quote' || type === 'dailysign');
     const lh = isQuote ? o.quoteLH : o.bodyLH;
     const font = isQuote ? o.quoteFont : o.bodyFont;
     const wrapped = wrapText(m.body, innerW, measure);
@@ -159,6 +165,14 @@ function computeCardLayout(model, opts, measure) {
     const lines = wrapped.slice(0, maxLines);
     blocks.push({ kind: 'body', x: o.pad, y: y, w: innerW, h: lines.length * lh, text: lines, quote: isQuote, font, lh });
     y += lines.length * lh + o.gap;
+  }
+
+  // ⑤ 小程序码（每日日签固定右下角；contain 等比完整绘制，绝不裁剪码点）。
+  let qr = null;
+  if (type === 'dailysign' && m.qr) {
+    const qs = 56;
+    qr = { x: o.width - o.pad - qs, y: y, w: qs, h: qs };
+    y += qs + o.gap;
   }
 
   // ⑤ 清单条目（逐条）。
@@ -199,7 +213,8 @@ function computeCardLayout(model, opts, measure) {
     pill: tpl.name,
     accent: o.accent,
     blocks: blocks,
-    cover: cover
+    cover: cover,
+    qr: qr
   };
 }
 
@@ -235,6 +250,7 @@ function drawCard(ctx, layout, opts) {
   const o = Object.assign({}, DEFAULTS, opts || {});
   const m = (opts && opts.model) || {};
   const coverImg = opts && opts.coverImg;
+  const qrImg = opts && opts.qrImg;
 
   ctx.clearRect(0, 0, layout.width, layout.height);
 
@@ -253,6 +269,27 @@ function drawCard(ctx, layout, opts) {
 
   // 配图（在绘制文字前，紧跟在标题后区域；cover 已含坐标）。
   if (layout.cover) drawCover(ctx, layout.cover, coverImg);
+
+  // 小程序码（每日日签右下角）：白底描边 + contain 等比完整绘制（不裁剪码点）。
+  if (layout.qr) {
+    const q = layout.qr;
+    roundRectPath(ctx, q.x, q.y, q.w, q.h, 10);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    if (qrImg && qrImg.width && qrImg.height) {
+      const s = Math.min(q.w / qrImg.width, q.h / qrImg.height);   // contain
+      const dw = qrImg.width * s, dh = qrImg.height * s;
+      ctx.save();
+      roundRectPath(ctx, q.x, q.y, q.w, q.h, 10);
+      ctx.clip();
+      ctx.drawImage(qrImg, q.x + (q.w - dw) / 2, q.y + (q.h - dh) / 2, dw, dh);
+      ctx.restore();
+    } else {
+      ctx.strokeStyle = '#e5ddcc';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
 
   for (const b of layout.blocks) {
     switch (b.kind) {
