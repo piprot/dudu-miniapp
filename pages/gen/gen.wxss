@@ -311,3 +311,28 @@
 .kb-q-row { display: flex; flex-wrap: wrap; gap: 12rpx; }
 .kb-q { font-size: 24rpx; color: #4a3b28; background: #ffffff; border: 2rpx solid #d7e6f5; border-radius: 999rpx; padding: 10rpx 20rpx; }
 .kb-q:active { background: #e3eefb; }
+
+/* ── 交互升级（Apple 流体，2026-10-01）：聚焦光环 / 生成失败抖动 / 复制翻转 ── */
+.field-input { transition: border-color .18s ease, box-shadow .18s ease; }
+.field.focus .field-input { border-color: #f5793b; box-shadow: 0 0 0 6rpx rgba(245, 121, 59, 0.12); }
+.fields.shake-a { animation: genShakeA .45s ease; }
+.fields.shake-b { animation: genShakeB .45s ease; }
+@keyframes genShakeA {
+  20% { transform: translateX(-5px); } 40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); } 80% { transform: translateX(2px); }
+}
+@keyframes genShakeB {
+  20% { transform: translateX(-5px); } 40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); } 80% { transform: translateX(2px); }
+}
+.copy-btn { transition: background .2s ease, color .2s ease, box-shadow .2s ease; }
+.copy-btn.copied {
+  background: #2f9e6b; color: #ffffff;
+  box-shadow: 0 6rpx 18rpx rgba(47, 158, 107, 0.3);
+  animation: copyFlip .55s ease;
+}
+@keyframes copyFlip {
+  0% { transform: rotateX(0); } 50% { transform: rotateX(90deg); } 100% { transform: rotateX(0); }
+}
+.err { animation: errIn .25s ease-out; }
+@keyframes errIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }

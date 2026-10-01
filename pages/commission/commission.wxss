@@ -106,3 +106,27 @@
 }
 
 .err { margin-top: 24rpx; color: #b03a2e; font-size: 26rpx; line-height: 1.6; }
+
+/* ── 交互升级（Apple 流体，2026-10-01）：错误抖动 / 复制翻转 / 错误文案滑入 ── */
+.email-input, .story-input { transition: border-color .18s ease, box-shadow .18s ease; }
+.email-input.shake-a, .story-input.shake-a { animation: cmShakeA .45s ease; }
+.email-input.shake-b, .story-input.shake-b { animation: cmShakeB .45s ease; }
+@keyframes cmShakeA {
+  20% { transform: translateX(-5px); } 40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); } 80% { transform: translateX(2px); }
+}
+@keyframes cmShakeB {
+  20% { transform: translateX(-5px); } 40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); } 80% { transform: translateX(2px); }
+}
+.email-err, .story-err, .err { animation: cmErrIn .25s ease-out; }
+@keyframes cmErrIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.copy-btn { transition: background .2s ease, color .2s ease, box-shadow .2s ease; }
+.copy-btn.copied {
+  background: #2f9e6b; color: #ffffff;
+  box-shadow: 0 6rpx 18rpx rgba(47, 158, 107, 0.3);
+  animation: cmFlip .55s ease;
+}
+@keyframes cmFlip {
+  0% { transform: rotateX(0); } 50% { transform: rotateX(90deg); } 100% { transform: rotateX(0); }
+}

@@ -41,11 +41,11 @@
 
     <view class="card">
       <view class="label">接收邮箱</view>
-      <input class="email-input" placeholder="name@example.com" value="{{email}}" bindinput="onInputEmail" />
+      <input class="email-input {{emailShakeTick > 0 ? (emailShakeTick % 2 ? 'shake-b' : 'shake-a') : ''}}" placeholder="name@example.com" value="{{email}}" bindinput="onInputEmail" />
       <view class="email-err" wx:if="{{emailErr}}">{{emailErr}}</view>
 
       <view class="label">你的故事（设计师按此开工，请写好、可修改）</view>
-      <textarea class="story-input" placeholder="写下你想做成画面感内容的故事正文；例如：人物、发生了什么、想表达什么……"
+      <textarea class="story-input {{storyShakeTick > 0 ? (storyShakeTick % 2 ? 'shake-b' : 'shake-a') : ''}}" placeholder="写下你想做成画面感内容的故事正文；例如：人物、发生了什么、想表达什么……"
                 value="{{story}}" bindinput="onInputStory" maxlength="{{storyMax}}" auto-height="true" />
       <view class="story-err" wx:if="{{storyErr}}">{{storyErr}}</view>
 
@@ -73,7 +73,7 @@
       <view class="contact-title">如有问题，随时联系我们</view>
       <view class="contact-line">邮箱：{{contact.email}}</view>
       <view class="contact-line">微信：{{contact.wechat}}</view>
-      <button class="copy-btn" bindtap="onCopyContact">复制联系方式</button>
+      <button class="copy-btn {{contactCopied ? 'copied' : ''}}" bindtap="onCopyContact">{{contactCopied ? '✓ 已复制' : '复制联系方式'}}</button>
       <button class="home-btn" bindtap="onBackHome">返回首页</button>
     </view>
   </block>

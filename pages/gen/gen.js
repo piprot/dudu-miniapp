@@ -100,7 +100,11 @@ Page({
     optRaw: '',
     optResult: '',
     optStats: { chars: 0, lines: 0, emojiCount: 0 },
-    optMode: 'antiFold'
+    optMode: 'antiFold',
+    // ── 交互升级（Apple 流体）：聚焦光环 / 复制翻转 / 生成失败抖动 ──
+    fieldFocus: '',          // 当前聚焦的字段 key（label/输入框高亮）
+    copiedKey: '',           // 正在展示「✓ 已复制」的按钮：sel | all | opt
+    genShakeTick: 0          // 生成失败计数：奇偶交替两套 keyframes，连续失败也重放抖动
   },
 
   onLoad() {
@@ -176,6 +180,10 @@ Page({
     this.setData({ form, filled, readyGen: hasAny });
   },
 
+  // 聚焦光环：记录当前聚焦字段（容器加 .focus → 输入框橙边 + 柔光）
+  onFieldFocus(e) { this.setData({ fieldFocus: e.currentTarget.dataset.key || '' }); },
+  onFieldBlur() { this.setData({ fieldFocus: '' }); },
+
   // 一键套模板出文案（纯本地字符串替换，不调云端）。
   onGenMoments() {
     const k = this.data.kind;
@@ -183,13 +191,14 @@ Page({
     const tplCount = (templates.TEMPLATES[k] || []).length;
     const filled = countFilled(FIELDS[k] || [], form);
     if (filled === 0) {
-      this.setData({ err: '先填一两项，或从「我的素材库」保存后自动填入' });
+      // 抖动提示：整个表单区左右轻晃（tick 奇偶交替保证连续失败也重放动画）
+      this.setData({ err: '先填一两项，或从「我的素材库」保存后自动填入', genShakeTick: (this.data.genShakeTick || 0) + 1 });
       return;
     }
     const moments = templates.render(k, form);
     const valid = moments.filter(m => m && m.trim().length > 0);
     if (!valid.length) {
-      this.setData({ err: '再补一两项内容，让模板有东西可套', moments: [], selectedMoment: 0 });
+      this.setData({ err: '再补一两项内容，让模板有东西可套', moments: [], selectedMoment: 0, genShakeTick: (this.data.genShakeTick || 0) + 1 });
       return;
     }
     this.setData({
@@ -221,18 +230,28 @@ Page({
   onCopyMoment() {
     const m = this.data.moments[this.data.selectedMoment];
     if (!m) return;
-    this.copyText(m, '已复制');
+    this.copyText(m, 'sel', '已复制');
   },
 
   onCopyAll() {
     if (!this.data.moments.length) return;
-    this.copyText(this.data.moments.join('\n\n——\n\n'), '已复制全部 ' + this.data.moments.length + ' 条');
+    this.copyText(this.data.moments.join('\n\n——\n\n'), 'all', '已复制全部 ' + this.data.moments.length + ' 条');
   },
 
-  copyText(text, tip) {
+  // 复制翻转反馈：按钮 rotateX 翻转变绿显示「✓ 已复制」，1.6s 后复原
+  copyText(text, key, tip) {
+    const self = this;
     wx.setClipboardData({
       data: text,
-      success() { wx.showToast({ title: tip, icon: 'none' }); },
+      success() {
+        if (key) {
+          self.setData({ copiedKey: key });
+          if (self._copyTimer) clearTimeout(self._copyTimer);
+          self._copyTimer = setTimeout(() => { self.setData({ copiedKey: '' }); }, 1600);
+        } else {
+          wx.showToast({ title: tip, icon: 'none' });
+        }
+      },
       fail() { wx.showToast({ title: '复制受限，请长按文案手动复制', icon: 'none', duration: 3200 }); }
     });
   },
@@ -308,7 +327,7 @@ Page({
   onCopyOpt() {
     const t = this.data.optResult;
     if (!t) return;
-    this.copyText(t, '已复制排版结果');
+    this.copyText(t, 'opt', '已复制排版结果');
   },
 
   // ── 分享能力（个人主体：原生转发 / 朋友圈正常开放）──

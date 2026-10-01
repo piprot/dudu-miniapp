@@ -70,8 +70,8 @@
         <text class="step-head-txt">填内容 · 共 {{fieldTotal}} 项，已填 {{filled}} 项</text>
         <text class="step-head-ok" wx:if="{{readyGen}}">✓ 够了</text>
       </view>
-      <view class="fields">
-        <view class="field" wx:for="{{fields}}" wx:key="key">
+      <view class="fields {{genShakeTick > 0 ? (genShakeTick % 2 ? 'shake-b' : 'shake-a') : ''}}">
+        <view class="field {{fieldFocus === item.key ? 'focus' : ''}}" wx:for="{{fields}}" wx:key="key">
           <view class="field-label"><text class="field-no">{{item.no}}</text>{{item.label}}<text class="req" wx:if="{{item.required}}"> *</text></view>
           <textarea
             wx:if="{{item.type === 'textarea'}}"
@@ -79,6 +79,8 @@
             placeholder="{{item.placeholder}}"
             value="{{form[item.key]}}"
             bindinput="onFieldInput"
+            bindfocus="onFieldFocus"
+            bindblur="onFieldBlur"
             data-key="{{item.key}}"
             maxlength="{{item.max || 500}}"
             auto-height></textarea>
@@ -88,6 +90,8 @@
             placeholder="{{item.placeholder}}"
             value="{{form[item.key]}}"
             bindinput="onFieldInput"
+            bindfocus="onFieldFocus"
+            bindblur="onFieldBlur"
             data-key="{{item.key}}"></input>
         </view>
       </view>
@@ -122,7 +126,7 @@
       <view class="opt-result" wx:if="{{optResult}}">
         <view class="opt-result-title">排版结果（长按可复制）</view>
         <view class="opt-result-text" user-select="true">{{optResult}}</view>
-        <button class="copy-btn primary" bindtap="onCopyOpt">📋 复制排版结果</button>
+        <button class="copy-btn primary {{copiedKey === 'opt' ? 'copied' : ''}}" bindtap="onCopyOpt">{{copiedKey === 'opt' ? '✓ 已复制' : '📋 复制排版结果'}}</button>
       </view>
     </block>
   </view>
@@ -142,8 +146,8 @@
           <view class="moment-text" user-select="true">{{item}}</view>
         </view>
       </view>
-      <button class="copy-btn primary" bindtap="onCopyMoment">📋 复制选中的文案</button>
-      <button class="copy-btn" bindtap="onCopyAll">复制全部 {{moments.length}} 条对比</button>
+        <button class="copy-btn primary {{copiedKey === 'sel' ? 'copied' : ''}}" bindtap="onCopyMoment">{{copiedKey === 'sel' ? '✓ 已复制' : '📋 复制选中的文案'}}</button>
+      <button class="copy-btn {{copiedKey === 'all' ? 'copied' : ''}}" bindtap="onCopyAll">{{copiedKey === 'all' ? '✓ 已复制' : '复制全部 ' + moments.length + ' 条对比'}}</button>
       <view class="copy-tip">长按文案也能唤出系统复制菜单</view>
 
       <!-- 知识库金句：点一下插到选中文案末尾（纯本地拼接，非生成） -->

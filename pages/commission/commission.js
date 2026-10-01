@@ -32,7 +32,11 @@ Page({
     couponTip: '',         // 持券提示（顶部，简）
     couponDetail: '',      // 券后价明细（原价/微信仍付全款/履约退差/券后实付）
     couponFinal: '',       // 确认页：本单用券结论
-    err: ''
+    err: '',
+    // 交互升级：复制翻转反馈 + 邮箱/故事错误抖动（tick 奇偶交替重放动画）
+    contactCopied: false,
+    emailShakeTick: 0,
+    storyShakeTick: 0
   },
   onLoad(query) {
     const tiers = (COMMISSION.tiers || []).map((t, i) => ({ ...t, sel: i === 0 }));
@@ -118,12 +122,12 @@ Page({
     const email = this.data.email.trim();
     const story = this.data.story.trim();
     if (!EMAIL_RE.test(email)) {
-      this.setData({ emailErr: '邮箱格式不正确，请检查（例：name@example.com）' });
+      this.setData({ emailErr: '邮箱格式不正确，请检查（例：name@example.com）', emailShakeTick: (this.data.emailShakeTick || 0) + 1 });
       return;
     }
     // 故事必填：设计师需要按你的文字开工，缺了就没法做
     if (!story) {
-      this.setData({ storyErr: '请写下你想做成画面感内容的故事或要点，设计师才能开工' });
+      this.setData({ storyErr: '请写下你想做成画面感内容的故事或要点，设计师才能开工', storyShakeTick: (this.data.storyShakeTick || 0) + 1 });
       return;
     }
     this.setData({ submitting: true, err: '' });
@@ -169,9 +173,14 @@ Page({
 
   onCopyContact() {
     const c = this.data.contact;
+    // 翻转反馈：按钮翻转变绿显示「✓ 已复制」，1.6s 后复原
     wx.setClipboardData({
       data: c.email + ' / 微信 ' + c.wechat,
-      success: () => wx.showToast({ title: '已复制联系方式', icon: 'none' }),
+      success: () => {
+        this.setData({ contactCopied: true });
+        if (this._copyTimer) clearTimeout(this._copyTimer);
+        this._copyTimer = setTimeout(() => { this.setData({ contactCopied: false }); }, 1600);
+      },
       fail: () => wx.showToast({ title: '复制失败', icon: 'none' })
     });
   },
