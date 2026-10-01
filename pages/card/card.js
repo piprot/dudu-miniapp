@@ -1,7 +1,12 @@
-// pages/card/card.js —— 画面感卡片 / 日签生成器（B 方向，纯本地 canvas，零 AI）
-// 选模板 → 填文字（可选本地选图）→ 本地 canvas 渲染卡片 → 存相册。
-// 全程不调用云端 / 不生成内容，不构成深度合成，个人主体可过审。
-const { CARD_TEMPLATES, computeCardLayout, drawCard } = require('../../utils/card_render');
+// pages/card/card.js —— 画面感卡片 / 日签生成器（纯本地 canvas，零 AI）
+// 选模板 → 选主题 → 填文字（可选本地图/背景图）→ 声明式引擎渲染 → 存相册。
+// 2026-10-01 重构：渲染切换到 模板(templates)×主题(themes)×引擎(render_engine) 三层解耦架构。
+const { CARD_TYPES, buildCardModel } = require('../../utils/templates/index');
+const { computeLayout, draw } = require('../../utils/core/render_engine');
+const { THEME_LIST } = require('../../utils/themes');
+const { exportAndSave, shareConfig } = require('../../utils/share');
+const { charge, costOf } = require('../../utils/charge');
+const daily = require('../../utils/templates/daily'); // 每日文案库：日签/金句每天自动换一条（本地确定性轮换，零 AI）
 
 const TYPE_KEYS = ['dailysign', 'quote', 'recommend', 'notice', 'checklist', 'imagetext'];
 
@@ -23,8 +28,9 @@ function getDpr() {
 }
 
 // 各模板的默认占位文本，降低首用门槛。
+// 日签正文不再写死：直接取「今日推荐」——每天自动换一条，同一自然日所有人看到同一条。
 const SEED = {
-  dailysign: { type: 'dailysign', title: todayLabel(), body: '把日子过成自己喜欢的样子。' },
+  dailysign: { type: 'dailysign', title: todayLabel(), body: daily.todayQuote().text },
   quote: { type: 'quote', title: '', body: '把复杂的事，讲简单；把简单的事，做扎实。', author: '' },
   recommend: { type: 'recommend', title: '推荐一件好物', body: '用了就回不去的小确幸，今天安利给你。', tag: '¥ 39 起', cover: '' },
   notice: { type: 'notice', title: '活动公告', body: '本周六晚 8 点，社群分享会准时开始，欢迎来聊。', author: '' },
@@ -34,14 +40,21 @@ const SEED = {
 
 Page({
   data: {
-    types: TYPE_KEYS.map(k => ({ key: k, name: CARD_TEMPLATES[k].name, hint: CARD_TEMPLATES[k].hint })),
+    types: TYPE_KEYS.map(k => ({ key: k, name: CARD_TYPES[k].name, hint: CARD_TYPES[k].scene })),
+    themes: THEME_LIST.map(t => ({ id: t.id, name: t.name })), // 主题选择器（6 套，数据驱动）
+    theme: 'warm',
     type: 'dailysign',
     form: SEED.dailysign,
     cover: '',
+    bgImg: '',             // 卡片背景图（可选，铺满整卡）
     showHelp: false,
     err: '',
     rendered: false,
-    canvasH: 0
+    canvasH: 0,
+    savedTick: 0,          // 保存成功翻转计数（奇偶交替换 keyframes，铁律 5）
+    savedKey: '',          // 'a'/'b' = 翻转中，'' = 常态（铁律 6 内联反馈替代 toast）
+    poolSize: daily.poolSizeFor('dailysign'),  // 当前类型文案库储备量（按钮展示「库存 N 条」）
+    cardCost: costOf('cardGen') || 20   // 生成卡片单价（来自 POINTS.cost，集中配置）
   },
 
   onLoad() {
@@ -50,11 +63,45 @@ Page({
     }
   },
 
+  // 切换主题（warm/fresh/graphite/zen/ticket/olive）——数据驱动，渲染引擎自动读取
+  onPickTheme(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!id || id === this.data.theme) return;
+    this.setData({ theme: id, rendered: false });
+  },
+
   onSelectType(e) {
     const k = e.currentTarget.dataset.key;
-    const seed = Object.assign({}, SEED[k]);
-    if (seed.items) seed.items = seed.items.join('\n'); // 清单以换行编辑
-    this.setData({ type: k, form: seed, cover: seed.cover || '', rendered: false, err: '' });
+    // 每类卡片都从自己的文案库取「今日推荐」种子（结构化类型返回 title/body/tag/items）
+    let seed;
+    if (k === 'dailysign') {
+      seed = { type: 'dailysign', title: todayLabel(), body: daily.todayQuote().text };
+    } else if (k === 'quote') {
+      seed = { type: 'quote', title: '', body: daily.todayQuote().text, author: '' };
+    } else {
+      seed = Object.assign({ type: k }, daily.seedForType(k) || {});
+      if (seed.items) seed.items = seed.items.join('\n'); // 清单以换行编辑
+      // 文案池异常时回退到静态种子，保证页面永远可用
+      if (!seed.body && !seed.items) seed = Object.assign({}, SEED[k] || { type: k });
+    }
+    this._quoteOffset = 0; // 每次切类型重置「换一套」进度
+    this.setData({ type: k, form: seed, cover: seed.cover || '', rendered: false, err: '', poolSize: daily.poolSizeFor(k) || daily.poolSize() });
+  },
+
+  // 「换一套」：从当前类型的文案库跳到下一套种子（同一天内不撞车，跨天回到当日主推）。
+  onShuffleQuote() {
+    const t = this.data.type;
+    this._quoteOffset = (this._quoteOffset || 0) + 1;
+    if (t === 'dailysign' || t === 'quote') {
+      const q = daily.todayQuote(this._quoteOffset);
+      this.setData({ form: Object.assign({}, this.data.form, { body: q.t }), rendered: false });
+      return;
+    }
+    const s = daily.seedForType(t, null, this._quoteOffset);
+    if (!s) return;
+    const seed = Object.assign({ type: t }, s);
+    if (seed.items) seed.items = seed.items.join('\n');
+    this.setData({ form: seed, rendered: false });
   },
 
   onField(e) {
@@ -86,40 +133,76 @@ Page({
     });
   },
 
-  buildModel() {
+  // 选择「背景图」：铺满整张卡片（与上方「配图」是不同槽位 —— 配图是内容图，背景图是底色）。
+  onChooseBgImage() {
+    const self = this;
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['album', 'camera'],
+      success(r) {
+        const p = r.tempFiles && r.tempFiles[0] && r.tempFiles[0].tempFilePath;
+        if (p) {
+          self.setData({ bgImg: p, rendered: false });
+          wx.showToast({ title: '已选背景图，点生成', icon: 'none' });
+        }
+      },
+      fail() { /* 用户取消，忽略 */ }
+    });
+  },
+
+  // 从表单收集内容数据（与渲染解耦，便于测试）
+  collectData() {
     const f = this.data.form;
-    const model = { type: this.data.type };
-    if (f.title !== undefined) model.title = f.title;
-    if (f.body !== undefined) model.body = f.body;
-    if (f.author !== undefined) model.author = f.author;
-    if (f.tag !== undefined) model.tag = f.tag;
-    if (this.data.cover) model.cover = this.data.cover;
+    const d = {};
+    if (f.title !== undefined) d.title = f.title;
+    if (f.body !== undefined) d.body = f.body;
+    if (f.author !== undefined) d.author = f.author;
+    if (f.tag !== undefined) d.tag = f.tag;
+    if (this.data.cover) d.cover = this.data.cover;
     if (this.data.type === 'checklist') {
-      model.items = String(f.items || '').split('\n').map(s => s.trim()).filter(Boolean);
+      d.items = String(f.items || '').split('\n').map(s => s.trim()).filter(Boolean);
     }
-    // 每日日签：右下角固定叠加包内小程序码（全自动，无需选图）。
+    // 所有卡片类型右下角固定叠加包内小程序码（全自动，无需选图）。
+    d.qr = QR_PATH;
+    // 每日日签：标题留空时自动用今天日期；正文留空时自动取「今日推荐」。
     if (this.data.type === 'dailysign') {
-      model.qr = QR_PATH;
-      model.title = model.title || todayLabel();   // 标题留空时自动用今天日期
+      d.title = d.title || todayLabel();
+      d.body = d.body || daily.todayQuote().text;
     }
-    return model;
+    // 背景图（可选，铺满整卡；模板层会自动转白字 + 引擎叠暗色蒙版保证可读）。
+    if (this.data.bgImg) d.bgImg = this.data.bgImg;
+    return d;
+  },
+
+  // 模板 × 主题 × 内容 → 声明式 model（交给引擎渲染）
+  buildModel() {
+    return buildCardModel(this.data.type, this.data.theme, this.collectData());
   },
 
   onGenCard() {
-    const model = this.buildModel();
-    const hasText = (model.title || model.body || (model.items && model.items.length) || model.author);
-    const tpl = CARD_TEMPLATES[this.data.type];
-    if (!hasText && !(tpl.hasCover && model.cover)) {
+    const d = this.collectData();
+    const hasText = (d.title || d.body || (d.items && d.items.length) || d.author);
+    const tpl = CARD_TYPES[this.data.type];
+    if (!hasText && !(tpl.hasCover && d.cover)) {
       this.setData({ err: '先填点内容，或选一张图再生成', rendered: false });
       return;
     }
+    const self = this;
+    const cost = this.data.cardCost;
     this.setData({ err: '' });
-    this.renderCard(model);
+    // 生成卡片要扣积分（复用 utils/charge 统一流程）；扣成功才渲染。
+    charge('cardGen', { label: '生成卡片', reason: '生成卡片' }).then(() => {
+      self.renderCard(d);
+      wx.showToast({ title: '已生成卡片（-' + cost + '）', icon: 'none' });
+    }).catch(() => {
+      // 余额不足 / 扣费失败：charge 内部已弹窗或提示，不渲染
+    });
   },
 
-  renderCard(model) {
+  renderCard(data) {
     const self = this;
-    const m = model || self.buildModel();
+    const d = data || self.collectData();
     wx.createSelectorQuery().select('#cardCanvas').fields({ node: true, size: true }).exec(res => {
       if (!res || !res[0] || !res[0].node) {
         self.setData({ err: '画布初始化失败，请重试' });
@@ -130,12 +213,14 @@ Page({
       const dpr = getDpr();
       const cssW = res[0].width || 340;
 
-      const layout = computeCardLayout(m, { width: cssW }, (t, f) => {
-        ctx.font = f;
+      // 文本测量：用真实 canvas measureText（按字号设置 font，保证折行准确）
+      const measure = (t, fontPx) => {
+        ctx.font = fontPx + 'px sans-serif';
         return ctx.measureText(t).width;
-      });
+      };
 
-      // 加载本地图片（封面 / 二维码）。全部加载完（失败也继续，对应槽位置 null）再绘制。
+      // 模板 × 主题 × 内容 → model（传入 canvas 实测 measure，折行更准）；再加载图片资产注入。
+      const model = buildCardModel(self.data.type, self.data.theme, d, { measure });
       const loadImg = (src) => new Promise(resolve => {
         const img = canvas.createImage();
         img.onload = () => resolve(img);
@@ -143,22 +228,44 @@ Page({
         img.src = src;
       });
       const jobs = [];
-      if (m.cover) jobs.push(loadImg(m.cover).then(im => { self._coverImg = im; }));
-      else self._coverImg = null;
-      if (m.qr) jobs.push(loadImg(m.qr).then(im => { self._qrImg = im; }));
-      else self._qrImg = null;
+      if (d.cover) jobs.push(loadImg(d.cover).then(im => {
+        const c = model.children.find(x => x.type === 'image' && x.src === d.cover);
+        if (c && im) c.asset = im;
+      }));
+      if (d.qr) jobs.push(loadImg(d.qr).then(im => {
+        const q = model.children.find(x => x.type === 'qrcode');
+        if (q && im) q.asset = im;
+      }));
+      if (d.bgImg) jobs.push(loadImg(d.bgImg).then(im => {
+        if (im) model.backgroundImageAsset = im;
+        else delete model.backgroundImage; // 背景图加载失败 → 回退主题渐变，不画占位
+      }));
 
-      const drawAll = () => {
-        canvas.width = Math.round(layout.width * dpr);
-        canvas.height = Math.round(layout.height * dpr);
-        ctx.scale(dpr, dpr);
-        drawCard(ctx, layout, { model: m, coverImg: self._coverImg, qrImg: self._qrImg });
+      Promise.all(jobs).then(() => {
+        const layout = computeLayout(model, {}, measure);
+        // 引擎按 340 逻辑宽布局；画布元素实际 css 宽 cssW → 等比缩放绘制，保证清晰不变形
+        const k = cssW / layout.width;
+        canvas.width = Math.round(layout.width * k * dpr);
+        canvas.height = Math.round(layout.height * k * dpr);
+        ctx.scale(dpr * k, dpr * k);
+        draw(ctx, layout);
         self.canvasNode = canvas;
-        self.setData({ canvasH: layout.height, rendered: true });
-      };
-
-      Promise.all(jobs).then(drawAll);
+        self._lastRecord = { kind: 'card', type: self.data.type, theme: self.data.theme, title: d.title || '', body: String(d.body || (d.items && d.items.join(' ')) || '').slice(0, 30) };
+        self.setData({ canvasH: Math.round(layout.height * k), rendered: true });
+      });
     });
+  },
+
+  // 保存成功翻转反馈（流体库 #27 · A 档）：rotateX 翻转变绿「✓ 已存相册」1.6s 复原；
+  // 双套 keyframes 奇偶交替重放（铁律 5）；timer 存 this 防竞态（铁律 6）。
+  flipSaved() {
+    const tick = (this.data.savedTick || 0) + 1;
+    if (this._saveTimer) clearTimeout(this._saveTimer);
+    this.setData({ savedTick: tick, savedKey: tick % 2 ? 'a' : 'b' });
+    this._saveTimer = setTimeout(() => {
+      this._saveTimer = null;
+      this.setData({ savedKey: '' });
+    }, 1600);
   },
 
   onSaveImage() {
@@ -167,35 +274,24 @@ Page({
       wx.showToast({ title: '请先生成卡片', icon: 'none' });
       return;
     }
-    wx.canvasToTempFilePath({
-      canvas: self.canvasNode,
-      success(r) { self.saveToAlbum(r.tempFilePath); },
-      fail() { wx.showToast({ title: '导出失败，请重试', icon: 'none' }); }
-    });
-  },
-
-  saveToAlbum(filePath) {
-    wx.saveImageToPhotosAlbum({
-      filePath,
-      success() { wx.showToast({ title: '已存到相册', icon: 'success' }); },
-      fail(e) {
-        const msg = (e && e.errMsg) || '';
-        if (/auth|deny|authorize/i.test(msg)) {
-          wx.showModal({
-            title: '需要相册权限',
-            content: '请在设置中允许「保存到相册」',
-            confirmText: '去设置',
-            success(r) { if (r.confirm) wx.openSetting(); }
-          });
-        } else {
-          wx.showToast({ title: '保存失败', icon: 'none' });
-        }
-      }
+    // 导出 → 存相册 → 自动记入本地历史（utils/share 统一闭环：防重复提交 + 文件校验）
+    exportAndSave(self, self.canvasNode, {
+      savingKey: '_saving',
+      historyTool: 'card',
+      historyRecord: self._lastRecord || { kind: 'card' }
+    }).then(() => {
+      self.flipSaved(); // 内联翻转替代成功 toast
+    }).catch((e) => {
+      const msg = (e && e.errMsg) || (e && e.message) || '';
+      if (msg === 'busy') return; // 防重复提交：保存中，静默
+      if (/auth|deny|authorize/i.test(msg)) return; // 权限引导由 album.js 内部处理
+      // 其余失败（导出/写入等）不允许静默：带真因提示，方便用户反馈与自查
+      wx.showToast({ title: '保存失败：' + (msg ? msg.slice(0, 40) : '请重试'), icon: 'none', duration: 2600 });
     });
   },
 
   onShareAppMessage() {
-    return { title: '选模板填文字，一键出日签卡片 · dudu 画面感', path: '/pages/card/card' };
+    return shareConfig('选模板填文字，一键出日签卡片 · dudu 画面感', '/pages/card/card');
   },
   onShareTimeline() {
     return { title: '选模板填文字，一键出日签卡片 · dudu 画面感', query: '' };

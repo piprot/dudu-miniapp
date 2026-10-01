@@ -3,6 +3,9 @@
 // 全程不调用云端 / 不生成内容，不构成深度合成，个人主体可过审。
 const { parseScript } = require('../../utils/comic_markup');
 const { computeLayout, draw } = require('../../utils/comic_render');
+const { THEME_LIST, palette } = require('../../utils/themes');
+const { exportAndSave, shareConfig } = require('../../utils/share');
+const { charge, costOf } = require('../../utils/charge');
 
 const SAMPLES = {
   story: `# 江边的告别
@@ -51,10 +54,15 @@ Page({
   data: {
     script: SAMPLES.story,
     cols: 2,
+    themes: THEME_LIST.map(t => ({ id: t.id, name: t.name })), // 主题选择器（6 套，数据驱动）
+    theme: 'warm',
     rendered: false,
     canvasH: 0,
     err: '',
-    showHelp: false
+    savedTick: 0,          // 保存成功翻转计数（奇偶交替换 keyframes，铁律 5）
+    savedKey: '',          // 'a'/'b' = 翻转中，'' = 常态
+    showHelp: false,
+    comicCost: costOf('comicGen') || 20   // 生成分镜单价（来自 POINTS.cost，集中配置）
   },
 
   onLoad() {
@@ -87,6 +95,14 @@ Page({
     if (this.data.rendered) this.renderComic();
   },
 
+  // 切换主题（warm/fresh/graphite/zen/ticket/olive）——已渲染时免费即时重绘，不重复扣积分。
+  onPickTheme(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!id || id === this.data.theme) return;
+    this.setData({ theme: id });
+    if (this.data.rendered) this.renderComic();
+  },
+
   // 解析 + 渲染到 canvas（2d 模式）。
   onGenComic() {
     const model = parseScript(this.data.script);
@@ -94,8 +110,16 @@ Page({
       this.setData({ err: '脚本里还没有分镜内容：用【分镜】或 --- 起头，写几句旁白 / 对白试试', rendered: false });
       return;
     }
+    const self = this;
+    const cost = this.data.comicCost;
     this.setData({ err: '' });
-    this.renderComic(model);
+    // 生成分镜要扣积分（复用 utils/charge 统一流程）；扣成功才渲染。
+    charge('comicGen', { label: '生成分镜', reason: '生成分镜' }).then(() => {
+      self.renderComic(model);
+      wx.showToast({ title: '已生成分镜（-' + cost + '）', icon: 'none' });
+    }).catch(() => {
+      // 余额不足 / 扣费失败：charge 内部已弹窗或提示，不渲染
+    });
   },
 
   renderComic(model) {
@@ -117,10 +141,23 @@ Page({
       canvas.width = Math.round(layout.width * dpr);
       canvas.height = Math.round(layout.height * dpr);
       ctx.scale(dpr, dpr);
-      draw(ctx, layout, { width: layout.width, cols: self.data.cols });
+      // 主题化配色：palette 喂给 draw，底色/标题/气泡/旁白随主题切换
+      draw(ctx, layout, { width: layout.width, cols: self.data.cols, theme: palette(self.data.theme) });
       self.canvasNode = canvas;
+      self._lastRecord = { kind: 'comic', theme: self.data.theme, title: m.title || '', panels: m.panels.length };
       self.setData({ canvasH: layout.height, rendered: true });
     });
+  },
+
+  // 保存成功翻转反馈（流体库 #27 · A 档）：timer 存 this 防竞态（铁律 6）。
+  flipSaved() {
+    const tick = (this.data.savedTick || 0) + 1;
+    if (this._saveTimer) clearTimeout(this._saveTimer);
+    this.setData({ savedTick: tick, savedKey: tick % 2 ? 'a' : 'b' });
+    this._saveTimer = setTimeout(() => {
+      this._saveTimer = null;
+      this.setData({ savedKey: '' });
+    }, 1600);
   },
 
   onSaveImage() {
@@ -129,35 +166,23 @@ Page({
       wx.showToast({ title: '请先生成分镜', icon: 'none' });
       return;
     }
-    wx.canvasToTempFilePath({
-      canvas: self.canvasNode,
-      success(r) { self.saveToAlbum(r.tempFilePath); },
-      fail() { wx.showToast({ title: '导出失败，请重试', icon: 'none' }); }
-    });
-  },
-
-  saveToAlbum(filePath) {
-    wx.saveImageToPhotosAlbum({
-      filePath,
-      success() { wx.showToast({ title: '已存到相册', icon: 'success' }); },
-      fail(e) {
-        const msg = (e && e.errMsg) || '';
-        if (/auth|deny|authorize/i.test(msg)) {
-          wx.showModal({
-            title: '需要相册权限',
-            content: '请在设置中允许「保存到相册」',
-            confirmText: '去设置',
-            success(r) { if (r.confirm) wx.openSetting(); }
-          });
-        } else {
-          wx.showToast({ title: '保存失败', icon: 'none' });
-        }
-      }
+    // 导出 → 存相册 → 自动记入本地历史（utils/share 统一闭环）
+    exportAndSave(self, self.canvasNode, {
+      savingKey: '_saving',
+      historyTool: 'comic',
+      historyRecord: self._lastRecord || { kind: 'comic' }
+    }).then(() => {
+      self.flipSaved(); // 内联翻转替代成功 toast
+    }).catch((e) => {
+      const msg = (e && e.errMsg) || (e && e.message) || '';
+      if (msg === 'busy') return; // 防重复提交：保存中，静默
+      if (/auth|deny|authorize/i.test(msg)) return; // 权限引导由 album.js 内部处理
+      wx.showToast({ title: '保存失败：' + (msg ? msg.slice(0, 40) : '请重试'), icon: 'none', duration: 2600 });
     });
   },
 
   onShareAppMessage() {
-    return { title: '写文字脚本，一键出分镜图 · dudu 画面感', path: '/pages/comic/comic' };
+    return shareConfig('写文字脚本，一键出分镜图 · dudu 画面感', '/pages/comic/comic');
   },
   onShareTimeline() {
     return { title: '写文字脚本，一键出分镜图 · dudu 画面感', query: '' };

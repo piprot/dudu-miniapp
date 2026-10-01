@@ -54,6 +54,20 @@ const SUITES = [
   'test/smoke_cloudfunctions.js',
   'test/test_frontend_guards.js',
   'test/test_constants_sync.js',
+  // ── 2026-10-01 重构新增：渲染引擎 / 模板 / 主题 / 每日文案库 / 扣费 / 卡片回归 ──
+  'test/test_render_engine.js',
+  'test/test_templates.js',
+  'test/test_daily_quotes.js',
+  'test/test_charge_units.js',
+  'test/test_fixes_regression.js',
+  'test_card.js',
+  'test/test_card_page.js',
+  // ── 2026-10-01 P4~P6：海报长图 / 历史收藏 / 分享闭环 / 海报页全链路 ──
+  'test/test_poster.js',
+  'test/test_history.js',
+  'test/test_poster_page.js',
+  // ── 2026-10-01 设计规范 + 流体交互（拖拽排序/保存翻转/令牌）──
+  'test/test_ui_fluid.js',
   'test/test_h5_comic.js',
   'test/test_ai_gen_units.js',
   'test/test_points_daily.js',

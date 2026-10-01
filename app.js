@@ -6,6 +6,7 @@ App({
   },
   onLaunch() {
     this.setupPrivacyGuard();
+    this.setupUpdateGuard();
     // 虚拟支付或个体户路径任一启用云开发，都在此初始化
     const env = (VIRTUAL_PAY.enabled && VIRTUAL_PAY.useCloud && VIRTUAL_PAY.cloudEnv)
       || (BACKEND.useCloud && BACKEND.env)
@@ -43,7 +44,7 @@ App({
       };
       wx.showModal({
         title: '隐私授权说明',
-        content: '为使用「添加图片」「复制文案」功能，需要你同意《隐私保护指引》。你的图片与文案仅用于本次操作，不会另作他用，也不会提供给第三方。',
+        content: '为使用「添加图片」「复制文案」「保存图片到相册」功能，需要你同意《隐私保护指引》。你的图片与文案仅用于本次操作，不会另作他用，也不会提供给第三方。',
         confirmText: '同意',
         cancelText: '暂不',
         success: (res) => {
@@ -73,5 +74,23 @@ App({
     } else if (typeof wx.onNeedPrivacyAuthorize === 'function') {
       wx.onNeedPrivacyAuthorize(handler);
     }
+  }
+
+  /**
+   * 版本更新守卫：审核通过发布后，新包在后台异步下载；就绪时提示用户重启生效。
+   * 没有它，发版修复只能等用户手动杀进程重进才生效——线上故障恢复会慢一个量级。
+   * 下载失败静默（用户下次冷启动自然拿到新包），不打扰。
+   */
+  ,setupUpdateGuard() {
+    if (typeof wx === 'undefined' || !wx.getUpdateManager) return;
+    const um = wx.getUpdateManager();
+    um.onUpdateReady(() => {
+      wx.showModal({
+        title: '更新提示',
+        content: '新版本已准备好，是否重启应用？',
+        success(r) { if (r.confirm) um.applyUpdate(); }
+      });
+    });
+    um.onUpdateFailed(() => { /* 静默兜底 */ });
   }
 });

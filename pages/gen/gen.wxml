@@ -21,6 +21,7 @@
     <view class="mode-switch">
       <view class="mode-tab {{mode === 'tpl' ? 'on' : ''}}" data-mode="tpl" bindtap="onSwitchMode">① 模板匹配</view>
       <view class="mode-tab {{mode === 'opt' ? 'on' : ''}}" data-mode="opt" bindtap="onSwitchMode">② 排版优化</view>
+      <view class="mode-tab {{mode === 'art' ? 'on' : ''}}" data-mode="art" bindtap="onSwitchMode" wx:if="{{showArticleMode}}">③ 公众号文章</view>
     </view>
 
     <!-- ========== ① 模板匹配 ========== -->
@@ -67,7 +68,7 @@
 
       <view class="step-head">
         <text class="step-head-no">②</text>
-        <text class="step-head-txt">填内容 · 共 {{fieldTotal}} 项，已填 {{filled}} 项</text>
+        <text class="step-head-txt">填内容 · 共 {{fieldTotal}} 项（填 1 项就能出文案，已填 {{filled}} 项）</text>
         <text class="step-head-ok" wx:if="{{readyGen}}">✓ 够了</text>
       </view>
       <view class="fields {{genShakeTick > 0 ? (genShakeTick % 2 ? 'shake-b' : 'shake-a') : ''}}">
@@ -100,21 +101,23 @@
         <text class="step-head-no">③</text>
         <text class="step-head-txt">{{readyGen ? '内容够了，点下面套模板' : '先填一两项，模板才好替你套上你的内容'}}</text>
       </view>
-      <button class="cta-btn" bindtap="onGenMoments">✨ 套模板出文案（免费）</button>
+      <button class="cta-btn" bindtap="onGenMoments">✨ 套模板出文案（{{genCost}} 积分）</button>
     </block>
 
-    <!-- ========== ② 排版优化 ========== -->
-    <block wx:if="{{mode === 'opt'}}">
-      <view class="opt-tip">粘贴一段你写好的文字，一键优化排版（纯本地处理，不上传服务器）。</view>
+    <!-- ========== ② 排版优化 / ③ 公众号文章（共用同一套本地排版工具）========== -->
+    <block wx:if="{{mode === 'opt' || mode === 'art'}}">
+      <view class="opt-tip" wx:if="{{mode === 'art'}}">粘贴公众号文章 / 长文，一键排版成可直接发的朋友圈文案（纯本地处理，不上传服务器、不用 AI 改写）。</view>
+      <view class="opt-tip" wx:else>粘贴一段你写好的文字，一键优化排版（纯本地处理，不上传服务器）。</view>
       <view class="opt-input-wrap">
-        <textarea class="opt-input" placeholder="粘贴或输入要排版的文字…" value="{{optRaw}}" bindinput="onOptInput" maxlength="2000" auto-height></textarea>
+        <textarea class="opt-input" placeholder="{{mode === 'art' ? '粘贴公众号文章 / 长文…' : '粘贴或输入要排版的文字…'}}" value="{{optRaw}}" bindinput="onOptInput" maxlength="2000" auto-height></textarea>
         <view class="opt-paste" bindtap="onPasteOpt">粘贴</view>
       </view>
+      <view class="opt-inspire" bindtap="onTodayInspire">💡 今日灵感：{{todayQuote}}</view>
 
       <view class="opt-tools">
-        <view class="opt-tool" bindtap="onOptAntiFold">📐 防折叠折行</view>
-        <view class="opt-tool" bindtap="onOptEmoji">😊 自动加 emoji</view>
-        <view class="opt-tool" bindtap="onOptSplit">↩️ 自动分段</view>
+        <view class="opt-tool" bindtap="onOptAntiFold">📐 防折叠折行（{{optCost}} 积分）</view>
+        <view class="opt-tool" bindtap="onOptEmoji">😊 自动加 emoji（{{optCost}} 积分）</view>
+        <view class="opt-tool" bindtap="onOptSplit">↩️ 自动分段（{{optCost}} 积分）</view>
       </view>
 
       <view class="opt-stats" wx:if="{{optResult}}">

@@ -50,9 +50,20 @@ const CARD_TEMPLATES = {
   }
 };
 
+// 各类型背景主题（浅色暖调渐变，保证深色文字可读；用作卡片底色）。
+// 与「画面感」基调一致：每日日签暖橙 / 金句米金 / 种草薄荷 / 公告天蓝 / 清单薰衣草 / 图文玫瑰。
+const THEMES = {
+  dailysign: ['#fff3e8', '#ffe2c6'],
+  quote:     ['#fdf8ee', '#f1e6cf'],
+  recommend: ['#eef8f1', '#d6efe0'],
+  notice:    ['#eef5fc', '#d7e8f6'],
+  checklist: ['#f4eefb', '#e3d8f4'],
+  imagetext: ['#fdeef3', '#f7dbe5']
+};
+
 const DEFAULTS = {
   width: 340,           // 画布 CSS 宽（由页面按元素实测宽度传入）
-  pad: 22,              // 卡片内边距
+  pad: 24,              // 卡片内边距（加宽，给内容更多呼吸感）
   radius: 18,           // 卡片圆角
   bg: '#ffffff',        // 卡片底色
   panelBg: '#fdf9f0',   // 占位 / 浅底块
@@ -61,15 +72,15 @@ const DEFAULTS = {
   accent: '#f5793b',    // 强调色（橙）
   lineHeight: 24,       // 正文行高
   titleFont: 'bold 24px sans-serif',
-  titleLH: 34,
+  titleLH: 42,          // 标题行距（加宽，避免多行标题挤在一起）
   bodyFont: '16px sans-serif',
   bodyLH: 25,
   quoteFont: 'italic 20px sans-serif',
   quoteLH: 30,
   smallFont: '13px sans-serif',
-  smallLH: 20,
+  smallLH: 24,          // 落款 / 出处 / 角标行距（加宽）
   coverH: 190,          // 配图高度
-  gap: 14,              // 区块间距
+  gap: 16,              // 区块间距（略加宽，排版更透气）
   pillPadX: 12,
   maxQuoteLines: 6,
   maxBodyLines: 14
@@ -131,6 +142,7 @@ function computeCardLayout(model, opts, measure) {
   const m = model || {};
   const type = CARD_TEMPLATES[m.type] ? m.type : 'quote';
   const tpl = CARD_TEMPLATES[type];
+  const theme = THEMES[type] || THEMES.quote;
   const innerW = o.width - o.pad * 2;
   let y = o.pad;
   const blocks = [];
@@ -167,13 +179,8 @@ function computeCardLayout(model, opts, measure) {
     y += lines.length * lh + o.gap;
   }
 
-  // ⑤ 小程序码（每日日签固定右下角；contain 等比完整绘制，绝不裁剪码点）。
+  // 小程序码占位（具体坐标在落款之后统一结算，确保任何卡片类型都带码且不重叠）。
   let qr = null;
-  if (type === 'dailysign' && m.qr) {
-    const qs = 56;
-    qr = { x: o.width - o.pad - qs, y: y, w: qs, h: qs };
-    y += qs + o.gap;
-  }
 
   // ⑤ 清单条目（逐条）。
   if (type === 'checklist' && Array.isArray(m.items)) {
@@ -199,7 +206,16 @@ function computeCardLayout(model, opts, measure) {
   if (m.author) {
     const wrapped = wrapText(m.author, innerW, measure);
     blocks.push({ kind: 'footer', x: o.pad, y: y, w: innerW, h: wrapped.length * o.smallLH, text: wrapped });
-    y += wrapped.length * o.smallLH + 4;
+    y += wrapped.length * o.smallLH + 12;   // 与底部留白之间留出更宽间距
+  }
+
+  // ⑧ 小程序码（所有卡片类型右下角收尾；contain 等比完整绘制，绝不裁剪码点）。
+  //    此前仅每日日签带码；现统一带码，方便发到朋友圈 / 群后扫码回流到小程序。
+  //    放在全部文字之后、作为收尾元素，避免与正文 / 清单 / 落款重叠。
+  if (m.qr) {
+    const qs = 56;
+    qr = { x: o.width - o.pad - qs, y: y, w: qs, h: qs };
+    y += qs + o.gap;
   }
 
   // 底部留白（抵扣最后一个 gap）。
@@ -212,6 +228,8 @@ function computeCardLayout(model, opts, measure) {
     type: type,
     pill: tpl.name,
     accent: o.accent,
+    bg: { grad: theme },
+    center: type === 'dailysign',
     blocks: blocks,
     cover: cover,
     qr: qr
@@ -251,13 +269,52 @@ function drawCard(ctx, layout, opts) {
   const m = (opts && opts.model) || {};
   const coverImg = opts && opts.coverImg;
   const qrImg = opts && opts.qrImg;
+  const bgImg = opts && opts.bgImg;
+  // 是否使用照片作背景：是则文字转白字 + 暗色蒙版；否则用类型主题渐变 + 深色字。
+  const onPhoto = !!(bgImg && bgImg.width && bgImg.height);
+  const ink = onPhoto ? '#ffffff' : o.ink;
+  const sub = onPhoto ? 'rgba(255,255,255,0.9)' : o.sub;
 
   ctx.clearRect(0, 0, layout.width, layout.height);
 
-  // 卡片底色（圆角）。
+  // 卡片底（圆角）：背景图 cover-fit 铺满 + 暗色蒙版（保证白字可读）；
+  // 否则用类型主题渐变（浅暖色，上压一层极淡白光增加质感）。
+  ctx.save();
   roundRectPath(ctx, 0, 0, layout.width, layout.height, o.radius);
-  ctx.fillStyle = o.bg;
-  ctx.fill();
+  ctx.clip();
+  if (onPhoto) {
+    const cw = layout.width, ch = layout.height;
+    const scale = Math.max(cw / bgImg.width, ch / bgImg.height);
+    const dw = bgImg.width * scale, dh = bgImg.height * scale;
+    ctx.drawImage(bgImg, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+    const og = ctx.createLinearGradient(0, 0, 0, ch);
+    og.addColorStop(0, 'rgba(15,14,22,0.32)');
+    og.addColorStop(1, 'rgba(15,14,22,0.52)');
+    ctx.fillStyle = og;
+    ctx.fillRect(0, 0, cw, ch);
+  } else {
+    const grad = (layout.bg && layout.bg.grad) || [o.bg, o.bg];
+    const g = ctx.createLinearGradient(0, 0, 0, layout.height);
+    g.addColorStop(0, grad[0]);
+    g.addColorStop(1, grad[1]);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, layout.width, layout.height);
+    const hg = ctx.createLinearGradient(0, 0, 0, layout.height);
+    hg.addColorStop(0, 'rgba(255,255,255,0.5)');
+    hg.addColorStop(0.45, 'rgba(255,255,255,0.06)');
+    hg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = hg;
+    ctx.fillRect(0, 0, layout.width, layout.height);
+  }
+  ctx.restore();
+
+  // 内描边：增加卡片「抬起」质感（照片背景用白线，渐变背景用淡灰线）。
+  ctx.save();
+  roundRectPath(ctx, 1, 1, layout.width - 2, layout.height - 2, o.radius);
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = onPhoto ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.06)';
+  ctx.stroke();
+  ctx.restore();
 
   // 顶部强调条（贴合圆角，不做溢出）。
   ctx.save();
@@ -270,7 +327,7 @@ function drawCard(ctx, layout, opts) {
   // 配图（在绘制文字前，紧跟在标题后区域；cover 已含坐标）。
   if (layout.cover) drawCover(ctx, layout.cover, coverImg);
 
-  // 小程序码（每日日签右下角）：白底描边 + contain 等比完整绘制（不裁剪码点）。
+  // 小程序码（所有卡片右下角收尾）：白底描边 + contain 等比完整绘制（不裁剪码点）。
   if (layout.qr) {
     const q = layout.qr;
     roundRectPath(ctx, q.x, q.y, q.w, q.h, 10);
@@ -294,38 +351,49 @@ function drawCard(ctx, layout, opts) {
   for (const b of layout.blocks) {
     switch (b.kind) {
       case 'pill': {
-        roundRectPath(ctx, b.x, b.y, b.w, b.h, b.h / 2);
+        const px = layout.center ? (o.width - b.w) / 2 : b.x;
+        roundRectPath(ctx, px, b.y, b.w, b.h, b.h / 2);
         ctx.fillStyle = o.accent;
         ctx.fill();
         ctx.fillStyle = '#ffffff';
         ctx.font = o.smallFont;
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'center';
-        ctx.fillText(b.text, b.x + b.w / 2, b.y + b.h / 2);
+        ctx.fillText(b.text, px + b.w / 2, b.y + b.h / 2);
         ctx.textAlign = 'left';
         break;
       }
       case 'title': {
-        ctx.fillStyle = o.ink;
+        ctx.fillStyle = ink;
         ctx.font = o.titleFont;
         ctx.textBaseline = 'top';
-        for (let i = 0; i < b.text.length; i++) {
-          ctx.fillText(b.text[i], b.x, b.y + i * o.titleLH);
+        if (layout.center) {
+          ctx.textAlign = 'center';
+          for (let i = 0; i < b.text.length; i++) ctx.fillText(b.text[i], o.width / 2, b.y + i * o.titleLH);
+          ctx.textAlign = 'left';
+        } else {
+          for (let i = 0; i < b.text.length; i++) ctx.fillText(b.text[i], b.x, b.y + i * o.titleLH);
         }
         break;
       }
       case 'body': {
-        ctx.fillStyle = b.quote ? o.ink : o.ink;
+        ctx.fillStyle = ink;
         ctx.font = b.font;
         ctx.textBaseline = 'top';
-        for (let i = 0; i < b.text.length; i++) {
-          ctx.fillText(b.text[i], b.x, b.y + i * b.lh);
+        if (layout.center) {
+          ctx.textAlign = 'center';
+          for (let i = 0; i < b.text.length; i++) ctx.fillText(b.text[i], o.width / 2, b.y + i * b.lh);
+          ctx.textAlign = 'left';
+        } else {
+          for (let i = 0; i < b.text.length; i++) ctx.fillText(b.text[i], b.x, b.y + i * b.lh);
         }
         if (b.quote) {
-          // 引号装饰：左上角大引号。
+          // 引号装饰：左上角（居中时移到正上方居中）大引号。
           ctx.fillStyle = o.accent;
           ctx.font = 'bold 40px sans-serif';
-          ctx.fillText('“', b.x - 2, b.y - 18);
+          ctx.textAlign = 'center';
+          ctx.fillText('“', layout.center ? o.width / 2 : b.x - 2, b.y - 18);
+          ctx.textAlign = 'left';
         }
         break;
       }
@@ -345,7 +413,7 @@ function drawCard(ctx, layout, opts) {
         ctx.lineWidth = 2;
         ctx.stroke();
         // 文本（右侧缩进）。
-        ctx.fillStyle = o.ink;
+        ctx.fillStyle = ink;
         ctx.font = o.bodyFont;
         ctx.textBaseline = 'top';
         for (let i = 0; i < b.text.length; i++) {
@@ -366,14 +434,18 @@ function drawCard(ctx, layout, opts) {
         break;
       }
       case 'footer': {
-        ctx.fillStyle = o.sub;
+        ctx.fillStyle = sub;
         ctx.font = o.smallFont;
         ctx.textBaseline = 'top';
-        ctx.textAlign = 'right';
-        for (let i = 0; i < b.text.length; i++) {
-          ctx.fillText(b.text[i], b.x + b.w, b.y + i * o.smallLH);
+        if (layout.center) {
+          ctx.textAlign = 'center';
+          for (let i = 0; i < b.text.length; i++) ctx.fillText(b.text[i], o.width / 2, b.y + i * o.smallLH);
+          ctx.textAlign = 'left';
+        } else {
+          ctx.textAlign = 'right';
+          for (let i = 0; i < b.text.length; i++) ctx.fillText(b.text[i], b.x + b.w, b.y + i * o.smallLH);
+          ctx.textAlign = 'left';
         }
-        ctx.textAlign = 'left';
         break;
       }
     }

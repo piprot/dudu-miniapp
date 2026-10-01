@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dudu 画面感 · 卡片渲染可视化冒烟预览（真实引擎代码）</title>
+<style>
+  body { margin: 0; padding: 24px; background: #17181c; color: #e8e4da;
+         font-family: "PingFang SC", "Microsoft YaHei", sans-serif; }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  .sub { font-size: 13px; color: #9a958a; margin-bottom: 18px; line-height: 1.7; }
+  .sub b { color: #e8c06a; }
+  .grid { display: flex; flex-wrap: wrap; gap: 18px; }
+  .cell { width: 240px; }
+  .cell .tag { font-size: 12px; color: #9a958a; margin-bottom: 6px; }
+  .cell canvas { width: 224px; box-shadow: 0 6px 24px rgba(0,0,0,.45); border-radius: 10px; }
+  .demo { margin-top: 28px; padding-top: 18px; border-top: 1px dashed #3a3b40; }
+</style>
+</head>
+<body>
+<h1>dudu 画面感 · 卡片渲染可视化冒烟预览</h1>
+<div class="sub" id="info"></div>
+<div class="grid" id="grid"></div>
+<div class="demo">
+  <h1>照片背景模式演示（铺满 + 暗色蒙版 + 白字）</h1>
+  <div class="grid" id="grid2"></div>
+</div>
+<div class="demo">
+  <h1>海报长图（6 主题 + 照片背景 · 头像首字占位 + 昵称 + 专属码）</h1>
+  <div class="grid" id="grid3"></div>
+</div>
+
+<script>
+const __mods = {};
+function __def(name, fn) { const m = { exports: {} }; fn(m, m.exports, __req); __mods[name] = m; }
+const __MAP = { '../themes': 'themes', '../core/render_engine': 'render_engine' };
+function __req(p) { const m = __mods[__MAP[p] || p]; if (!m) throw new Error('module not found: ' + p); return m.exports; }
+</script>
+<script>__def('render_engine', function (module, exports, require) {
+// utils/core/render_engine.js
+// ─────────────────────────────────────────────────────────────────────────────
+// 声明式渲染引擎（2026-10-01 整体重构核心）
+//
+// 借鉴 inottn/mini-poster 的 children[] 配置模型：一份「布局描述」(model) 即可驱动
+// Canvas 2D 绘制，元素类型化、坐标声明式、可嵌套（container）。取代原先写死在
+// card_render / comic_render 里的特例绘制逻辑，让「加一种卡片/海报/长图」变成加一份
+// 数据，而不是加一堆 if/else。
+//
+// 设计：
+//   computeLayout(model, opts, measure)  → 纯函数，把 model 解析成绝对坐标的 blocks[]（可单测，无需 wx）
+//   draw(ctx, layout, assets)            → 把 blocks 画到 canvas（需要 ctx；测试中用 fakeCtx）
+//   renderToCanvas(canvas, model, assets)→ 小程序端一键：算布局 + 适配 dpr + 绘制（仅运行期用）
+//
+// 元素类型（type）：
+//   container  嵌套容器（left/top/width/height + children）
+//   rect      纯色/描边矩形（背景块、分隔条）
+//   gradient   线性渐变矩形（背景、色块）
+//   image     图片（src + objectFit: cover|contain|fill；asset 为已加载的 Image 对象）
+//   text      文本（自动折行 + lineClamp 省略号 + textAlign）
+//   qrcode    二维码（contain 完整绘制，绝不裁剪码点；asset 为已加载图片）
+//   line      细线（分隔线）
+// ─────────────────────────────────────────────────────────────────────────────
+'use strict';
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  const rr = Math.max(0, Math.min(r, w / 2, h / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+
+// 默认文本测量：CJK 按字号宽，ASCII 半宽（与现有 wrapText 口径一致，保证布局可比）
+function defaultMeasure(text, fontPx) {
+  let w = 0;
+  for (const ch of String(text)) {
+    const c = ch.codePointAt(0);
+    if (c >= 0x2e80 && c <= 0xffef) w += fontPx;
+    else if (ch === ' ') w += fontPx * 0.3;
+    else w += fontPx * 0.55;
+  }
+  return w;
+}
+
+// 按 maxWidth 折行，返回行数组
+function wrapText(text, maxWidth, measure, fontPx) {
+  const out = [];
+  let line = '';
+  for (const ch of String(text)) {
+    const test = line + ch;
+    if (measure(test, fontPx) > maxWidth && line) {
+      out.push(line);
+      line = ch;
+    } else {
+      line = test;
+    }
+  }
+  if (line) out.push(line);
+  return out;
+}
+
+// 把一行按最大字数硬截断（兜底，防止单字超宽）
+function truncateLine(line, maxWidth, measure, fontPx, ellipsis) {
+  if (measure(line, fontPx) <= maxWidth) return line;
+  let s = line;
+  while (s.length > 1 && measure(s + ellipsis, fontPx) > maxWidth) s = s.slice(0, -1);
+  return s + ellipsis;
+}
+
+function layoutText(el, x, y, w, h, blocks, measure) {
+  const fontPx = el.fontSize || 14;
+  const lh = el.lineHeight || Math.round(fontPx * 1.43);
+  const maxLines = el.lineClamp || 999;
+  let lines = wrapText(el.content || '', w, measure, fontPx);
+  if (lines.length > maxLines) {
+    const kept = lines.slice(0, maxLines);
+    // 最后一行若还可塞字，尝试合并进省略号（更像真省略）
+    let last = kept[maxLines - 1];
+    const remain = lines.slice(maxLines).join('');
+    if (last.length < 40) last = truncateLine(last + remain, w, measure, fontPx, '…');
+    else last = truncateLine(last, w, measure, fontPx, '…');
+    kept[maxLines - 1] = last;
+    lines = kept;
+  }
+  blocks.push({
+    type: 'text', x, y, w, h,
+    lines,
+    color: el.color || '#222',
+    fontPx, lh,
+    fontWeight: el.fontWeight || 'normal',
+    fontFamily: el.fontFamily || 'sans-serif',
+    align: el.textAlign || 'left',
+    letterSpacing: el.letterSpacing || 0
+  });
+}
+
+// 递归布局：把 children 解析为绝对坐标 blocks
+function layoutChildren(children, ox, oy, parentW, parentH, blocks, measure, opts) {
+  if (!Array.isArray(children)) return;
+  for (const el of children) {
+    if (!el) continue;
+    const x = ox + (typeof el.left === 'function' ? el.left() : (el.left || 0));
+    const y = oy + (typeof el.top === 'function' ? el.top() : (el.top || 0));
+    const w = (typeof el.width === 'function' ? el.width() : (el.width != null ? el.width : parentW));
+    const h = (typeof el.height === 'function' ? el.height() : (el.height != null ? el.height : parentH));
+    const type = el.type || 'rect';
+
+    if (type === 'container') {
+      const clip = el.overflow === 'hidden';
+      if (clip) blocks.push({ type: 'clipBegin', x, y, w, h, radius: el.radius || 0 });
+      layoutChildren(el.children, x, y, w, h, blocks, measure, opts);
+      if (clip) blocks.push({ type: 'clipEnd' });
+    } else if (type === 'text') {
+      layoutText(el, x, y, w, h, blocks, measure);
+    } else if (type === 'image') {
+      blocks.push({ type: 'image', x, y, w, h, radius: el.radius || 0, objectFit: el.objectFit || 'cover', src: el.src, asset: el.asset });
+    } else if (type === 'qrcode') {
+      const s = el.size || el.width || w;
+      blocks.push({ type: 'qrcode', x, y, w: s, h: s, asset: el.asset, radius: el.radius || 0 });
+    } else if (type === 'circle') {
+      const dd = el.d || el.width || 20;
+      blocks.push({ type: 'circle', x, y, d: dd, background: el.background || '#333' });
+    } else if (type === 'line') {
+      blocks.push({ type: 'line', x, y, w, h, color: el.color || '#e5e5e5', thickness: el.thickness || 1 });
+    } else if (type === 'gradient') {
+      blocks.push({ type: 'gradient', x, y, w, h, radius: el.radius || 0, colors: el.colors || ['#fff', '#fff'], direction: el.direction || 'v' });
+    } else { // rect
+      blocks.push({ type: 'rect', x, y, w, h, radius: el.radius || 0, background: el.background, border: el.border || 0, borderColor: el.borderColor || '#000' });
+    }
+  }
+}
+
+function computeLayout(model, opts, measure) {
+  const o = Object.assign({ width: 375, height: 600, radius: 0, pad: 0 }, opts || {});
+  const m = Object.assign({ width: o.width, height: o.height, children: [] }, model || {});
+  measure = measure || defaultMeasure;
+  const blocks = [];
+
+  // 根圆角：整卡按圆角裁剪（所有背景/子元素都被裁进圆角矩形内）
+  if (m.radius) {
+    blocks.push({ type: 'clipBegin', x: 0, y: 0, w: m.width, h: m.height, radius: m.radius });
+  }
+
+  // 画布底层，三选一（优先级：照片背景 > 纯色 > 渐变）：
+  //   backgroundImage —— 照片铺满（cover-fit）+ 暗色线性蒙版（保证上层白字可读）；
+  //   background      —— 纯色；
+  //   gradient        —— 两色线性渐变。
+  // backgroundImageAsset 由调用方加载图片后注入（computeLayout 保持纯函数）。
+  if (m.backgroundImage) {
+    blocks.push({ type: 'image', x: 0, y: 0, w: m.width, h: m.height, radius: 0, objectFit: 'cover', asset: m.backgroundImageAsset });
+    blocks.push({ type: 'gradient', x: 0, y: 0, w: m.width, h: m.height, radius: 0, colors: ['rgba(15,14,22,0.32)', 'rgba(15,14,22,0.52)'], direction: 'v' });
+  } else if (m.background) {
+    blocks.push({ type: 'rect', x: 0, y: 0, w: m.width, h: m.height, radius: m.radius || 0, background: m.background });
+  } else if (m.gradient) {
+    blocks.push({ type: 'gradient', x: 0, y: 0, w: m.width, h: m.height, radius: m.radius || 0, colors: m.gradient, direction: 'v' });
+  }
+
+  layoutChildren(m.children || [], 0, 0, m.width, m.height, blocks, measure, o);
+
+  if (m.radius) {
+    blocks.push({ type: 'clipEnd' });
+  }
+  return { width: m.width, height: m.height, blocks };
+}
+
+// ── 绘制 ──
+function draw(ctx, layout, assets) {
+  assets = assets || {};
+  const dpr = assets.dpr || 1;
+  ctx.clearRect(0, 0, layout.width * dpr, layout.height * dpr);
+  let clipDepth = 0;
+  for (const b of layout.blocks) {
+    if (b.type === 'clipBegin') {
+      ctx.save();
+      roundRectPath(ctx, b.x, b.y, b.w, b.h, b.radius);
+      ctx.clip();
+      clipDepth++;
+      continue;
+    }
+    if (b.type === 'clipEnd') {
+      if (clipDepth > 0) { ctx.restore(); clipDepth--; }
+      continue;
+    }
+    if (b.type === 'rect') {
+      if (b.background) {
+        if (b.radius) { roundRectPath(ctx, b.x, b.y, b.w, b.h, b.radius); ctx.fillStyle = b.background; ctx.fill(); }
+        else { ctx.fillStyle = b.background; ctx.fillRect(b.x, b.y, b.w, b.h); }
+      }
+      if (b.border) {
+        roundRectPath(ctx, b.x, b.y, b.w, b.h, b.radius);
+        ctx.lineWidth = b.border; ctx.strokeStyle = b.borderColor; ctx.stroke();
+      }
+    } else if (b.type === 'gradient') {
+      const g = ctx.createLinearGradient(b.x, b.y, b.direction === 'h' ? b.x + b.w : b.x, b.direction === 'h' ? b.y : b.y + b.h);
+      const cs = b.colors.length ? b.colors : ['#fff', '#fff'];
+      g.addColorStop(0, cs[0]);
+      g.addColorStop(1, cs[cs.length - 1]);
+      if (b.radius) { roundRectPath(ctx, b.x, b.y, b.w, b.h, b.radius); } else { ctx.beginPath(); ctx.rect(b.x, b.y, b.w, b.h); }
+      ctx.fillStyle = g; ctx.fill();
+    } else if (b.type === 'circle') {
+      ctx.fillStyle = b.background;
+      ctx.beginPath();
+      ctx.arc(b.x + b.d / 2, b.y + b.d / 2, b.d / 2, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (b.type === 'line') {
+      ctx.fillStyle = b.color;
+      if (b.h <= b.thickness) ctx.fillRect(b.x, b.y, b.w, b.thickness);
+      else ctx.fillRect(b.x, b.y, b.thickness, b.h);
+    } else if (b.type === 'text') {
+      ctx.fillStyle = b.color;
+      ctx.textBaseline = 'top';
+      ctx.textAlign = b.align;
+      const anchorX = b.align === 'center' ? b.x + b.w / 2 : (b.align === 'right' ? b.x + b.w : b.x);
+      for (let i = 0; i < b.lines.length; i++) {
+        const ty = b.y + i * b.lh;
+        ctx.font = (b.fontWeight !== 'normal' ? b.fontWeight + ' ' : '') + b.fontPx + 'px ' + b.fontFamily;
+        ctx.fillText(b.lines[i], anchorX, ty);
+      }
+    } else if (b.type === 'image') {
+      if (b.asset && b.asset.width && b.asset.height) drawCover(ctx, b, b.asset);
+      else drawPlaceholder(ctx, b, '图');
+    } else if (b.type === 'qrcode') {
+      if (b.asset && b.asset.width && b.asset.height) drawContain(ctx, b, b.asset);
+      else drawPlaceholder(ctx, b, '码');
+    }
+  }
+  while (clipDepth > 0) { ctx.restore(); clipDepth--; }
+}
+
+function drawCover(ctx, b, img) {
+  const scale = Math.max(b.w / img.width, b.h / img.height);
+  const dw = img.width * scale, dh = img.height * scale;
+  const dx = b.x - (dw - b.w) / 2, dy = b.y - (dh - b.h) / 2;
+  if (b.radius) { roundRectPath(ctx, b.x, b.y, b.w, b.h, b.radius); ctx.save(); ctx.clip(); ctx.drawImage(img, dx, dy, dw, dh); ctx.restore(); }
+  else ctx.drawImage(img, dx, dy, dw, dh);
+}
+
+function drawContain(ctx, b, img) {
+  const scale = Math.min(b.w / img.width, b.h / img.height);
+  const dw = img.width * scale, dh = img.height * scale;
+  const dx = b.x + (b.w - dw) / 2, dy = b.y + (b.h - dh) / 2;
+  ctx.drawImage(img, dx, dy, dw, dh);
+}
+
+function drawPlaceholder(ctx, b, label) {
+  if (b.radius) { roundRectPath(ctx, b.x, b.y, b.w, b.h, b.radius); ctx.fillStyle = '#efe7d8'; ctx.fill(); }
+  else { ctx.fillStyle = '#efe7d8'; ctx.fillRect(b.x, b.y, b.w, b.h); }
+  ctx.fillStyle = '#b3a890'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(label, b.x + b.w / 2, b.y + b.h / 2);
+  ctx.textAlign = 'left';
+}
+
+// 小程序端一键渲染（仅运行期；测试请直接用 computeLayout + draw）
+function renderToCanvas(canvas, model, assets) {
+  return new Promise((resolve, reject) => {
+    try {
+      const info = (wx && wx.getWindowInfo) ? wx.getWindowInfo() : { pixelRatio: 2 };
+      const dpr = info.pixelRatio || 2;
+      const ctx = canvas.getContext('2d');
+      const layout = computeLayout(model, { width: model.width, height: model.height }, defaultMeasure);
+      canvas.width = model.width * dpr;
+      canvas.height = model.height * dpr;
+      ctx.scale(dpr, dpr);
+      draw(ctx, layout, Object.assign({ dpr }, assets));
+      resolve(layout);
+    } catch (e) { reject(e); }
+  });
+}
+
+module.exports = {
+  computeLayout,
+  draw,
+  renderToCanvas,
+  wrapText,
+  roundRectPath,
+  defaultMeasure
+};
+
+});</script>
+<script>__def('themes', function (module, exports, require) {
+// utils/themes/index.js
+// ─────────────────────────────────────────────────────────────────────────────
+// 数据化主题系统（2026-10-01 整体重构）
+//
+// 借鉴 isjiamu/gzh-design-skill 的「主题 = 角色化色板」思路：每套主题不是拍脑袋配色，
+// 而是固定的角色分工（主色 / 浅底 / 灰阶 / 点睛 / 下划线），保证产出下限稳定、风格不飘。
+// 克制三原则（沿用其方法论）：
+//   ① 主色只在锚点出现（标题/强调/封面色），大面积留白+灰阶承重（≈90% 文字交给中性灰阶）；
+//   ② 彩色只做点缀，一段内高亮 ≤ 2 种；
+//   ③ 主题可切换、可扩展——新增一套只需在此追加一个对象，渲染引擎自动读取。
+//
+// 主题字段：
+//   id, name, scene  标识与适用场景
+//   colors.bg        [c1, c2] 画布渐变（cards/poster 背景）
+//   colors.bgSolid   纯色兜底（无渐变时）
+//   colors.primary   主色（锚点强调）
+//   colors.bgSoft    主色系浅底（卡片/引用块/标签底）
+//   colors.ink       正文主色（深灰阶）
+//   colors.sub       次要文字（中灰阶）
+//   colors.line      分割线
+//   colors.accent    点睛高亮（与主色冷暖对比的第二色）
+//   colors.underline 关键词下划线（主色浅版）
+//   cjkFont          中文字体栈
+//   radius           圆角基准
+//   spacing          间距基准
+// ─────────────────────────────────────────────────────────────────────────────
+'use strict';
+
+const THEMES = {
+  warm: {
+    id: 'warm', name: '暖橙', scene: '教程 / 测评 / 清单 / 工具盘点',
+    colors: {
+      bg: ['#fff3e8', '#ffe2c6'], bgSolid: '#fff6ee',
+      primary: '#E8833A', bgSoft: '#fde9d8',
+      ink: '#3a2f28', sub: '#8a7a6e', line: '#ecd9c6',
+      accent: '#2f9e8f', underline: '#f7c9a3'
+    },
+    cjkFont: '"PingFang SC", "Microsoft YaHei", sans-serif', radius: 16, spacing: 16
+  },
+  fresh: {
+    id: 'fresh', name: '清新绿', scene: '生活 / 知识 / 治愈 / 公众号',
+    colors: {
+      bg: ['#eef8f1', '#d6efe0'], bgSolid: '#f1faf3',
+      primary: '#059669', bgSoft: '#d8f0e4',
+      ink: '#243a30', sub: '#6f8a7e', line: '#cfe7da',
+      accent: '#e0a32e', underline: '#a7e3c8'
+    },
+    cjkFont: '"PingFang SC", "Microsoft YaHei", sans-serif', radius: 16, spacing: 16
+  },
+  graphite: {
+    id: 'graphite', name: '石墨极简', scene: '设计 / 科技评论 / 专业观点',
+    colors: {
+      bg: ['#fafafa', '#ededed'], bgSolid: '#f6f6f6',
+      primary: '#52525B', bgSoft: '#ececec',
+      ink: '#1f2024', sub: '#7a7d85', line: '#e2e2e2',
+      accent: '#2563eb', underline: '#c9c9cf'
+    },
+    cjkFont: '"PingFang SC", "Microsoft YaHei", sans-serif', radius: 10, spacing: 14
+  },
+  zen: {
+    id: 'zen', name: '留白禅意', scene: '极简生活 / 深度随笔',
+    colors: {
+      bg: ['#f6f5f1', '#e9e7df'], bgSolid: '#f4f3ef',
+      primary: '#4A5D52', bgSoft: '#e3e8e2',
+      ink: '#33372f', sub: '#8b8d82', line: '#dddcd2',
+      accent: '#b08442', underline: '#c3cfc6'
+    },
+    cjkFont: '"Songti SC", "SimSun", serif', radius: 8, spacing: 20
+  },
+  ticket: {
+    id: 'ticket', name: '票据风', scene: '工具对比 / 创意评测',
+    colors: {
+      bg: ['#fff8ec', '#fdeecb'], bgSolid: '#fffaf0',
+      primary: '#D97706', bgSoft: '#fdeecb',
+      ink: '#3a3022', sub: '#8a7a5e', line: '#ecdcb6',
+      accent: '#0e7490', underline: '#f6d99a'
+    },
+    cjkFont: '"PingFang SC", "Microsoft YaHei", sans-serif', radius: 6, spacing: 14
+  },
+  olive: {
+    id: 'olive', name: '橄榄手记', scene: '内刊手记 / 深度评测 / 案例复盘',
+    colors: {
+      bg: ['#23241f', '#2c2d27'], bgSolid: '#23241f',
+      primary: '#c9b27e', bgSoft: '#33342c',
+      ink: '#f1ede2', sub: '#a9a596', line: '#3d3e36',
+      accent: '#7fa06a', underline: '#6f6450'
+    },
+    cjkFont: '"Songti SC", "SimSun", serif', radius: 8, spacing: 16
+  }
+};
+
+const THEME_LIST = Object.keys(THEMES).map(k => THEMES[k]);
+
+function getTheme(id) {
+  return THEMES[id] || THEMES.warm;
+}
+
+// 给定主题，返回一套可直接喂给渲染引擎的「背景/文字色」快捷表（供各工具复用）
+function palette(id) {
+  const t = getTheme(id);
+  const c = t.colors;
+  return {
+    bg: c.bg, bgSolid: c.bgSolid,
+    ink: c.ink, sub: c.sub, line: c.line,
+    primary: c.primary, bgSoft: c.bgSoft, accent: c.accent, underline: c.underline,
+    cjkFont: t.cjkFont, radius: t.radius, spacing: t.spacing
+  };
+}
+
+module.exports = { THEMES, THEME_LIST, getTheme, palette };
+
+});</script>
+<script>__def('templates', function (module, exports, require) {
+// utils/templates/index.js
+// ─────────────────────────────────────────────────────────────────────────────
+// 内容模板库（2026-10-01 v2：排版精修，借鉴小红书设计规范 + gzh-design-skill）
+//
+// 三层解耦不变：模板(templates) × 主题(themes) × 引擎(render_engine)。
+//
+// v2 排版策略（有出处）：
+//   ① 流式布局 + 真实测量：每段文字先量出真实行数再落位（v1 拍脑袋估行数 → 空隙难看）。
+//   ② 三段式结构（小红书卡片公式）：左上小标签 → 中部主体 → 底部信息行。
+//   ③ 行距 1.7+（小红书规范 1.5–2 倍）：标题 20/28、金句 17/30、正文 14/24、小字 10–12/18。
+//   ④ 清单用圆形数字徽章（规范：列表别用冷冰冰的 1.2.3. 硬怼）。
+//   ⑤ 公告标题用主色左竖条（gzh：小标签/左竖条 > 虚线框）。
+//   ⑥ 配图统一 16:10 比例、统一圆角 12、底部渐晕 + 1px 内描边（细节感）。
+//   ⑦ 落款与小程序码同行（节省纵向空间，右下角不空旷）。
+//   ⑧ 字体走主题 cjkFont（≤2 种：标题粗体 + 正文常规）；主色只做锚点（≤5 处）。
+//
+// buildCardModel(type, themeId, data, opts) → 渲染引擎的 model（children[]）
+//   type: dailysign | quote | recommend | notice | checklist | imagetext
+//   data: { title, body, author, tag, items[], cover, qr, bgImg }
+//   opts: { measure } 可选（页面传 canvas measureText 提升折行精度；缺省用内置估算）
+// ─────────────────────────────────────────────────────────────────────────────
+'use strict';
+const { getTheme, palette } = require('../themes');
+const { wrapText, defaultMeasure } = require('../core/render_engine');
+
+const CARD_TYPES = {
+  dailysign: { id: 'dailysign', name: '每日日签', scene: '早安/晚安心语', hasCover: false },
+  quote:     { id: 'quote',     name: '金句卡',   scene: '一句话观点',   hasCover: false },
+  recommend: { id: 'recommend', name: '种草卡',   scene: '好物推荐',     hasCover: true },
+  notice:    { id: 'notice',    name: '公告卡',   scene: '通知/声明',    hasCover: false },
+  checklist: { id: 'checklist', name: '清单卡',   scene: '待办/步骤',    hasCover: false },
+  imagetext: { id: 'imagetext', name: '图文卡',   scene: '配图短文',     hasCover: true }
+};
+
+const W = 340;   // 卡片逻辑宽
+const PAD = 20;  // 内边距
+
+function countLines(text, width, fontPx, measure, clamp) {
+  return Math.min(wrapText(String(text || ''), width, measure, fontPx).length, clamp);
+}
+
+function buildCardModel(type, themeId, data, opts) {
+  const th = getTheme(themeId);
+  const p = palette(themeId);
+  const d = data || {};
+  const measure = (opts && opts.measure) || defaultMeasure;
+  // 照片背景模式：文字自动转白（引擎叠暗色蒙版保证可读）
+  const onPhoto = !!d.bgImg;
+  const ink = onPhoto ? '#ffffff' : p.ink;
+  const sub = onPhoto ? 'rgba(255,255,255,0.92)' : p.sub;
+  const font = p.cjkFont;
+  const innerW = W - PAD * 2;
+  const children = [];
+  let y = 0;
+
+  const txt = (content, o) => children.push(Object.assign(
+    { type: 'text', content: String(content == null ? '' : content), fontFamily: font }, o));
+  const rect = (o) => children.push(Object.assign({ type: 'rect' }, o));
+
+  // ── 顶部主色细条（锚点 ①）──
+  rect({ left: 0, top: 0, width: W, height: 4, background: p.primary });
+  y = 18;
+
+  // ── 头部：类型小标签（左） + 品牌水印（右）──
+  const pillText = CARD_TYPES[type].name;
+  const pillW = Math.ceil(measure(pillText, 11)) + 20;
+  rect({ left: PAD, top: y, width: pillW, height: 22, background: p.bgSoft, radius: 11 });
+  txt(pillText, { left: PAD + 10, top: y + 4, width: pillW - 20, color: p.primary, fontSize: 11, fontWeight: 'bold', lineHeight: 14 });
+  const brand = 'dudu 画面感';
+  const brandW = Math.ceil(measure(brand, 10));
+  txt(brand, { left: W - PAD - brandW, top: y + 5, width: brandW, color: sub, fontSize: 10, lineHeight: 12 });
+  y += 22 + 16;
+
+  // ── 标题（公告卡带主色左竖条）──
+  if (d.title) {
+    const tw = type === 'notice' ? innerW - 14 : innerW;
+    const tLines = countLines(d.title, tw, 20, measure, 2);
+    if (type === 'notice') {
+      rect({ left: PAD, top: y + 3, width: 4, height: Math.min(tLines * 28 - 6, 50), background: p.primary });
+      txt(d.title, { left: PAD + 14, top: y, width: tw, color: ink, fontSize: 20, fontWeight: 'bold', lineHeight: 28, lineClamp: 2 });
+    } else {
+      txt(d.title, { left: PAD, top: y, width: tw, color: ink, fontSize: 20, fontWeight: 'bold', lineHeight: 28, lineClamp: 2,
+        textAlign: type === 'dailysign' ? 'center' : 'left' });
+    }
+    y += tLines * 28 + 10;
+  }
+
+  // ── 配图（统一 16:10 比例、圆角 12、底部渐晕、1px 内描边）──
+  if (CARD_TYPES[type].hasCover && d.cover) {
+    const ch = Math.round(innerW * 0.62);
+    children.push({ type: 'image', left: PAD, top: y, width: innerW, height: ch, src: d.cover, radius: 12, objectFit: 'cover' });
+    children.push({ type: 'gradient', left: PAD, top: y + ch - 46, width: innerW, height: 46, radius: 12,
+      colors: ['rgba(0,0,0,0)', 'rgba(0,0,0,0.18)'] });
+    rect({ left: PAD, top: y, width: innerW, height: ch, radius: 12, border: 1, borderColor: 'rgba(0,0,0,0.06)' });
+    y += ch + 12;
+  }
+
+  // ── 金句引导符（quote / dailysign 专属装饰）──
+  const isQuote = (type === 'quote' || type === 'dailysign');
+  if (isQuote && d.body) {
+    txt('❝', { left: PAD, top: y, width: type === 'dailysign' ? innerW : 40, color: p.primary,
+      fontSize: 26, fontWeight: 'bold', lineHeight: 30, textAlign: type === 'dailysign' ? 'center' : 'left' });
+    y += 26;
+  }
+
+  // ── 正文（行距 1.7+）──
+  if (d.body) {
+    const fs = isQuote ? 17 : (type === 'recommend' ? 15 : 14);
+    const lh = isQuote ? 30 : (type === 'recommend' ? 26 : 24);
+    const clamp = isQuote ? 6 : 8;
+    txt(d.body, { left: PAD, top: y, width: innerW, color: ink, fontSize: fs, lineHeight: lh, lineClamp: clamp,
+      textAlign: type === 'dailysign' ? 'center' : 'left' });
+    y += countLines(d.body, innerW, fs, measure, clamp) * lh + 12;
+  }
+
+  // ── 种草卡：价签色块高亮（规范：价格用色块）──
+  if (type === 'recommend' && d.tag) {
+    const tw2 = Math.ceil(measure(d.tag, 13)) + 24;
+    rect({ left: PAD, top: y, width: tw2, height: 26, background: p.primary, radius: 13 });
+    txt(d.tag, { left: PAD + 12, top: y + 6, width: tw2 - 24, color: '#ffffff', fontSize: 13, fontWeight: 'bold', lineHeight: 15 });
+    y += 26 + 14;
+  }
+
+  // ── 清单：圆形数字徽章 + 条目（规范：不用冷冰冰的 1.2.3.）──
+  if (type === 'checklist' && Array.isArray(d.items)) {
+    d.items.forEach((it, i) => {
+      const itText = String(it);
+      const itLines = countLines(itText, innerW - 30, 14, measure, 2);
+      const rowH = Math.max(20, itLines * 22);
+      children.push({ type: 'circle', left: PAD, top: y + 1, d: 20, background: p.primary });
+      txt(String(i + 1), { left: PAD, top: y + 4, width: 20, color: '#ffffff', fontSize: 11, fontWeight: 'bold', lineHeight: 14, textAlign: 'center' });
+      txt(itText, { left: PAD + 30, top: y, width: innerW - 30, color: ink, fontSize: 14, lineHeight: 22, lineClamp: 2 });
+      y += rowH + 10;
+    });
+    y += 4;
+  }
+
+  // ── 底部信息行：分割线 + 落款（左）与小程序码（右）同行 ──
+  y += 4;
+  children.push({ type: 'line', left: PAD, top: y, width: innerW, thickness: 1, color: p.line });
+  y += 12;
+  const hasQr = !!d.qr;
+  const QS = hasQr ? 56 : 0;
+  if (hasQr) {
+    children.push({ type: 'qrcode', left: W - PAD - QS, top: y, size: QS, asset: d.qrAsset });
+  }
+  const foot = d.author || (hasQr ? '扫码做同款卡片' : '');
+  if (foot) {
+    txt(foot, { left: PAD, top: y + Math.round((QS - 18) / 2), width: hasQr ? innerW - QS - 12 : innerW,
+      color: sub, fontSize: 12, lineHeight: 18, lineClamp: 2,
+      textAlign: (type === 'dailysign' && !d.author) ? 'center' : 'left' });
+  }
+  y += QS + 18;
+
+  const height = Math.max(y, 200);
+  const model = {
+    width: W, height,
+    gradient: p.bg,
+    radius: p.radius,
+    children
+  };
+  if (d.bgImg) model.backgroundImage = d.bgImg; // 页面加载图片后注入 backgroundImageAsset
+  return model;
+}
+
+module.exports = { CARD_TYPES, buildCardModel, W, PAD };
+
+});</script>
+<script>__def('daily', function (module, exports, require) {
+// utils/templates/daily.js
+// ─────────────────────────────────────────────────────────────────────────────
+// 每日文案库（2026-10-01 新增 · 治"卡片文案每天不更新、储备不足"）
+//
+// 回答产品问题：
+//   问：卡片的文案是不是每天自动更新的？
+//   答：此前不是——日签正文写死一句话，仅日期标题每天变。现在接上本库后：
+//       每日日签/金句卡的正文按「日期」从库中确定性轮换，每天自动换一条。
+//
+// 设计（零 AI · 纯本地 · 可离线，个人主体合规）：
+//   ① 储备充足：内置 400+ 条原创短句，分 6 类（早安/晚安/成长/生活/创作/心绪）。
+//   ② 确定性轮换：idx = dayIndex mod N。同一天全网用户看到同一条；跨天必换。
+//   ③ 一整轮不重复：连续 N 天取值恰为 0..N-1 各一次（数学保证，测试覆盖 400 天）。
+//   ④ 「换一句」：offset 走固定步长 STEP=97（与 N 互质），同一天内可跳转不撞车。
+//   ⑤ 扩容：往 POOL 里加行即可，N 自动变大，无需改任何逻辑。
+// ─────────────────────────────────────────────────────────────────────────────
+'use strict';
+
+const STEP = 97; // 「换一句」步长（质数，只要 N 不是 97 的倍数即互质）
+
+const POOL = {
+  morning: [ // 早安 · 一日之计
+    '清晨的第一缕光，是今天递来的空白稿纸。',
+    '早起十分钟，把今天的主动权拿回手里。',
+    '太阳每天都是新的，你的运气也可以是。',
+    '把窗帘拉开，把心事放下，先吃早饭。',
+    '今天的第一件事，是对自己说一句可以的。',
+    '风从窗外过，把昨天的疲惫都带走了。',
+    '早安，今天也要把日子过出声音来。',
+    '晨光落在桌上，像给今天盖了个章。',
+    '醒来就是重启，昨天的卡顿不带进今天。',
+    '今天的太阳不催你，它只是陪你。',
+    '新的一天，从把枕头拍松开始。',
+    '把今天当成一张新卡，先写第一行。',
+    '早晨的空气里都是新的味道，万象都在更新。',
+    '别急着伟大，先把牙刷了。',
+    '晨跑三公里，烦恼掉一地。',
+    '清晨属于早起的人，也属于想通了的人。',
+    '今天的云很配合，摆好了你喜欢的形状。',
+    '把闹钟当成开幕铃，你就是今天的主角。',
+    '一日之计在于：先喝温水，再谈理想。',
+    '阳光好的日子，连迟到都情有可原。',
+    '早安。愿你今天遇到的都是温柔的人。',
+    '把昨天的遗憾折成纸飞机，今天放飞。',
+    '清晨的街道，是城市最诚实的样子。',
+    '今天也要像向日葵一样，先找光再出发。',
+    '早餐吃饱了，世界就没那么难了。',
+    '清晨写下一句话，一天就有了锚。',
+    '今天的第一步，比昨天轻一点。',
+    '晨光是免费的，心情要自己调。',
+    '你醒来的时候，好运正在路上。',
+    '今天的词卡已经洗好，就等你抽一张。',
+    '把早晨过好的人，把日子握在手里。',
+    '清晨的风免费，吹了都说好。',
+    '今天的关键词：慢慢来，比较快。',
+    '早安。先把今天的小事做完，再说大事。',
+    '新的一天，给旧问题一个新的答案。',
+    '太阳照常升起，你照常了不起。',
+    '今天的你，是昨天的你想成为的人吗？',
+    '晨光不会辜负每一个睁开的眼睛。',
+    '把今天调成静音，先听见自己。',
+    '早上好。记得给今天的自己留一点白。',
+    '清晨六点的街，比深夜的酒更醒人。',
+    '今天的第一缕光，打在你的主力机上。',
+    '一日之计：想清楚一件事，做好一件事。',
+    '早起的意义：多赚一段不被打扰的时间。',
+    '今天的天气很好，适合把想法落地。',
+    '把今天的第一杯水，敬还没放弃的自己。',
+    '清晨适合立目标，白天负责把它扶稳。',
+    '早安，愿你被今天的善意撞一下腰。',
+    '今天从一句好话开始，接下来的话都不会太差。',
+    '晨光是一天里最便宜的高级感。',
+    '今天也要认真生活，认真吃早饭。',
+    '窗外的鸟在催：别赖了，好戏要开场了。',
+    '把今天当成作品的第一稿，允许粗糙。',
+    '早晨的仪式感：铺开纸，写下三件要事。',
+    '今天的阳光配额已到账，请查收。',
+    '早安。慢一点没关系，别停就行。',
+    '清晨的厨房有烟火，日子就有了着落。',
+    '今天的第一页，写什么都很贵重。',
+    '把枕头翻个面，把烦恼翻个篇。',
+    '新的一天，旧的问题，新的解法。',
+    '晨光把影子拉长，也把可能性拉长。',
+    '今天的目标很小：比昨天多懂一点点。',
+    '早安。今天也要做自己的太阳。',
+    '一天的士气，是被早饭和一句话养起来的。',
+    '清晨适合把心里的话搬到纸上。',
+    '今天的开场白：一切都会顺利的。',
+    '日历翻新页，你也是。'
+  ],
+  night: [ // 晚安 · 夜想
+    '晚风把白天的音量，慢慢调小了。',
+    '把今天没做完的事，郑重地交给明天。',
+    '晚安，今天辛苦了，这句话只说给你。',
+    '夜色是块橡皮，轻轻擦掉白天的噪点。',
+    '睡前原谅一切，醒来便是新生。',
+    '今天的日落很准时，你的休息也该准时。',
+    '把手机放下，把梦拿起。',
+    '夜深了，城市在给电池充电，你也是。',
+    '今天所有的尽力，都值得一句晚安。',
+    '月光不加班，你也别加了。',
+    '把窗开条缝，让晚风替你说晚安。',
+    '今天到此为止，功劳簿上记你一笔。',
+    '夜是把白天的战场，叠成枕头的形状。',
+    '晚睡的理由千千万，早睡的理由只需要一个：明天还想赢。',
+    '今天的句号画圆了吗？没有也没关系。',
+    '把灯调暗，把心放宽，睡个好觉。',
+    '夜色温柔，是因为它对谁都很温柔。',
+    '今天的烦恼到此清零，明天的期待开始加载。',
+    '晚安。愿你梦里没有未读消息。',
+    '把今天的自己夸一夸，再睡。',
+    '月亮在值班，星星在打卡，你可以下班了。',
+    '夜深适合复盘：今天比昨天好了多少。',
+    '晚安是今天最后的温柔，也是明天的序章。',
+    '把白天的事锁进夜里，钥匙交给梦。',
+    '今天所有的坏情绪，睡前统一清空回收站。',
+    '晚风路过阳台，捎来一句：辛苦了。',
+    '夜里适合把心愿排个序，明早挑一个实现。',
+    '今天辛苦了。热水澡和好梦都已就位。',
+    '把明天的事明天愁，今晚只负责睡好。',
+    '星光是夜空发的弹幕，全屏都是晚安。',
+    '夜深了，把野心调成省电模式。',
+    '今天的你已经很棒了，剩下的交给睡眠。',
+    '晚安。愿你的枕头软，梦更软。',
+    '白天属于世界，夜里还给自己。',
+    '把今天钉进记忆，明天的事明天钉。',
+    '夜是白天的存档点，安心睡，明天读档再来。',
+    '月亮弯弯，像在对你比心。',
+    '今晚早点睡，明天的你在等你。',
+    '今天最后一件事：对自己说声谢谢。',
+    '夜色把疲惫泡软，睡眠把它带走。',
+    '晚安。今天的不开心就止步于此吧。',
+    '把窗帘拉上，把世界调成勿扰。',
+    '夜深人静，正好听见自己说：没关系。',
+    '今天的进度条走到这里，也很好了。',
+    '晚安。愿你被明天的晨光温柔叫醒。',
+    '夜里的风翻了翻日历，明天是崭新一页。',
+    '把今天的战绩写进日记，把疲惫留给枕头。',
+    '月亮不打烊，但你可以。',
+    '今晚的心事就聊到这里，剩下的托付给梦。',
+    '夜色是底片，洗出来全是温柔。',
+    '今天的营业结束，明天的精彩预告中。',
+    '睡个好觉，是对明天最基本的尊重。',
+    '把台灯关掉，把星星打开。',
+    '夜深了，世界把音量键交还给你。',
+    '今天画上了句点，愿梦里都是逗号之后的惊喜。',
+    '晚安。今天的你，值得一夜好眠。',
+    '夜把喧嚣收进抽屉，把安静铺在床上。',
+    '梦里什么都有，先睡为敬。',
+    '今天的最后一份温柔，是早点睡。',
+    '月亮今晚也在加班，陪睡不着的人。',
+    '晚安。愿你醒来时，问题都有了思路。',
+    '把今天归档，标签是：尽力了。',
+    '夜色正好，适合把心事说给枕头听。',
+    '今天辛苦了，好梦是给你的加班费。',
+    '把白天的铠甲卸下，夜里只做柔软的人。',
+    '今夜好眠，是明天的第一份礼物。',
+    '晚安，世界。晚安，自己。',
+    '夜深了，连路由器都想睡了。'
+  ],
+  growth: [ // 成长 · 行动
+    '开始比完美重要，完成比开始重要。',
+    '把大目标切成小块，每天咽下一块。',
+    '所谓成长，就是把抱怨换成方案。',
+    '你不需要更努力，你需要更清晰。',
+    '每天进步一点点，一年后吓自己一跳。',
+    '行动是焦虑的解药，哪怕只行动五分钟。',
+    '先完成，再完美；先出发，再调整。',
+    '不要等准备好了，准备好是做完之后的事。',
+    '把不会的记下来，就是你下一步的地图。',
+    '真正的差距，是别人在动手时你在犹豫。',
+    '慢不可怕，可怕的是原地打转还安慰自己在思考。',
+    '每天解决一个具体的问题，比空想一百个强。',
+    '复利不只属于钱，也属于每天读的十页书。',
+    '把今天的一小步，走成明天的一大地。',
+    '别怕走得慢，方向对了就没有白走的路。',
+    '把计划写在纸上，把借口留在嘴边别说出声。',
+    '学会一件事的标志，是能讲给别人听。',
+    '成长的标志：从前让你炸毛的事，现在只是点点头。',
+    '把反思变成习惯，把习惯变成底气。',
+    '知识不用就会忘，技能不用会生锈，练。',
+    '今天的困惑，是你正在变强的证据。',
+    '把目标写在看得见的地方，把手机放得远一点。',
+    '别高估一天能做的，别低估一年能积累的。',
+    '把错误当成学费，别退第二遍。',
+    '量变到质变之间，隔着无数个想放弃的晚上。',
+    '把"我不行"改成"我还没学会"，世界就宽了。',
+    '每天问自己一句：今天有比昨天更懂一点吗？',
+    '把学到的东西用出来，才算真的拥有。',
+    '笨办法坚持下来，就是聪明人的护城河。',
+    '别把计划当成成果，落笔才是。',
+    '成长有时很安静：没有掌声，只有进度。',
+    '把大道理换成小行动，日子就开始变好。',
+    '难题像洋葱，一层层剥，哭着也要剥完。',
+    '你的对手不是别人，是昨天的自己。',
+    '把"总有一天"改成"就今天"。',
+    '真正的自由，是自律给你发的工资。',
+    '先坐下来，五分钟后你就想做了。',
+    '把仰望别人的时间，拿来垫高自己。',
+    '不积跬步无以至千里，先出门再说。',
+    '把复盘当成每日最后一件小事，收益巨大。',
+    '输不可怕，怕的是不敢上场。',
+    '把难度调到踮踮脚够得着，成长最快。',
+    '今天的坚持，是给未来自己的礼物。',
+    '把目标拆到明天早上能直接开干为止。',
+    '会休息也是本事，节奏比蛮力重要。',
+    '别被"来不来得及"绊住，先走两步看看。',
+    '每一遍练习，都在悄悄改写你的上限。',
+    '把抱怨的时间拿去练手，早就出师了。',
+    '成长的路径不优雅，但每一步都算数。',
+    '把失败写成笔记，它就是你的私人教材。',
+    '别等灵感，灵感是干着干着冒出来的。',
+    '把专注当成肌肉，每天练二十分钟。',
+    '少刷一会儿手机，多攒一点本事。',
+    '把"必须做好"换成"先做出来"，阻力小一半。',
+    '每天睡前存一枚"完成"，存多了就是自信。',
+    '把别人的方法借来，走成自己的路。',
+    '不怕从零开始，怕的是从不开始。',
+    '把目标贴在镜子上，每天刷牙时对个账。',
+    '进度慢，说明你在走没人替你走的路。',
+    '把一个问题追到底，比十个问题都点点。',
+    '技能是攒出来的，底气是练出来的。',
+    '今天也要把"知道"变成"做到"。',
+    '别怕出丑，出丑是学会之前的学费。',
+    '把长期主义过成日常，就赢了大多数人。',
+    '每天留半小时给重要不紧急的事。',
+    '把拖延的事拆到不能再拆，然后做第一片。',
+    '你的努力，时间都会记账，不会赖账。',
+    '把今天的难点记下来，它就是明天的谈资。',
+    '成长就是：把哭着做完的事，笑着讲出来。'
+  ],
+  life: [ // 生活 · 日常
+    '生活的浪漫，藏在认真吃的每一顿饭里。',
+    '把房间收拾干净，心情就有了地方坐。',
+    '今天路过花店，给自己买了一束春天。',
+    '好日子不贵，一杯热茶就够。',
+    '把日子过成自己喜欢的样子。',
+    '买菜做饭洗碗，是生活最实在的韵脚。',
+    '阳台上晒着的被子，装满了阳光的味道。',
+    '生活的质感，是慢下来的那几分钟。',
+    '今天散步二十分钟，把落日走完了。',
+    '日子是自己的，冷暖要自己调温。',
+    '把周末过成小假期，不需要远方。',
+    '生活给的糖，要自己捡起来吃。',
+    '认真对待一日三餐，就是认真对待自己。',
+    '今天把衣柜整理了，把纠结也一并理了。',
+    '好生活不在别处，在收拾好的桌面上。',
+    '雨天适合听歌，晴天适合出发。',
+    '把常穿的放在顺手处，生活就顺了。',
+    '日子要有留白，不然装不下惊喜。',
+    '今天给自己泡了壶茶，把节奏调回手动挡。',
+    '生活的甜，是自己往里加的。',
+    '把日子过成一幅画，先铺大色块再抠细节。',
+    '傍晚的风、路边的灯、回家的人，都是好素材。',
+    '今天学会了新菜，生活技能加一分。',
+    '把烦恼写在纸上，它就没那么大了。',
+    '生活的仪式感，是认真对待普通的一天。',
+    '今天早睡了十分钟，世界没塌，精神更好了。',
+    '阳台的绿萝又抽新叶了，日子在往上长。',
+    '把快递盒收好，把期待拆开。',
+    '日子平常，但值得好好过。',
+    '今天的天空很好看，记得抬头。',
+    '把生活调成自己喜欢的配色。',
+    '周末的意义，是把节奏还给自己。',
+    '今天买了束花，房间先春天了一步。',
+    '生活的答案，常在厨房的烟火里。',
+    '把日子过简单，把心过丰富。',
+    '晚饭后散步，是最便宜的幸福。',
+    '今天晒了被子，今晚睡进阳光里。',
+    '生活的碎屑，拼起来才是全貌。',
+    '把每天的小确幸记下来，攒成本命年历。',
+    '今天清理了相册，也清理了心情。',
+    '好生活是过出来的，不是等出来的。',
+    '今天给椅子垫了软垫，屁股先幸福了。',
+    '生活的分寸感：认真但不较劲。',
+    '把烦恼调成震动，把快乐调成铃声。',
+    '今天煮了碗面，加两个蛋，对自己好点。',
+    '日子的好，是具体的好：热饭、软床、亮灯。',
+    '把日子过成系列剧，每天都想追更。',
+    '今天路过童年常去的小店，甜味还记得。',
+    '生活不会亏待认真过它的人。',
+    '今天把自行车擦亮了，风都跑得更快了。',
+    '把"改天"过成"今天"，遗憾少一半。',
+    '生活的妙处，藏在重复日子里的微小区别里。',
+    '今天给自己留了十分钟发呆，很值。',
+    '日子的味道，是柴米油盐调出来的。',
+    '把家收拾成想回去的样子。',
+    '今天认真吃了早饭，一上午都很有底气。',
+    '生活的进步，从把水烧开开始。',
+    '把平淡的日子，过出回甘。',
+    '今天买了个小台灯，夜晚亮堂了些。',
+    '生活是自己的作品，别外包。',
+    '今天把闹钟调早了，把生活调慢了。',
+    '日子的甜度，自己说了算。',
+    '把餐桌收拾好，把生活摆正。',
+    '今天走了六千步，把心里的结走开了些。',
+    '生活的底气，是卡里有余额，锅里有热汤。',
+    '今天给窗户擦了灰，风景都清楚了。',
+    '把日子过成一则会心一笑的段子。',
+    '今天的好，是热水澡和干净床单给的。',
+    '生活不会每天都好，但值得每天都认真。'
+  ],
+  craft: [ // 创作 · 表达
+    '把复杂的讲简单，是本事；把简单的讲动人，是艺术。',
+    '好文案不是写出来的，是删出来的。',
+    '先写出来，再写好，最后才谈风格。',
+    '把感受写具体，读者才会具体地感动。',
+    '写作的第一原则：说人话。',
+    '灵感不靠等，靠平时攒的素材库。',
+    '把一句话练到别人愿意抄，就是功夫。',
+    '画面感来自名词和动词，少用形容词堆砌。',
+    '写不出来的时候，先描述你眼前的桌子。',
+    '好的开头占一半，好在哪里：让人想读第二行。',
+    '把观点放进故事里，别人才咽得下去。',
+    '每天写三百字，一年就是一本书的骨架。',
+    '改稿不改到疼，说明还没改到位。',
+    '把长的写短，是尊重读者的时间。',
+    '所谓风格，是你躲不掉的那些偏好。',
+    '记录是创作的第一步：先接住，再打磨。',
+    '把"我觉得"换成"我看见"，文字就落地了。',
+    '好句子自己会走路，坏句子要人抬。',
+    '写作是思考的慢动作，越写越清楚。',
+    '把素材当食材，备料越足，出锅越快。',
+    '别怕写坏，初稿的任务就是存在。',
+    '把身边的对话记下来，都是活的台词。',
+    '写作的诚实：不装，不端，不绕。',
+    '把金句放进结尾，像把糖放进最后一口。',
+    '读三遍再发：一遍找错字，一遍找废话，一遍找心跳。',
+    '把抽象的情绪，换成一件具体的小事。',
+    '创意是旧元素的新组合，库存越多手气越好。',
+    '把标题改十遍，读者会用点击谢谢你。',
+    '好的表达是翻译：把心里的雾翻成看得见的字。',
+    '写完放一天再改，你会看见另一个读者。',
+    '把大词换成小词，把小词换成画面。',
+    '记录此刻，未来的你会感谢现在的你。',
+    '把每次输出当成作品，而不是任务。',
+    '写作的捷径：多读，多写，少抱怨。',
+    '把一句话说到人心里，比说到人眼里难得多。',
+    '别追求惊艳，追求准确。',
+    '把生活当素材库，处处都是稿费。',
+    '灵感是流浪猫，你常喂它就来。',
+    '把概念讲给外婆听，讲通了才算懂。',
+    '写作是给时间做的切片，越具体越珍贵。',
+    '把"很好"换成"好在哪里"，文字就立起来了。',
+    '先说服自己，再发表。',
+    '把每个字都当成要花钱的，就会精简。',
+    '好文章是改出来的，好习惯是逼出来的。',
+    '把目录列好，写作就完成了一半。',
+    '别用形容词逞强，让细节说话。',
+    '把一篇长文写成三段：钩子、干货、回甘。',
+    '写作的底气来自输入：书读够了，笔下自有粮。',
+    '把此刻的念头写下来，它比记忆可靠。',
+    '创作的自信，是一篇一篇攒出来的。',
+    '把情绪调成文字的色温，读者自然觉出冷暖。',
+    '越具体的文字，越有普遍的共鸣。',
+    '把"感谢阅读"删掉，把真诚留在正文。',
+    '写作是一场长跑，配速比冲刺重要。',
+    '把生活的毛边留着，真实感就来了。',
+    '每次表达前问一句：读者读完能得到什么？',
+    '把句子读出声，拗口的一定要改。',
+    '写作的复利：今天的一小段，是明天一整章的地基。',
+    '把"从不开始"治好，文笔自然变好。',
+    '金句不在远方，在你刚走过的这条街上。',
+    '把想法及时存档，灵感不等人。',
+    '好内容都有钩子：开头三行，留住三分钟。',
+    '把结论放前面，过程放后面，读者会爱你。',
+    '写作要有画面：让读者看见，而不是听说。',
+    '把每一次表达，都当成递出去的名片。',
+    '创作的敌人不是没天赋，是不坚持。',
+    '把"改天写"写成"今天写"，你就是作者了。'
+  ],
+  mood: [ // 心绪 · 治愈
+    '允许自己慢下来，电线杆也有歇脚的时候。',
+    '情绪没有对错，它只是来送信的。',
+    '难过的时候，先抱抱自己。',
+    '把心事说出口，它就轻了一半。',
+    '你不必时刻坚强，偶尔柔软也没关系。',
+    '今天不开心没关系，明天再重新出发。',
+    '眼泪不是软弱，是心里的雨季，下完就晴。',
+    '别急着好起来，情绪也需要缓冲区。',
+    '你的感受很重要，值得被认真对待。',
+    '有些路要一个人走，走完就强大了。',
+    '把焦虑具象化，它就变小了：写下它，拆解它。',
+    '不完美的日子，也是好日子的一部分。',
+    '你已经在很努力地生活了，这本身就了不起。',
+    '心情低落时，先吃口热乎的。',
+    '允许一切发生，也允许一切过去。',
+    '把在意你的人列个名单，难过时挑一个打电话。',
+    '情绪像天气，会来，也会走。',
+    '别和自己较劲，你已经走得比想象中远了。',
+    '累了就休息，休息不是逃避，是补给。',
+    '把"必须"换成"可以"，心就松了。',
+    '没有一种情绪是不应该的。',
+    '今天的你辛苦了，抱一下。',
+    '内心的秩序，是一点点收拾出来的。',
+    '别怕麻烦别人，关系是麻烦出来的。',
+    '心情的褶皱，睡一觉就熨平了。',
+    '你值得被喜欢，不需要理由。',
+    '把心放宽一点，路就宽一点。',
+    '情绪需要出口，别把它锁进抽屉。',
+    '慢慢来，你有你的节奏。',
+    '把难过讲给懂的人听，讲完就好多了。',
+    '别人一句话别琢磨一星期，你的心很贵。',
+    '允许自己什么都不做地待一会儿。',
+    '心情不好就早点睡，明早的事明早说。',
+    '你是自己最该温柔对待的人。',
+    '情绪上头时，先深呼吸三次再回复。',
+    '把期待调低一点，惊喜就多了一点。',
+    '没有过不去的晚上，只有没睡的觉。',
+    '心里的事别攒着，攒多了会压秤。',
+    '你不需要活成所有人喜欢的样子。',
+    '把敏感当成天赋，它让你看见更多细节。',
+    '别怕，你已经扛过了很多个"以为过不去"。',
+    '心里的结，交给时间，也交给行动。',
+    '今天想哭就哭一会儿，哭完记得喝水。',
+    '情绪稳了，判断才会准。',
+    '把"我应该"换成"我想要"，人就轻了。',
+    '你的价值不由今天的产出决定。',
+    '别拿别人的地图，找自己的路。',
+    '感到迷茫时，先把眼前的日子过好。',
+    '心里的火别急着灭，看清它要照亮什么。',
+    '把心比作海，潮起潮落都正常。',
+    '你值得一个缓缓深呼吸，再做决定。',
+    '情绪没有敌人，它只是还没被听懂。',
+    '今天的阴天，挡不住你心里的晴。',
+    '别急着定义自己，你还在生长。',
+    '把担心的最坏结果写下来，多数永远不会发生。',
+    '温柔待己，是终身浪漫的开始。',
+    '心里的房间常通风，情绪不易发霉。',
+    '情绪稳定的秘诀：先接住自己。',
+    '你不用什么都会，也可以被爱。',
+    '把小事做好，心就稳了大半。',
+    '难过的时候，别忘了你曾笑出眼泪的日子。',
+    '心里有光的人，走到哪儿都不怕黑。',
+    '把昨天的自己原谅了，今天就轻快了。',
+    '情绪是信使，读完信，送客就好。',
+    '别在情绪的顶点做决定。',
+    '你比自己想象中，更能扛。',
+    '把心里的话写下来，纸张不会评判你。',
+    '今天也请对自己说：辛苦了，继续加油。'
+  ]
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 各卡片类型专属文案池（2026-10-01：让每类卡片都有储备充足、符合自身主题的文案库）
+//   recommend  种草卡：{t 标题, b 正文, g 价签}
+//   notice     公告卡：{t 标题, b 正文}
+//   checklist  清单卡：{t 标题, items 条目数组}
+//   imagetext  图文卡：{t 标题, b 配图文案}
+// dailysign / quote 复用上方通用金句库（POOL）。
+// 种子文案按日期确定性轮换（每天自动换一套，同一自然日全网同款），offset 供「换一套」。
+// ─────────────────────────────────────────────────────────────────────────────
+const TYPE_POOLS = {
+  recommend: [
+    { t: '今日份好物安利', b: '用了就回不去的小确幸，今天也想分享给你。', g: '¥ 39 起' },
+    { t: '自用款真心话', b: '入手半个月，使用频率高到想给它发奖状。', g: '¥ 49 起' },
+    { t: '小预算大惊喜', b: '价格不过百，幸福感却拉得很满。', g: '¥ 69 起' },
+    { t: '回购清单上新', b: '空瓶了三次才敢来推荐，是真的好用。', g: '回购价 ¥ 59' },
+    { t: '办公室好物', b: '工位幸福感担当，下午三点全靠它续命。', g: '¥ 29 起' },
+    { t: '居家氛围担当', b: '一开灯，出租屋也有了一点点高级感。', g: '¥ 89 起' },
+    { t: '懒人福音', b: '省下来的时间，够多刷一集剧。', g: '¥ 45 起' },
+    { t: '通勤好搭档', b: '挤地铁也不怕，颜值和实力都在线。', g: '¥ 79 起' },
+    { t: '护肤小心机', b: '成分干净肤感在线，敏感肌也能安心用。', g: '¥ 99 起' },
+    { t: '送人不出错', b: '包装拿得出手，收到的人都说会挑。', g: '¥ 128 起' },
+    { t: '厨房神器', b: '做饭十分钟，洗锅一小时？不存在的。', g: '¥ 59 起' },
+    { t: '桌面好物', b: '书桌整洁了，工作效率都跟着涨。', g: '¥ 35 起' },
+    { t: '出行必备', b: '说走就走的底气，是包里总有它。', g: '¥ 69 起' },
+    { t: '学生党友好', b: '价格很学生，质感一点不含糊。', g: '¥ 19 起' },
+    { t: '冬季温暖好物', b: '降温预警已收到，暖手装备先安排。', g: '¥ 55 起' },
+    { t: '夏季清凉款', b: '一秒降温的快乐，就是这么简单。', g: '¥ 39 起' },
+    { t: '雨季好物', b: '再大的雨，也淋不坏出门的心情。', g: '¥ 49 起' },
+    { t: '睡前仪式感', b: '睡前的最后一道工序，值得认真对待。', g: '¥ 65 起' },
+    { t: '健身好伙伴', b: '自律的路上，装备先到位。', g: '¥ 89 起' },
+    { t: '亲子友好', b: '娃用得开心，家长看得放心。', g: '¥ 79 起' },
+    { t: '宠物家庭必备', b: '毛孩子喜欢，铲屎官省心。', g: '¥ 45 起' },
+    { t: '手机配件精选', b: '小配件大提升，日常体验立刻升级。', g: '¥ 25 起' },
+    { t: '香氛入门款', b: '一点香气，房间的心情就不一样了。', g: '¥ 69 起' },
+    { t: '文具控集合', b: '写字的快乐，从一支顺滑的笔开始。', g: '¥ 15 起' },
+    { t: '数码小精品', b: '颜值在线，功能刚好够用不花哨。', g: '¥ 99 起' },
+    { t: '烘焙好帮手', b: '第一次做就成功，成就感直接拉满。', g: '¥ 79 起' },
+    { t: '茶咖时光', b: '午后一杯的时间，把自己还给自己。', g: '¥ 42 起' },
+    { t: '绿植新手款', b: '懒人也能养活，家里先绿起来。', g: '¥ 29 起' },
+    { t: '收纳整理款', b: '东西归位了，心也跟着归位。', g: '¥ 39 起' },
+    { t: '摄影小配件', b: '手机也能出片，就差这一个配件。', g: '¥ 59 起' },
+    { t: '图书安利', b: '一晚上就想读完，读完还想再读一遍。', g: '¥ 49 起' },
+    { t: '影音体验款', b: '戴上它的那一刻，世界安静了。', g: '¥ 199 起' },
+    { t: '厨房常备', b: '开门七件事，这件最省心。', g: '¥ 33 起' },
+    { t: '浴室焕新', b: '小小升级，洗澡都变成了享受。', g: '¥ 59 起' },
+    { t: '穿搭点睛款', b: '基础款再多，也缺这一件提亮。', g: '¥ 129 起' },
+    { t: '包里常驻嘉宾', b: '装下日常，也装下安全感。', g: '¥ 99 起' },
+    { t: '睡眠投资', b: '一天三分之一的时间，值得花点心思。', g: '¥ 159 起' },
+    { t: '驾驶好物', b: '路上堵车不堵心，全靠它调节气氛。', g: '¥ 69 起' },
+    { t: '露营入门', b: '周末的快乐，从一套装备开始。', g: '¥ 199 起' },
+    { t: '敏感肌友好', b: '对容易泛红的皮肤也很温柔的选择。', g: '¥ 89 起' },
+    { t: '节日送礼参考', b: '提前备好，到时候不慌。', g: '¥ 99 起' },
+    { t: '开学装备', b: '新学期新气象，从装备开始。', g: '¥ 45 起' },
+    { t: '年终犒劳', b: '辛苦一年，值得对自己好一点。', g: '¥ 259 起' },
+    { t: '国货之光', b: '这些年国货的进步，真的值得被看见。', g: '¥ 59 起' },
+    { t: '小众宝藏', b: '知道的人不多，用过都说好。', g: '¥ 78 起' },
+    { t: '一物多用', b: '一件顶三件，收纳空间都省了。', g: '¥ 89 起' },
+    { t: '抗老入门', b: '二十几岁开始，一点点照顾自己。', g: '¥ 139 起' },
+    { t: '男士精选', b: '简单直接，好用来形容就足够。', g: '¥ 89 起' },
+    { t: '妈妈们的安心选', b: '家庭常备，用着踏实。', g: '¥ 49 起' },
+    { t: '办公族护脊', b: '久坐一整天，腰终于有了支撑。', g: '¥ 159 起' },
+    { t: '耳机入门款', b: '通勤路上的快乐，千元以内有惊喜。', g: '¥ 299 起' },
+    { t: '保温实测', b: '早上灌的热水，下午还是烫的。', g: '¥ 79 起' },
+    { t: '宝宝辅食好物', b: '新手爸妈的省心之选。', g: '¥ 89 起' },
+    { t: '瑜伽伴侣', b: '铺开垫子的那一刻，就赢了一半。', g: '¥ 69 起' },
+    { t: '咖啡入门', b: '在家做出咖啡馆的味道，没那么难。', g: '¥ 129 起' },
+    { t: '旧物改造', b: '换个用法，旧物也有第二春。', g: '免费教程' },
+    { t: '平价替代', b: '大牌平替，效果不打折。', g: '¥ 39 起' },
+    { t: '冬季护手', b: '干燥季节的救星，包里常备。', g: '¥ 29 起' },
+    { t: '出行收纳', b: '行李箱瞬间能装，旅行更从容。', g: '¥ 55 起' },
+    { t: '晚间护肤流程', b: '精简护肤三步，坚持就是胜利。', g: '¥ 119 起' },
+    { t: '晨间唤醒', b: '叫醒我的不是闹钟，是它的香气。', g: '¥ 49 起' }
+  ],
+  notice: [
+    { t: '本周分享会', b: '本周六晚 8 点，社群分享会准时开始，欢迎来聊。' },
+    { t: '上新通知', b: '新一期内容已更新，老规矩，随时回来看。' },
+    { t: '打卡提醒', b: '本月打卡活动进行中，坚持的人已经在收获。' },
+    { t: '直播预告', b: '周五晚 7 点直播，聊聊近期的心得与规划。' },
+    { t: '福利提醒', b: '本月专属福利已上线，先到先得。' },
+    { t: '放假安排', b: '假期安排出炉，注意查收，玩得开心。' },
+    { t: '征稿启事', b: '长期征稿中，你的故事值得被更多人看到。' },
+    { t: '维护公告', b: '系统今晚升级维护，如遇卡顿请稍后再来。' },
+    { t: '新群开放', b: '新交流群已开放，想进来的朋友私我。' },
+    { t: '截止提醒', b: '活动报名今晚截止，别错过最后一班车。' },
+    { t: '规则更新', b: '参与规则有小幅更新，抽空看一眼不吃亏。' },
+    { t: '致谢公告', b: '感谢每一位同行的朋友，我们走得更远了。' },
+    { t: '开课通知', b: '新课已上线，从零开始也不怕。' },
+    { t: '复盘发布', b: '上期活动复盘已发布，数据和建议都在里面。' },
+    { t: '答疑专场', b: '本周日晚 8 点答疑专场，问题提前收集。' },
+    { t: '时间调整', b: '因故调整时间，新安排另行通知，敬请理解。' },
+    { t: '招募伙伴', b: '招募同行小伙伴，要求只有一个：愿意开始。' },
+    { t: '签到提醒', b: '连续签到有额外惊喜，今天你签了吗？' },
+    { t: '榜单公示', b: '上月榜单已公示，恭喜上榜的朋友们。' },
+    { t: '安全提醒', b: '任何私信转账要求都是诈骗，请务必注意。' },
+    { t: '版本更新', b: '新版本已发布，体验更顺滑，欢迎反馈。' },
+    { t: '活动延期', b: '因故延期一周，多出的时间用来准备更好。' },
+    { t: '名额提醒', b: '免费名额只剩最后几个，先到先得。' },
+    { t: '温习通知', b: '往期精华已整理成合集，适合新手补课。' },
+    { t: '反馈通道', b: '遇到问题随时反馈，每一条都会认真看。' },
+    { t: '社区公约', b: '友善交流，互相成就，是这里唯一的规则。' },
+    { t: '奖品发放', b: '中奖名单已出，奖品将在三个工作日内发出。' },
+    { t: '晨读邀约', b: '每天早上 7 点，一起读十分钟书。' },
+    { t: '线下聚会', b: '本月线下聚会开放报名，认识屏幕后的人。' },
+    { t: '满员通知', b: '本期名额已满，下期开放时间另行通知。' },
+    { t: '服务时间', b: '客服在线时间为每天 10 点至 20 点。' },
+    { t: '考试周安排', b: '考试周活动暂停，大家安心备考。' },
+    { t: '返场通知', b: '呼声很高的内容返场了，这次别错过。' },
+    { t: '积分提醒', b: '积分月底清零提醒，该换的抓紧兑换。' },
+    { t: '专题上线', b: '新专题已上线，一次讲透一个主题。' },
+    { t: '转载声明', b: '内容欢迎分享，请注明出处，感谢尊重。' },
+    { t: '新年寄语', b: '新的一年，继续一起把日子过出画面感。' },
+    { t: '周年庆', b: '一周年啦，感谢陪伴，福利安排上。' },
+    { t: '数据公示', b: '本月运营数据已公示，公开透明才走得远。' },
+    { t: '会议纪要', b: '上周讨论的结论已整理，决议事项同步大家。' },
+    { t: '报名开启', b: '下期活动报名已开启，位置以报名顺序为准。' },
+    { t: '物流通知', b: '奖品已陆续发出，注意查收快递。' },
+    { t: '天气提醒', b: '明天降温，出门记得添衣，别感冒了。' },
+    { t: '深夜场预告', b: '今晚十点加播一场，睡不着的朋友来聊。' },
+    { t: '免责说明', b: '内容仅供交流参考，决策请结合自身情况。' },
+    { t: '公约执行', b: '违规账号已按公约处理，维护环境靠大家。' },
+    { t: '共创邀请', b: '栏目共创计划启动，有想法的来聊。' },
+    { t: '考试报名', b: '资格考试报名通道已开，别错过时间。' },
+    { t: '旧物回收', b: '旧书旧物回收活动启动，让闲置流动起来。' },
+    { t: '环保倡议', b: '自带杯减三元，一起少用一个塑料杯。' },
+    { t: '健康提示', b: '人多场所戴好口罩，健康第一。' },
+    { t: '资料上传', b: '上期课件已上传，错过直播的自取。' },
+    { t: '公益义卖', b: '公益义卖本周启动，所得将全部捐赠。' },
+    { t: '招聘启事', b: '我们在找一位靠谱的伙伴，也许就是你。' },
+    { t: '休整公告', b: '本周休整一周，下周满血回归。' },
+    { t: '选题征集', b: '下期选题由你定，评论区说出你想看的。' },
+    { t: '兑换提醒', b: '兑换券有效期只剩七天，记得使用。' },
+    { t: '营业时间', b: '体验店营业时间调整，周末照常开放。' },
+    { t: '联名预告', b: '一个让人期待的合作正在路上，敬请期待。' },
+    { t: '晚安栏目', b: '每晚十点，一句晚安准时送达。' }
+  ],
+  checklist: [
+    { t: '今日三件要事', items: ['梳理今天的三件要事', '写下一条朋友圈文案', '读 10 页书'] },
+    { t: '晨间清单', items: ['喝一杯温水', '拉伸五分钟', '写下今日目标'] },
+    { t: '睡前清单', items: ['整理明天要穿的衣服', '把手机放远一点', '回想今天最开心的事'] },
+    { t: '工作收尾', items: ['清空收件箱', '确认明天的三件事', '桌面归位再下班'] },
+    { t: '周末充电', items: ['睡到自然醒', '出门走走晒晒太阳', '做一顿喜欢的饭'] },
+    { t: '创作日清单', items: ['收集三个灵感素材', '写三百字初稿', '给旧稿改一遍'] },
+    { t: '出行前检查', items: ['证件钱包手机', '关好门窗水电', '给绿植浇好水'] },
+    { t: '断舍离清单', items: ['清出一年没穿的衣服', '处理过期化妆品', '退掉不再用的订阅'] },
+    { t: '理财周记', items: ['记账十分钟', '检查本周开销', '给下周定个预算'] },
+    { t: '健康打卡', items: ['喝够八杯水', '走够六千步', '十一点前上床'] },
+    { t: '学习计划', items: ['看完一节课程', '整理一页笔记', '做一组练习题'] },
+    { t: '家务分工', items: ['今天我做饭', '你负责洗碗', '一起下楼倒垃圾'] },
+    { t: '周日晚规划', items: ['复盘本周完成度', '排好下周日程', '提前备好周一早餐'] },
+    { t: '深度工作', items: ['手机开勿扰', '专注五十分钟', '休息十分钟循环'] },
+    { t: '社交充电', items: ['约一位老朋友', '给家人打个电话', '回复拖了很久的消息'] },
+    { t: '灵感捕捉', items: ['记下三个念头', '拍一张路边的光影', '抄一句打动你的话'] },
+    { t: '搬家准备', items: ['列出物品清单', '预约搬家车辆', '提前打包常用品'] },
+    { t: '面试准备', items: ['研究公司背景', '准备三个提问', '模拟自我介绍一遍'] },
+    { t: '考试冲刺', items: ['过一遍错题本', '背诵核心考点', '十一点前睡觉'] },
+    { t: '店铺上新', items: ['拍好产品图', '写好三条文案', '检查库存与价格'] },
+    { t: '旅行计划', items: ['订好往返车票', '收藏三家餐馆', '下载离线地图'] },
+    { t: '宠物照护', items: ['按时驱虫', '补充新粮', '陪玩二十分钟'] },
+    { t: '绿植养护', items: ['检查盆土干湿', '擦一遍叶片', '转盆让光照均匀'] },
+    { t: '衣橱管理', items: ['按季节分区', '配好三套穿搭', '处理起球的旧衣'] },
+    { t: '冰箱管理', items: ['清点过期食材', '补齐蛋奶', '列好采购清单'] },
+    { t: '数字整理', items: ['清理相册截图', '备份重要文件', '退出不用的群'] },
+    { t: '周五复盘', items: ['本周做成了什么', '哪里可以更省力', '下周只改一件事'] },
+    { t: '生日筹备', items: ['选好礼物', '订好蛋糕', '写一张手写卡片'] },
+    { t: '亲子时光', items: ['一起读一本绘本', '去公园走一圈', '睡前聊今天的事'] },
+    { t: '面试后跟进', items: ['发感谢消息', '记录被问到的问题', '补齐回答思路'] },
+    { t: '自媒体日常', items: ['发布一条内容', '回复全部评论', '存三个选题灵感'] },
+    { t: '购前决策', items: ['写下真实需求', '对比三家评价', '设置预算上限'] },
+    { t: '心情急救', items: ['深呼吸三次', '喝口水吃点东西', '给信任的人发条消息'] },
+    { t: '房间焕新', items: ['换一套床品', '给桌面添一抹绿', '扔掉三个闲置物'] },
+    { t: '技能精进', items: ['看一集教程', '跟练二十分钟', '输出一段心得'] },
+    { t: '副业推进', items: ['今天联系一个客户', '优化一页介绍', '记录一笔收支'] },
+    { t: '阅读日', items: ['读完一个章节', '划出三句金句', '写五十字读后感'] },
+    { t: '观影夜', items: ['选一部想看很久的片', '备好零食饮料', '看完写三行短评'] },
+    { t: '运动计划', items: ['热身五分钟', '主项三十分钟', '拉伸十分钟'] },
+    { t: '牙齿护理', items: ['早晚认真刷牙', '用一次牙线', '预约半年洗牙'] },
+    { t: '皮肤管理', items: ['认真卸妆', '敷一次面膜', '十一点前入睡'] },
+    { t: '头发急救', items: ['洗头后用护发素', '少用高温吹整', '睡前梳头一百下'] },
+    { t: '月底盘点', items: ['对齐账单', '给储蓄划一笔', '调整下月预算'] },
+    { t: '年计划分解', items: ['把大目标拆成月', '写本月三个里程碑', '贴在看得见的地方'] },
+    { t: '感恩练习', items: ['写下三件感谢的事', '当面说一次谢谢', '给帮过你的人发消息'] },
+    { t: '效率体检', items: ['找出最耗时的琐事', '批量处理同类事', '删掉一个重复流程'] },
+    { t: '厨房日', items: ['试一道新菜', '规整调料区', '给冰箱除个霜'] },
+    { t: '出行放松', items: ['不带电脑', '只排一个景点', '认真吃一顿当地菜'] },
+    { t: '照片整理', items: ['选出本月九张最佳', '做一张月度拼图', '打印一张贴墙上'] },
+    { t: '旧友联络', items: ['翻出三年前的合照', '发一条问候', '约一次视频或见面'] },
+    { t: '设备保养', items: ['清灰除尘', '检查线材', '备份全部数据'] },
+    { t: '声音练习', items: ['朗读十分钟', '录一段回听', '调整语速与停顿'] },
+    { t: '写作素材', items: ['存三个热点话题', '摘录两段好结构', '列一个开头清单'] },
+    { t: '会议准备', items: ['提前发议程', '列出三条结论', '掐表排练一遍'] },
+    { t: '生活仪式', items: ['给餐桌摆一束花', '点一支喜欢的香', '认真吃完一顿饭'] },
+    { t: '夜间护肤', items: ['卸妆要彻底', '精华按序涂抹', '护手霜别忘了'] },
+    { t: '外语学习', items: ['背二十个单词', '听一段原声', '开口跟读五分钟'] },
+    { t: '开车前检查', items: ['绕车一圈看胎压', '调好后视镜', '系好安全带出发'] },
+    { t: '实习第一天', items: ['记下同事名字', '弄清考勤规则', '主动要一份文档读'] },
+    { t: '项目复盘', items: ['对照目标看结果', '列出三个亮点', '记下两个教训'] }
+  ],
+  imagetext: [
+    { t: '今晚的晚霞', b: '天空打翻了调色盘，路过的人都停下来看。' },
+    { t: '咖啡时间', b: '下午三点的第一口，世界重新清醒了。' },
+    { t: '街角一景', b: '老店门口的猫，晒着太阳打了个哈欠。' },
+    { t: '阅读时刻', b: '读到会心处，窗外刚好起风。' },
+    { t: '早餐日记', b: '认真吃的早餐，是一天温柔的开幕。' },
+    { t: '雨后', b: '叶子上挂着水珠，整条街都干净发亮。' },
+    { t: '午后阳台', b: '阳光正好，猫和我都在装睡。' },
+    { t: '夜跑路上', b: '风声和脚步声，是今晚最好的伴奏。' },
+    { t: '厨房进行时', b: '油锅响了，今天的快乐有着落了。' },
+    { t: '地铁窗外', b: '隧道里的灯一盏盏闪过，像流动的时间。' },
+    { t: '加班夜', b: '写字楼的灯还亮着，梦想也在加班。' },
+    { t: '周末早市', b: '烟火气最重的地方，治愈力也最强。' },
+    { t: '落日观测', b: '太阳落山的五分钟，胜过所有滤镜。' },
+    { t: '书桌一隅', b: '摊开的书，泡好的茶，属于我的安静。' },
+    { t: '雪天', b: '第一场雪落在肩上，冬天正式打招呼了。' },
+    { t: '爬山记', b: '爬到山顶才知道，风是甜的。' },
+    { t: '老照片', b: '翻到十年前的自己，笑得一样傻。' },
+    { t: '花店偶遇', b: '店主随手包的一束花，把春天带回了家。' },
+    { t: '深夜食堂', b: '一碗热汤面下肚，什么烦恼都变小了。' },
+    { t: '海边', b: '海浪的声音，是大自然在说慢慢来。' },
+    { t: '地铁阅读', b: '通勤四十分钟，读完了一个短篇。' },
+    { t: '归途', b: '楼下的灯还亮着，包子铺留了最后一屉。' },
+    { t: '晨雾', b: '清晨的雾，把城市调成了柔焦模式。' },
+    { t: '公园长椅', b: '坐下来发呆十分钟，是给自己的假期。' },
+    { t: '菜市场', b: '挑一把带露水的青菜，日子很具体。' },
+    { t: '旧书店', b: '在角落翻到一本旧诗集，扉页有别人的字。' },
+    { t: '天台夜景', b: '城市灯火在脚下，心事小了一圈。' },
+    { t: '午后雷阵雨', b: '雨来得急，躲雨的人成了临时的朋友。' },
+    { t: '面包出炉', b: '整条街都是麦子的香气，冬天被烤热了。' },
+    { t: '博物馆', b: '隔着玻璃和千年对视，时间真奇妙。' },
+    { t: '阳台种菜', b: '第一颗番茄红了，比中奖还开心。' },
+    { t: '夜宵时刻', b: '犒劳自己的道理，胃最懂。' },
+    { t: '初雪的脚印', b: '第一个踩进雪里的人，负责开路。' },
+    { t: '梧桐道', b: '落叶铺成的路，是秋天最好的注脚。' },
+    { t: '出租车窗', b: '深夜的车窗外面，城市的灯都温柔。' },
+    { t: '图书馆', b: '安静的下午，连翻书声都好听。' },
+    { t: '晨跑五公里', b: '跑完的爽，只有跑过的人懂。' },
+    { t: '老街', b: '青石板路走一走，时间在这里慢下来。' },
+    { t: '阳台的猫', b: '它负责晒太阳，我负责看它晒太阳。' },
+    { t: '火锅局', b: '热气腾腾的锅，配上热热闹闹的人。' },
+    { t: '毕业季', b: '把帽子抛上天的那一刻，青春定格了。' },
+    { t: '春游', b: '樱花开到第七天，正好赶上野餐。' },
+    { t: '台风天居家', b: '窗外风大雨大，屋里汤热灯暖。' },
+    { t: '深夜写稿', b: '灵感都是深夜来的，稿子也是。' },
+    { t: '早高峰', b: '人潮汹涌，每个人都在奔赴自己的战场。' },
+    { t: '晒被子', b: '被子晒饱了阳光，晚上睡觉都是太阳味。' },
+    { t: '秋天的第一杯', b: '奶茶可以有，仪式感必须安排。' },
+    { t: '雨夜灯火', b: '雨幕里的路灯，一盏盏都像家。' },
+    { t: '画展', b: '在一幅画前站了很久，像去了一趟远方。' },
+    { t: '露营夜', b: '帐篷外的银河，是城市欠我们的浪漫。' },
+    { t: '火车站', b: '出发和抵达之间，全是故事。' },
+    { t: '下班路上', b: '晚风、耳机、回家的路，一天的完美收尾。' },
+    { t: '手工课', b: '捏坏的第三个碗，终于像样了。' },
+    { t: '妈妈的手艺', b: '还是那碗面的味道，一口回到小时候。' },
+    { t: '凌晨四点', b: '城市醒之前，环卫工已经扫完两条街。' },
+    { t: '跨年烟花', b: '烟花炸开的一秒，和身边的人许了愿。' },
+    { t: '工位绿植', b: '绿萝又长新叶，比报表可爱多了。' },
+    { t: '夜市', b: '烟火气升起来的地方，烦恼自动退散。' },
+    { t: '清晨的操场', b: '读书声和鸟叫声，是校园的闹钟。' },
+    { t: '冬夜围炉', b: '一家人围着炉子，橘子皮在炉边慢慢变干。' }
+  ]
+};
+
+// 取某类型某天的种子文案（offset 用于「换一套」，与金句库同一套确定性轮换逻辑）
+function seedForType(type, dateStr, offset) {
+  const pool = TYPE_POOLS[type];
+  if (!pool || !pool.length) return null;
+  const N = pool.length;
+  const di = dayIndexOf(dateStr);
+  const k = Math.max(0, Number(offset) || 0);
+  const idx = ((di + k * STEP) % N + N) % N;
+  const raw = pool[idx];
+  if (!raw) return null;
+  const out = {};
+  if (raw.t !== undefined) out.title = raw.t;
+  if (raw.b !== undefined) out.body = raw.b;
+  if (raw.g !== undefined) out.tag = raw.g;
+  if (raw.items !== undefined) out.items = raw.items.slice();
+  return out;
+}
+
+// 某类型文案池储备量（dailysign / quote 返回通用金句库容量；未知类型返回 null）
+function poolSizeFor(type) {
+  if (type === 'dailysign' || type === 'quote') return FLAT.length;
+  const pool = TYPE_POOLS[type];
+  return pool ? pool.length : null;
+}
+
+// ── 内部工具 ──
+const CAT_NAME = { morning: '早安', night: '晚安', growth: '成长', life: '生活', craft: '创作', mood: '心绪' };
+
+// 展平为 [{t, c}]，并保证总条数与步长 97 互质（不是 97 的倍数），否则补一条兜底句。
+let FLAT = [];
+(function build() {
+  for (const g of Object.keys(POOL)) {
+    for (const t of POOL[g]) FLAT.push({ t: String(t || '').trim(), c: CAT_NAME[g] || '' });
+  }
+  FLAT = FLAT.filter(x => x.t.length > 0);
+  // 去重（保险：同一句只留一条）
+  const seen = new Set();
+  FLAT = FLAT.filter(x => { const k = x.t; if (seen.has(k)) return false; seen.add(k); return true; });
+  // 保证与 STEP 互质：若 N 恰为 97 的倍数，追加一条备用句
+  if (FLAT.length % STEP === 0) {
+    FLAT.push({ t: '把今天过好，就是了不起的事。', c: '生活' });
+  }
+})();
+
+function dateStrOf(d) {
+  const dt = d || new Date();
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  const day = String(dt.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+
+// dateStr → 自纪元天数（UTC 意义，本地日期零点），跨时区稳定
+function dayIndexOf(dateStr) {
+  const s = dateStr || dateStrOf();
+  const p = String(s).split('-').map(Number);
+  const y = p[0] || 2026, m = (p[1] || 1) - 1, d = p[2] || 1;
+  return Math.floor(Date.UTC(y, m, d) / 86400000);
+}
+
+// 取某天第 offset 条（offset=0 为当日主推；>0 用于「换一句」）
+function quoteForDate(dateStr, offset) {
+  const N = FLAT.length;
+  const di = dayIndexOf(dateStr);
+  const k = Math.max(0, Number(offset) || 0);
+  const idx = ((di + k * STEP) % N + N) % N;
+  const e = FLAT[idx];
+  // text 为 t 的可读别名（页面层用 .text 更不易误写；库内遍历用 .t）
+  return Object.assign({ index: idx, date: dateStr || dateStrOf(), offset: k, text: e.t }, e);
+}
+
+// 今天的主推（本地自然日）
+function todayQuote(offset) {
+  return quoteForDate(dateStrOf(), offset);
+}
+
+function poolSize() { return FLAT.length; }
+
+module.exports = { quoteForDate, todayQuote, poolSize, poolSizeFor, seedForType, dateStrOf, STEP };
+
+});</script>
+<script>__def('poster', function (module, exports, require) {
+// utils/templates/poster.js
+// ─────────────────────────────────────────────────────────────────────────
+// 海报长图模板（2026-10-01 · P4 新增内容类型）
+// 竖版 375 逻辑宽、高度随内容流式计算；借鉴 Superljf poster 的个性化海报思路：
+//   头像（圆形裁剪）+ 昵称 + 专属小程序码，可发朋友圈/群后扫码回流。
+// 排版沿用卡片 v2 规范：三段式、行距 1.7+、流式测量、主题化配色、照片背景白字。
+//
+// buildPosterModel(themeId, data, opts) → 引擎 model
+//   data: { title, quote, body, author, nickname, dateLabel, avatar, qr, bgImg }
+//   opts: { measure }（页面传 canvas measureText；缺省内置估算）
+// ─────────────────────────────────────────────────────────────────────────
+'use strict';
+const { getTheme, palette } = require('../themes');
+const { wrapText, defaultMeasure } = require('../core/render_engine');
+
+const W = 375;
+const PAD = 24;
+
+// 行数计算：长图为不裁切格式，quote/body 不设上限（clamp 传 0 = 不限）；
+// 只有 title 保留 clamp 3（标题天然短，防异常超长输入）。
+function countLines(text, width, fontPx, measure, clamp) {
+  const lines = wrapText(String(text || ''), width, measure, fontPx).length;
+  return clamp > 0 ? Math.min(lines, clamp) : lines;
+}
+
+function buildPosterModel(themeId, data, opts) {
+  const p = palette(themeId);
+  const d = data || {};
+  const measure = (opts && opts.measure) || defaultMeasure;
+  const onPhoto = !!d.bgImg;
+  const ink = onPhoto ? '#ffffff' : p.ink;
+  const sub = onPhoto ? 'rgba(255,255,255,0.92)' : p.sub;
+  const font = p.cjkFont;
+  const innerW = W - PAD * 2;
+  const children = [];
+  let y = 0;
+
+  const txt = (content, o) => children.push(Object.assign(
+    { type: 'text', content: String(content == null ? '' : content), fontFamily: font }, o));
+  const rect = (o) => children.push(Object.assign({ type: 'rect' }, o));
+
+  // ── 顶部主色细条 + 品牌行（左：品牌；右：日期）──
+  rect({ left: 0, top: 0, width: W, height: 4, background: p.primary });
+  y = 24;
+  txt('dudu 画面感', { left: PAD, top: y, width: 120, color: sub, fontSize: 11, lineHeight: 14 });
+  if (d.dateLabel) {
+    const dw = Math.ceil(measure(d.dateLabel, 11));
+    txt(d.dateLabel, { left: W - PAD - dw, top: y, width: dw, color: sub, fontSize: 11, lineHeight: 14 });
+  }
+  y += 14 + 26;
+
+  // ── 主标题（24/34，clamp 3）+ 主色短横条 ──
+  if (d.title) {
+    const tLines = countLines(d.title, innerW, 24, measure, 3);
+    txt(d.title, { left: PAD, top: y, width: innerW, color: ink, fontSize: 24, fontWeight: 'bold', lineHeight: 34, lineClamp: 3 });
+    y += tLines * 34 + 12;
+    rect({ left: PAD, top: y, width: 36, height: 4, background: p.primary, radius: 2 });
+    y += 4 + 18;
+  }
+
+  // ── 金句主体（19/34 = 1.79 行距，❝ 引导符）──
+  if (d.quote) {
+    txt('❝', { left: PAD, top: y, width: 40, color: p.primary, fontSize: 28, fontWeight: 'bold', lineHeight: 32 });
+    y += 30;
+    txt(d.quote, { left: PAD, top: y, width: innerW, color: ink, fontSize: 19, lineHeight: 34 });
+    y += countLines(d.quote, innerW, 19, measure, 0) * 34 + 10;
+    if (d.author) {
+      const aw = Math.ceil(measure('—— ' + d.author, 13));
+      txt('—— ' + d.author, { left: W - PAD - aw, top: y, width: aw, color: sub, fontSize: 13, lineHeight: 18 });
+      y += 18 + 16;
+    }
+  }
+
+  // ── 正文补充（14/24，clamp 12）──
+  if (d.body) {
+    children.push({ type: 'line', left: PAD, top: y, width: innerW, thickness: 1, color: p.line });
+    y += 14;
+    txt(d.body, { left: PAD, top: y, width: innerW, color: ink, fontSize: 14, lineHeight: 24 });
+    y += countLines(d.body, innerW, 14, measure, 0) * 24 + 20;
+  }
+
+  // ── 底部信息行：头像+昵称（左） | 小程序码（右）──
+  y += 2;
+  children.push({ type: 'line', left: PAD, top: y, width: innerW, thickness: 1, color: p.line });
+  y += 14;
+  const BLOCK = 56;
+  if (d.avatar) {
+    children.push({ type: 'image', left: PAD, top: y, width: BLOCK, height: BLOCK, radius: BLOCK / 2,
+      src: d.avatar, objectFit: 'cover', asset: d.avatarAsset });
+  } else {
+    children.push({ type: 'circle', left: PAD, top: y, d: BLOCK, background: p.bgSoft });
+    txt((d.nickname || 'dudu').slice(0, 1), { left: PAD, top: y + 18, width: BLOCK, color: p.primary,
+      fontSize: 20, fontWeight: 'bold', lineHeight: 22, textAlign: 'center' });
+  }
+  if (d.qr) {
+    children.push({ type: 'qrcode', left: W - PAD - BLOCK, top: y, size: BLOCK, asset: d.qrAsset });
+  }
+  const nameX = d.avatar ? PAD + BLOCK + 12 : PAD;
+  txt(d.nickname || 'dudu 画面感', { left: nameX, top: y + 8, width: (W - PAD * 2) - BLOCK * 2 - 12, color: ink, fontSize: 15, fontWeight: 'bold', lineHeight: 20, lineClamp: 1 });
+  txt(d.dateLabel || '', { left: nameX, top: y + 30, width: (W - PAD * 2) - BLOCK * 2 - 12, color: sub, fontSize: 11, lineHeight: 14, lineClamp: 1 });
+  y += BLOCK + 22;
+
+  const height = Math.max(y, 480);
+  const model = { width: W, height, gradient: p.bg, radius: p.radius, children };
+  if (d.bgImg) model.backgroundImage = d.bgImg;
+  return model;
+}
+
+module.exports = { buildPosterModel, W, PAD };
+
+});</script>
+<script>
+const { computeLayout, draw } = __req('render_engine');
+const { THEME_LIST } = __req('themes');
+const { CARD_TYPES, buildCardModel } = __req('templates');
+const { buildPosterModel } = __req('poster');
+const daily = __req('daily');
+
+// ── 演示资产：假二维码 + 假照片（canvas 可直接当 image 用） ──
+function makeQrAsset() {
+  const c = document.createElement('canvas'); c.width = 100; c.height = 100;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, 100, 100);
+  g.fillStyle = '#111';
+  [[4, 4], [72, 4], [4, 72]].forEach(([x, y]) => {
+    g.fillRect(x, y, 24, 24); g.fillStyle = '#fff'; g.fillRect(x + 4, y + 4, 16, 16);
+    g.fillStyle = '#111'; g.fillRect(x + 8, y + 8, 8, 8);
+  });
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let y = 0; y < 100; y += 8) for (let x = 0; x < 100; x += 8) {
+    const inCorner = (x < 32 && y < 32) || (x > 68 && y < 32) || (x < 32 && y > 68);
+    if (rnd() > 0.55 && !inCorner) g.fillRect(x, y, 7, 7);
+  }
+  return c;
+}
+function makePhotoAsset() {
+  const c = document.createElement('canvas'); c.width = 640; c.height = 420;
+  const g = c.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, 0, 420);
+  grad.addColorStop(0, '#2b5876'); grad.addColorStop(1, '#4e4376');
+  g.fillStyle = grad; g.fillRect(0, 0, 640, 420);
+  g.fillStyle = 'rgba(255,255,255,0.9)';
+  g.beginPath(); g.arc(520, 80, 34, 0, Math.PI * 2); g.fill();
+  g.fillStyle = 'rgba(0,0,0,0.35)';
+  g.beginPath(); g.moveTo(0, 340); g.lineTo(180, 220); g.lineTo(340, 340); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(240, 360); g.lineTo(430, 190); g.lineTo(640, 360); g.closePath(); g.fill();
+  return c;
+}
+const qrAsset = makeQrAsset();
+const photoAsset = makePhotoAsset();
+
+// ── 样例内容（与页面种子同源，直接来自文案库） ──
+const today = daily.todayQuote();
+const SAMPLE = {
+  dailysign: { title: today.date.replace(/-/, '月').replace(/-/, '日') + ' · 今日', body: today.text, qr: true },
+  quote: { body: daily.todayQuote(1).text, author: '—— dudu 画面感', qr: true },
+  recommend: daily.seedForType('recommend'),
+  notice: daily.seedForType('notice'),
+  checklist: daily.seedForType('checklist'),
+  imagetext: daily.seedForType('imagetext')
+};
+
+function renderCard(canvas, type, themeId, data) {
+  const model = buildCardModel(type, themeId, Object.assign({}, data, { qr: true }));
+  const q = model.children.find(c => c.type === 'qrcode');
+  if (q) q.asset = qrAsset;
+  const ctx = canvas.getContext('2d');
+  const layout = computeLayout(model, {}, (t, px) => {
+    ctx.font = px + 'px sans-serif';
+    return ctx.measureText(t).width;
+  });
+  const scale = 224 / 340;
+  canvas.width = 340; canvas.height = layout.height;
+  canvas.style.height = Math.round(layout.height * scale) + 'px';
+  draw(ctx, layout);
+}
+
+function addCard(grid, label, canvas) {
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  const tag = document.createElement('div');
+  tag.className = 'tag'; tag.textContent = label;
+  cell.appendChild(tag); cell.appendChild(canvas);
+  grid.appendChild(cell);
+}
+
+const grid = document.getElementById('grid');
+for (const th of THEME_LIST) {
+  for (const tp of Object.keys(CARD_TYPES)) {
+    const canvas = document.createElement('canvas');
+    try {
+      renderCard(canvas, tp, th.id, SAMPLE[tp]);
+      addCard(grid, th.name + ' · ' + CARD_TYPES[tp].name, canvas);
+    } catch (e) {
+      addCard(grid, '❌ ' + th.name + ' · ' + CARD_TYPES[tp].name + '：' + e.message, canvas);
+    }
+  }
+}
+
+// ── 照片背景模式：quote + imagetext 两张演示 ──
+const grid2 = document.getElementById('grid2');
+[['quote', '金句卡'], ['imagetext', '图文卡']].forEach(([tp, name]) => {
+  const canvas = document.createElement('canvas');
+  const model = buildCardModel(tp, 'warm', Object.assign({}, SAMPLE[tp], { bgImg: 'demo://photo.jpg', qr: true }));
+  const q = model.children.find(c => c.type === 'qrcode');
+  if (q) q.asset = qrAsset;
+  model.backgroundImageAsset = photoAsset;
+  const ctx = canvas.getContext('2d');
+  const layout = computeLayout(model, {}, (t, px) => { ctx.font = px + 'px sans-serif'; return ctx.measureText(t).width; });
+  canvas.width = 340; canvas.height = layout.height;
+  canvas.style.height = Math.round(layout.height * (224 / 340)) + 'px';
+  draw(ctx, layout);
+  addCard(grid2, '照片背景 · ' + name, canvas);
+});
+
+// ── 海报长图：6 主题 × 1 样例（头像用首字占位，展示模板兜底） ──
+const grid3 = document.getElementById('grid3');
+const POSTER_SAMPLE = {
+  title: '把日子过成海报',
+  quote: daily.todayQuote(2).text,
+  body: (daily.seedForType('imagetext') || {}).body || '记录此刻，分享给在意的人。',
+  author: 'dudu',
+  nickname: '春英',
+  dateLabel: today.date.replace(/-/g, '月') + '日'
+};
+for (const th of THEME_LIST) {
+  const canvas = document.createElement('canvas');
+  try {
+    const model = buildPosterModel(th.id, Object.assign({}, POSTER_SAMPLE, { qr: 'demo://qr' }));
+    const q = model.children.find(c => c.type === 'qrcode');
+    if (q) q.asset = qrAsset;
+    const ctx = canvas.getContext('2d');
+    const layout = computeLayout(model, {}, (t, px) => { ctx.font = px + 'px sans-serif'; return ctx.measureText(t).width; });
+    canvas.width = 375; canvas.height = layout.height;
+    const scale = 224 / 375;
+    canvas.style.height = Math.round(layout.height * scale) + 'px';
+    draw(ctx, layout);
+    addCard(grid3, th.name + ' · 海报长图', canvas);
+  } catch (e) {
+    addCard(grid3, '❌ ' + th.name + ' · 海报：' + e.message, canvas);
+  }
+}
+
+// ── 照片背景海报：白字 + 暗色蒙版演示 ──
+const canvasP = document.createElement('canvas');
+const modelP = buildPosterModel('warm', Object.assign({}, POSTER_SAMPLE, { bgImg: 'demo://photo.jpg', qr: 'demo://qr' }));
+const qp = modelP.children.find(c => c.type === 'qrcode');
+if (qp) qp.asset = qrAsset;
+modelP.backgroundImageAsset = photoAsset;
+const ctxP = canvasP.getContext('2d');
+const layoutP = computeLayout(modelP, {}, (t, px) => { ctxP.font = px + 'px sans-serif'; return ctxP.measureText(t).width; });
+canvasP.width = 375; canvasP.height = layoutP.height;
+canvasP.style.height = Math.round(layoutP.height * (224 / 375)) + 'px';
+draw(ctxP, layoutP);
+addCard(grid3, '照片背景 · 海报长图', canvasP);
+
+document.getElementById('info').innerHTML =
+  '构建时间：' + new Date().toLocaleString() +
+  ' ｜ 今日推荐（' + daily.dateStrOf() + '）：' + today.text +
+  '<br>储备量：金句库 <b>' + daily.poolSize() + '</b> 条；种草/公告/清单/图文各 <b>' +
+  daily.poolSizeFor('recommend') + '</b> 条 ｜ 本页由真实引擎源码驱动（render_engine × themes × templates × poster × daily）';
+</script>
+</body>
+</html>

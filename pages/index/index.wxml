@@ -18,19 +18,19 @@
     </view>
   </view>
 
-  <!-- 创作工具：纯本地，无 AI（B1 文案工具箱 + A 分镜编辑器 + B 卡片生成器） -->
-  <view class="tool-section">
-    <view class="tool-card" bindtap="goGen">
-      <view class="tool-title">✍️ 文案工具箱</view>
-      <view class="tool-desc">模板匹配 · 防折叠 · 知识库金句 · 我的素材库</view>
+  <!-- 创作工具：纯本地，无 AI（长按工具卡可拖动排序，顺序自动记住） -->
+  <view class="tool-section"
+    catchtouchmove="{{dragIdx > -1 ? 'onToolDragMove' : ''}}"
+    catchtouchend="{{dragIdx > -1 ? 'onToolDragEnd' : ''}}"
+    catchtouchcancel="{{dragIdx > -1 ? 'onToolDragEnd' : ''}}">
+    <view wx:for="{{tools}}" wx:key="key"
+      class="tool-card {{item.cls}} {{dragIdx === index ? 'dragging' : ''}}"
+      style="{{dragIdx === index ? 'transform:translateY(' + dragDy + 'px);' : (offsets[index] ? 'transform:translateY(' + offsets[index] + 'px);' : '')}}"
+      bindtap="onTapTool" data-key="{{item.key}}"
+      bindlongpress="onToolDragStart" data-idx="{{index}}">
+      <view class="tool-title">{{item.title}}</view>
+      <view class="tool-desc">{{item.desc}}</view>
     </view>
-    <view class="tool-card accent" bindtap="goComic">
-      <view class="tool-title">🎞️ 画面感分镜编辑器</view>
-      <view class="tool-desc">写文字脚本，一键出分镜图 · 全程本地</view>
-    </view>
-    <view class="tool-card card2" bindtap="goCard">
-      <view class="tool-title">🎴 卡片制作 / 日签生成器</view>
-      <view class="tool-desc">选模板填文字，一键出卡片 · 可配本地图</view>
-    </view>
+    <view class="tool-hint-drag">长按工具卡可拖动排序 · 顺序自动记住</view>
   </view>
 </view>

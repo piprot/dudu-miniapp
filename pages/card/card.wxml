@@ -14,11 +14,18 @@
     </view>
   </view>
 
+  <!-- 主题选择（6 套数据化主题，渲染引擎自动读取配色） -->
+  <view class="theme-row">
+    <view wx:for="{{themes}}" wx:key="id"
+      class="theme-chip {{theme === item.id ? 'on' : ''}}"
+      bindtap="onPickTheme" data-id="{{item.id}}">{{item.name}}</view>
+  </view>
+
   <view class="help-toggle" bindtap="onToggleHelp">{{showHelp ? '收起说明' : '怎么用'}}</view>
   <view class="help" wx:if="{{showHelp}}">
     <view class="help-line">① 选上方模板（每日日签 / 金句 / 种草 / 公告 / 清单 / 图文）</view>
     <view class="help-line">② 在下方填文字；种草 / 图文可点「选择图片」取本地照片；日签自动带日期与小程序码</view>
-    <view class="help-line">③ 点「生成卡片」，再「保存到相册」即可发朋友圈 / 群</view>
+    <view class="help-line">③ 点「生成卡片」，再「保存到相册」即可发朋友圈 / 群（卡片右下角带小程序码，扫码回到小程序）</view>
     <view class="help-line">图片只存在你手机本地，不会上传任何服务器。</view>
   </view>
 
@@ -33,6 +40,8 @@
       <view class="label">{{type === 'quote' || type === 'dailysign' ? '金句内容' : '正文'}}</view>
       <textarea class="ta" value="{{form.body}}" bindinput="onField" data-field="body"
         placeholder="{{type === 'quote' || type === 'dailysign' ? '写一句打动人的话' : '写点什么…'}}" maxlength="-1" />
+      <button class="btn ghost" bindtap="onShuffleQuote">🎲 换一套文案（库存 {{poolSize}} 条）</button>
+      <view class="hint">文案库按天自动换一套今日推荐，不满意就点上面自己挑</view>
     </view>
 
     <view class="field" wx:if="{{type === 'checklist'}}">
@@ -56,15 +65,21 @@
       <button class="btn ghost" bindtap="onChooseImage">{{cover ? '重新选择图片' : '选择图片'}}</button>
       <view wx:if="{{cover}}" class="cover-mini">已选本地图片 ✓</view>
     </view>
+
+    <view class="field">
+      <view class="label">背景图（可选，铺满整张卡）</view>
+      <button class="btn ghost" bindtap="onChooseBgImage">{{bgImg ? '重新选择背景图' : '选择背景图'}}</button>
+      <view wx:if="{{bgImg}}" class="cover-mini">已选背景图 ✓</view>
+    </view>
   </view>
 
-  <button class="btn primary gen" bindtap="onGenCard">生成卡片</button>
+  <button class="btn primary gen" bindtap="onGenCard">生成卡片（{{cardCost}} 积分）</button>
   <view class="err" wx:if="{{err}}">{{err}}</view>
 
   <view class="canvas-wrap">
     <canvas type="2d" id="cardCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
     <view wx:if="{{!rendered}}" class="canvas-ph">点「生成卡片」后，卡片会显示在这里</view>
-    <button wx:if="{{rendered}}" class="btn primary save" bindtap="onSaveImage">保存到相册</button>
+    <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
   </view>
 
   <view class="tip">卡片保存在你手机本地，可发朋友圈 / 群，无需上传服务器。</view>

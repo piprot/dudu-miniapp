@@ -2,9 +2,84 @@ page {
   background: #f5f0e8;
   font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
   color: #2b2b2b;
+
+  /* ── 设计令牌（2026-10-01 与 design/design-tokens.md 同源，改值必须两边同步）── */
+  /* 色板：暖纸底 + 暖橙主色 + 深墨按钮（克制三原则：主色只做锚点，大面积交给纸底与灰阶） */
+  --bg-page: #f5f0e8;        /* 页面底 */
+  --bg-card: #fffdf8;        /* 卡片/输入框底 */
+  --bg-soft: #fdf9f0;        /* 浅底块（帮助/灵感条） */
+  --border: #e0d6c2;         /* 常规描边 */
+  --border-soft: #e7ddca;    /* 浅描边（帮助块） */
+  --ink: #2b2b2b;            /* 主文本 & 深墨按钮底（本设计深墨按钮=墨色） */
+  --text-title: #4a3b28;     /* 标题暖墨 */
+  --text-body: #5b5346;      /* 正文按钮字 */
+  --text-sub: #8a8378;       /* 次要文字 */
+  --text-tertiary: #9a8f7c;  /* 提示/占位 */
+  --primary: #f5793b;        /* 暖橙主色（锚点强调） */
+  --primary-deep: #e65100;   /* 主色深（积分/付费） */
+  --accent-blue: #378ADD;    /* 点睛蓝（分镜） */
+  --accent-green: #4caf7d;   /* 点睛绿（海报） */
+  --success: #2e7d32;        /* 成功 */
+  --danger: #c0504d;         /* 错误/删除 */
+  /* 字号（rpx） */
+  --fs-display: 52rpx;  /* 首页品牌 */
+  --fs-h1: 38rpx;       /* 页标题 */
+  --fs-title: 32rpx;    /* 卡片标题 */
+  --fs-body: 28rpx;     /* 正文/按钮 */
+  --fs-label: 25rpx;    /* 表单标签 */
+  --fs-sub: 24rpx;      /* 副文案 */
+  --fs-hint: 22rpx;     /* 提示/脚注 */
+  /* 间距（4px 网格的 rpx 倍数） */
+  --sp-1: 8rpx;
+  --sp-2: 16rpx;
+  --sp-3: 24rpx;
+  --sp-4: 32rpx;
+  --sp-5: 48rpx;
+  /* 圆角 */
+  --r-sm: 12rpx;   /* 输入框/灵感条 */
+  --r-md: 16rpx;   /* 卡片/画布 */
+  --r-lg: 20rpx;   /* 工具卡/积分条 */
+  --r-xl: 24rpx;   /* 品牌 hero */
+  --r-pill: 999rpx;/* 胶囊 */
+  /* 阴影 */
+  --shadow-card: 0 4rpx 14rpx rgba(150, 110, 50, 0.08);
+  --shadow-float: 0 8rpx 24rpx rgba(150, 110, 50, 0.12);
 }
 
 /* ⚠️ WXSS 编译器选择器白名单只有 .class / #id / element / element,element / ::after / ::before。
    不要在这里写 @media / * 通用选择器 / :not() —— 会直接报「编译 .wxss 文件错误」。
    （曾因 prefers-reduced-motion 兜底块用了 *:not(...) 整个编译挂掉，2026-09-22 移除）
    装饰性动效影响极小，无需无障碍兜底；如确需降低动效，请在具体页面用类选择器逐条关。 */
+
+/* ── 保存按钮翻转反馈（流体交互库 #27 · A 档 · 2026-10-01 全局化）──
+   铁律 5：连续触发用双套等价 keyframes 奇偶交替（saved-a / saved-b），防重放失效；
+   铁律 6：copiedKey 式状态驱动 + setTimeout 1.6s 复原（timer 引用存页面防竞态）；
+   内联反馈替代 toast。transform 用 deg（无 rpx 参与兼容稳）。 */
+@keyframes saveFlipA {
+  0% { transform: rotateX(0deg); }
+  50% { transform: rotateX(90deg); }
+  100% { transform: rotateX(0deg); }
+}
+@keyframes saveFlipB {
+  0% { transform: rotateX(0deg); }
+  50% { transform: rotateX(90deg); }
+  100% { transform: rotateX(0deg); }
+}
+.btn.save-btn { backface-visibility: hidden; }
+.btn.save-btn.saved-a { animation: saveFlipA 0.5s ease; background: #2e7d32; color: #fff; }
+.btn.save-btn.saved-b { animation: saveFlipB 0.5s ease; background: #2e7d32; color: #fff; }
+
+/* ── 首页工具卡长按拖拽排序（流体交互库 #6 · B 档 · 2026-10-01）──
+   铁律 2：被拖行走 inline transition:none，其余行走 CSS transition 平滑让位；
+   铁律 3：让位量用 boundingClientRect 实测（onToolDragStart 内量好 rects），
+           不按均匀行高估算。 */
+.tool-card {
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+.tool-card.dragging {
+  transition: none;
+  box-shadow: 0 12rpx 32rpx rgba(150, 110, 50, 0.28);
+  opacity: 0.92;
+  z-index: 5;
+}
+.tool-hint-drag { font-size: 22rpx; color: #b3a890; text-align: center; margin-top: 4rpx; }

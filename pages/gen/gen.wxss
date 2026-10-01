@@ -33,10 +33,10 @@
   background: linear-gradient(135deg, #fff6e8 0%, #fdeedd 100%);
   border: 2rpx solid #ffe3bd; border-radius: 18rpx; padding: 24rpx; margin-bottom: 22rpx;
 }
-.hero-kicker { display: inline-block; font-size: 22rpx; font-weight: 700; color: #f5793b; background: #fff0e0; border-radius: 999rpx; padding: 4rpx 18rpx; margin-bottom: 12rpx; }
+.hero-kicker { display: inline-block; font-size: 22rpx; font-weight: 700; color: var(--primary); background: #fff0e0; border-radius: 999rpx; padding: 4rpx 18rpx; margin-bottom: 12rpx; }
 .hero-title { font-size: 36rpx; font-weight: 800; color: #4a3b28; line-height: 1.35; }
 .hero-sub { font-size: 24rpx; color: #8a7554; margin-top: 10rpx; line-height: 1.6; }
-.vp-strong { color: #f5793b; font-weight: 800; }
+.vp-strong { color: var(--primary); font-weight: 800; }
 
 /* 步骤标签 */
 .sec-label { font-size: 28rpx; font-weight: 800; color: #4a3b28; margin: 8rpx 0 16rpx; }
@@ -53,14 +53,14 @@
 .step-txt { font-size: 20rpx; color: #a08a68; margin-top: 6rpx; }
 .step-node.done .step-dot { background: #ffd98a; color: #6b4a0e; }
 .step-node.done .step-txt { color: #8a6520; }
-.step-node.now .step-dot { background: #f5793b; color: #ffffff; box-shadow: 0 0 0 6rpx rgba(245, 121, 59, 0.18); }
-.step-node.now .step-txt { color: #f5793b; font-weight: 700; }
+.step-node.now .step-dot { background: var(--primary); color: #ffffff; box-shadow: 0 0 0 6rpx rgba(245, 121, 59, 0.18); }
+.step-node.now .step-txt { color: var(--primary); font-weight: 700; }
 .step-line { flex: 1; height: 4rpx; background: #efe2cd; border-radius: 2rpx; margin: 0 4rpx 26rpx; }
 .step-line.on { background: #ffc46b; }
 
 .step-head { display: flex; align-items: center; margin: 20rpx 0 14rpx; }
 .step-head.gen { margin: 6rpx 0 14rpx; }
-.step-head-no { font-size: 26rpx; font-weight: 800; color: #f5793b; margin-right: 10rpx; }
+.step-head-no { font-size: 26rpx; font-weight: 800; color: var(--primary); margin-right: 10rpx; }
 .step-head-txt { font-size: 25rpx; font-weight: 700; color: #4a3b28; flex: 1; }
 .step-head-ok { font-size: 22rpx; font-weight: 700; color: #2e9e5b; }
 
@@ -79,7 +79,7 @@
   background: #faf6ee; border: 2rpx solid #ece0cb; border-radius: 18rpx;
   padding: 18rpx 20rpx; transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, background-color .16s ease;
 }
-.kind-chip.on { background: #fff6e8; border-color: #f5793b; box-shadow: 0 6rpx 16rpx rgba(245, 121, 59, 0.16); }
+.kind-chip.on { background: #fff6e8; border-color: var(--primary); box-shadow: 0 6rpx 16rpx rgba(245, 121, 59, 0.16); }
 .kind-ic { flex: none; font-size: 36rpx; width: 44rpx; text-align: center; }
 .kind-meta { display: flex; flex-direction: column; min-width: 0; }
 .kind-name { font-size: 27rpx; color: #4a3b28; font-weight: 700; }
@@ -97,7 +97,7 @@
   margin: 16rpx 0 0; font-size: 22rpx; color: #9a8868; line-height: 1.6;
   background: #fbf4e8; border: 2rpx solid #f3e6d2; border-radius: 16rpx; padding: 12rpx 18rpx;
 }
-.sel-name { color: #f5793b; font-weight: 700; }
+.sel-name { color: var(--primary); font-weight: 700; }
 .struct-hint {
   margin: 10rpx 0 0; font-size: 21rpx; color: #9279b0; line-height: 1.6;
   background: #f8f3fc; border: 2rpx solid #ece2f4; border-radius: 16rpx; padding: 10rpx 16rpx;
@@ -123,7 +123,7 @@
   height: auto; min-height: 170rpx;
   line-height: 1.6; padding: 20rpx 22rpx;
 }
-.field-input:focus { border-color: #f5793b; }
+.field-input:focus { border-color: var(--primary); }
 
 .counter { display: flex; align-items: center; justify-content: space-between; font-size: 22rpx; color: #b3a68f; margin: 8rpx 4rpx 0; }
 .counter-len { font-size: 22rpx; color: #b3a68f; }
@@ -179,7 +179,7 @@
 
 /* 主 CTA：琥珀渐变 */
 .cta-btn {  margin-top: 22rpx; color: #fff; font-size: 30rpx; font-weight: 700;
-  background: linear-gradient(135deg, #ff9d42 0%, #f5793b 100%);
+  background: linear-gradient(135deg, #ff9d42 0%, var(--primary) 100%);
   border-radius: 999rpx; padding: 8rpx 0;
   box-shadow: 0 8rpx 24rpx rgba(245, 121, 59, 0.35);
 }
@@ -192,7 +192,7 @@
   background: #fbf7ee; border: 3rpx solid #eee2cc; border-radius: 20rpx;
   padding: 22rpx; margin-bottom: 18rpx; transition: transform .15s ease, border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
 }
-.moment-card.sel { border-color: #f5793b; background: #fff6e8; box-shadow: 0 4rpx 16rpx rgba(245, 121, 59, 0.15); }
+.moment-card.sel { border-color: var(--primary); background: #fff6e8; box-shadow: 0 4rpx 16rpx rgba(245, 121, 59, 0.15); }
 .moment-no { font-size: 24rpx; color: #c07a2e; font-weight: 700; margin-bottom: 10rpx; }
 .moment-text { font-size: 28rpx; color: #3a332a; line-height: 1.75; white-space: pre-wrap; word-break: break-all; }
 
@@ -280,13 +280,15 @@
 /* ── 模块切换（2026-09-29 B1 合规重构：模板匹配 / 排版优化）── */
 .mode-switch { display: flex; background: #f3e9d8; border-radius: 999rpx; padding: 6rpx; margin-bottom: 22rpx; }
 .mode-tab { flex: 1; text-align: center; font-size: 26rpx; font-weight: 700; color: #9a8054; padding: 16rpx 0; border-radius: 999rpx; }
-.mode-tab.on { background: #ffffff; color: #f5793b; box-shadow: 0 4rpx 12rpx rgba(150,110,50,0.12); }
+.mode-tab.on { background: #ffffff; color: var(--primary); box-shadow: 0 4rpx 12rpx rgba(150,110,50,0.12); }
 
 /* ── 排版优化器 ── */
 .opt-tip { font-size: 24rpx; color: #8a7554; line-height: 1.6; margin-bottom: 16rpx; }
 .opt-input-wrap { position: relative; margin-bottom: 18rpx; }
 .opt-input { width: 100%; box-sizing: border-box; min-height: 220rpx; background: #fbf6ee; border: 2rpx solid #f0e2c8; border-radius: 16rpx; padding: 22rpx; font-size: 28rpx; color: #4a3b28; line-height: 1.7; }
-.opt-paste { position: absolute; right: 20rpx; bottom: 18rpx; font-size: 24rpx; color: #f5793b; font-weight: 700; background: #fff0e0; border-radius: 999rpx; padding: 8rpx 22rpx; }
+.opt-paste { position: absolute; right: 20rpx; bottom: 18rpx; font-size: 24rpx; color: var(--primary); font-weight: 700; background: #fff0e0; border-radius: 999rpx; padding: 8rpx 22rpx; }
+.opt-inspire { margin: -6rpx 0 16rpx; font-size: 23rpx; color: #8a7554; background: #fdf9f0; border: 1rpx dashed #e7d9bd; border-radius: 12rpx; padding: 12rpx 18rpx; line-height: 1.6; }
+.opt-inspire:active { background: #f6efdd; }
 .opt-tools { display: flex; gap: 16rpx; margin-bottom: 18rpx; }
 .opt-tool { flex: 1; text-align: center; font-size: 24rpx; font-weight: 700; color: #6b4a0e; background: #fff6e8; border: 2rpx solid #ffe3bd; border-radius: 14rpx; padding: 22rpx 0; }
 .opt-tool:active { background: #ffeccc; }
@@ -314,7 +316,7 @@
 
 /* ── 交互升级（Apple 流体，2026-10-01）：聚焦光环 / 生成失败抖动 / 复制翻转 ── */
 .field-input { transition: border-color .18s ease, box-shadow .18s ease; }
-.field.focus .field-input { border-color: #f5793b; box-shadow: 0 0 0 6rpx rgba(245, 121, 59, 0.12); }
+.field.focus .field-input { border-color: var(--primary); box-shadow: 0 0 0 6rpx rgba(245, 121, 59, 0.12); }
 .fields.shake-a { animation: genShakeA .45s ease; }
 .fields.shake-b { animation: genShakeB .45s ease; }
 @keyframes genShakeA {

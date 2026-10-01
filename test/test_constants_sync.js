@@ -138,20 +138,47 @@ t('config.POINTS.cost / earn 与 ai_gen 云函数 POINTS_COST / POINTS_EARN 一�
   });
 });
 
-// 8) gen 页必须保持「零扣分」（2026-09-29 B1 合规版新事实）
-//    gen 页已重写为纯本地工具箱（模板匹配 + 排版优化 + 知识库），不调云端、不扣积分。
-//    这既是过审关键（个人主体零 AI 调用），也是「免费体验 → 付费定制」漏斗的入口设计。
-//    若 gen.js 重新出现扣分常量或云端调用，必须同步恢复成本一致性校验（第 7 条），
-//    并在用户可见处标清价格 —— 本断言负责拦住「悄悄扣分」。
-t('gen 页保持零扣分（纯本地免费工具，不调云端不扣积分）', () => {
+// 8) gen 页计费模型（2026-10-01 重做：所有产出型工具都真实扣积分）
+//    新事实：gen 页的「套模板出文案」走 momentsGen、「排版优化 / 公众号文章」走 optFormat，
+//    单价全部来自 config.POINTS.cost，扣费统一走 utils/charge.js 的 charge()（单一扣费入口）。
+//    —— 仍守住两条红线：① gen 页零 AI 调用（ai_gen 不得出现，个人主体过审）；
+//                         ② 不得再出现写死的 MOMENTS_COST/REVISE_COST 旧常量（价格必须只来自 config）。
+//    本断言既拦「悄悄免费」（动作没接 charge），也拦「静默写死价」（绕开 config）。
+t('gen 页产出型动作全部经 charge() 扣费，且 action 与 config.POINTS.cost 对齐', () => {
   const src = fs.readFileSync(path.join(ROOT, 'pages', 'gen', 'gen.js'), 'utf8');
+  const cfgCost = (config.POINTS && config.POINTS.cost) || {};
+  // 8a) 两个产出动作必须真的调用 charge(action)
+  assert.ok(/charge\(\s*['"]momentsGen['"]/.test(src),
+    'gen.js 未对「套模板出文案」调用 charge(\'momentsGen\') —— 该动作必须扣费');
+  assert.ok(/charge\(\s*['"]optFormat['"]/.test(src),
+    'gen.js 未对「排版优化 / 公众号文章」调用 charge(\'optFormat\') —— 该动作必须扣费');
+  // 8b) action 必须在 config.POINTS.cost 中存在且为 > 0 的数值（否则 charge 会当免费放行）
+  ['momentsGen', 'optFormat'].forEach(a => {
+    assert.ok(typeof cfgCost[a] === 'number' && cfgCost[a] > 0,
+      'config.POINTS.cost.' + a + ' 缺失或 <= 0 —— gen 的扣费 action 必须有真实单价');
+  });
+  // 8c) 红线：不得写死旧扣分常量 / 不得直接调 spend（保持单一入口）/ 不得调 ai_gen
   assert.ok(!/MOMENTS_COST|REVISE_COST/.test(src),
-    'gen.js 又出现了 MOMENTS_COST/REVISE_COST 扣分常量 —— gen 页已定位为纯本地免费工具，'
-    + '若产品上要恢复扣分，请同步第 7 条的成本一致性校验与用户可见价目标注，不要静默加回');
+    'gen.js 又出现了 MOMENTS_COST/REVISE_COST 旧扣分常量 —— 价格必须只来自 config.POINTS.cost');
   assert.ok(!/points\.spend\s*\(|\.spend\s*\(/.test(src),
-    'gen.js 出现了 spend( 调用 —— 模板匹配/排版优化不应扣积分，免费体验是转化漏斗入口');
+    'gen.js 出现了 spend( 直接调用 —— 扣费必须统一走 utils/charge.js 的 charge()，不要散落手写');
   assert.ok(!/ai_gen/.test(src),
     'gen.js 出现了 ai_gen 调用 —— gen 页零 AI 调用是个人主体过审红线，恢复前必须重新过合规评估');
+});
+
+// 8.1) 分镜编辑器 / 卡片制作 同为产出型工具，必须接 charge() 且其 action 在 config 中有真实单价
+t('分镜 / 卡片生成均经 charge() 扣费，action 与 config 对齐', () => {
+  const cfgCost = (config.POINTS && config.POINTS.cost) || {};
+  const comicSrc = fs.readFileSync(path.join(ROOT, 'pages', 'comic', 'comic.js'), 'utf8');
+  const cardSrc = fs.readFileSync(path.join(ROOT, 'pages', 'card', 'card.js'), 'utf8');
+  assert.ok(/charge\(\s*['"]comicGen['"]/.test(comicSrc),
+    'comic.js 未对「生成分镜」调用 charge(\'comicGen\') —— 该动作必须扣费');
+  assert.ok(/charge\(\s*['"]cardGen['"]/.test(cardSrc),
+    'card.js 未对「生成卡片」调用 charge(\'cardGen\') —— 该动作必须扣费');
+  assert.ok(typeof cfgCost.comicGen === 'number' && cfgCost.comicGen > 0,
+    'config.POINTS.cost.comicGen 缺失或 <= 0');
+  assert.ok(typeof cfgCost.cardGen === 'number' && cfgCost.cardGen > 0,
+    'config.POINTS.cost.cardGen 缺失或 <= 0');
 });
 
 // 9) productId 的数字后缀必须等于到账积分数

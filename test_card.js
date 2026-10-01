@@ -4,7 +4,7 @@ const assert = require('assert');
 const path = require('path');
 const fs = require('fs');
 const {
-  CARD_TEMPLATES, computeCardLayout, drawCard, roundRectPath, wrapText
+  CARD_TEMPLATES, computeCardLayout, drawCard, roundRectPath, wrapText, DEFAULTS
 } = require('./utils/card_render');
 
 let pass = 0, fail = 0;
@@ -89,7 +89,7 @@ const signQr = computeCardLayout({
 }, { width: 340 }, measure);
 ok('日签：类型识别为 dailysign、角标为「每日日签」', signQr.type === 'dailysign' && signQr.pill === '每日日签');
 ok('日签：右下角二维码区块（56×56，右对齐）',
-  signQr.qr && signQr.qr.w === 56 && signQr.qr.h === 56 && Math.abs(signQr.qr.x + signQr.qr.w - (340 - 22)) < 1);
+  signQr.qr && signQr.qr.w === 56 && signQr.qr.h === 56 && Math.abs((signQr.qr.x + signQr.qr.w) - (signQr.width - DEFAULTS.pad)) < 1);
 ok('日签：标题留空时不产生标题块（运行时由 card.js 自动填今天日期）', !signQr.blocks.some(b => b.kind === 'title'));
 ok('日签：无文字落款（author 为空即无 footer）', !signQr.blocks.some(b => b.kind === 'footer'));
 try {
@@ -114,6 +114,7 @@ function fakeCtx() {
     moveTo: noop, arcTo: noop, closePath: noop, fill: noop, stroke: noop,
     save: noop, restore: noop, clip: noop, scale: noop,
     drawImage: noop, measureText: (t) => ({ width: String(t).length * 8 }),
+    createLinearGradient: () => ({ addColorStop: noop }),
     roundRect: noop
   };
 }

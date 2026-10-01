@@ -32,21 +32,28 @@ Page({
     const maxPerDay = (d.base || 20) + (d.streakCap || 0);
     // 新人礼：一次性发放，只有开启时才写进说明（关掉就别承诺）。
     const giftNote = (g.enabled !== false && g.amount > 0) ? '新人礼 +' + g.amount + '（首次进入一次性）· ' : '';
-    // 真实积分消费出口：目前仅「兑换定制9折券」（config.POINTS.redeem[0].cost = 200）。
-    // ⚠️ 2026-09-24 修正：此前这里写成「生成朋友圈文案 −20 / 写修改意见换一批 −15」，
-    //    而小程序早已无此生成入口（去了 H5 且免费），等于向用户承诺一个不存在的积分消费 —— 误导。
-    //    现已改为实际存在的出口。改价/下线功能时务必同步这行。
+    // 真实积分花费出口：全部来自 config.POINTS.cost（2026-10-01 重做后，所有产出型工具都真实扣积分）。
+    // ⚠️ 这里只能写**当前真实存在**的花费项；改价 / 下线功能时务必同步这行。
+    //    之前写成「生成朋友圈文案 −20 / 换一批 −15」已误导（那入口早不存在）；现在按 config 动态拼，避免再写死。
+    const c = POINTS.cost || {};
     const redeemCost = (POINTS.redeem && POINTS.redeem[0] && POINTS.redeem[0].cost) || 200;
+    const spendOutlets = [
+      '套模板出文案 −' + (c.momentsGen || 20),
+      '排版优化 −' + (c.optFormat || 2) + '/次',
+      '生成分镜 −' + (c.comicGen || 20),
+      '生成卡片 −' + (c.cardGen || 20)
+    ];
     this.setData({
       redeem: POINTS.redeem || [],
       packs: POINTS.packs || [],
       rechargeEnabled: POINTS.rechargeEnabled !== false,
       dailyOn: d.enabled !== false,
       dailyRule: '每日 +' + (d.base || 20) + ' 起，连签每天递增 +1（最高 +' + maxPerDay + '）；每连签 ' + (d.milestoneEvery || 7) + ' 天额外 +' + (d.milestoneBonus || 0),
-      // ⚠️ 只能写**当前真实存在**的增减项。赚分只剩「每日签到」（config.POINTS.earn 为空）；
-      //    花费只剩「兑换定制9折券」。改价/下线功能时务必同步这行。
+      // ⚠️ 只能写真实存在的增减项。赚分只剩「每日签到」（config.POINTS.earn 为空）；
+      //    花费 = 4 个产出型工具 + 兑换定制9折券。改价 / 下线功能时务必同步这行。
       earnTip: '积分增减：' + giftNote
         + '每日签到 +' + (d.base || 20) + ' 起，连签每日 +1（最多 +' + ((d.base || 20) + (d.streakCap || 10)) + ' / 天）'
+        + ' · 花费出口：' + spendOutlets.join(' · ')
         + ' · 兑换定制9折券 −' + redeemCost
         + '（积分不足可先充值或每日签到赚取）'
     });

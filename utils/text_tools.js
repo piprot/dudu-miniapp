@@ -114,11 +114,42 @@ function insertEmoji(text) {
     for (const item of EMOJI_MAP) {
       if (item.kw.some(k => s.indexOf(k) >= 0)) { hit = item.e; break; }
     }
-    // 句尾若已有 emoji/标点，避免重复堆叠
-    const tail = s.slice(-2);
-    if (hit && !/\p{Extended_Pictographic}/u.test(tail)) return s + hit;
+    // 句尾若已有 emoji，避免重复堆叠
+    if (hit && !tailIsEmoji(s)) return s + hit;
     return s;
   }).join('\n');
+}
+
+// ⚠️ 不用 \p{Extended_Pictographic}：部分微信基础库 / 老版本 JSCore 不支持该 Unicode
+// 属性转义，解析正则时直接抛 SyntaxError —— 而 countStats / insertEmoji 在 applyOpt 里被调用，
+// 一旦抛错整个 applyOpt 在 setData 前崩溃，表现就是「排版优化三个按钮点了没反应」。
+// 改用码点区间判断 emoji，全平台稳妥。
+function isEmojiCodepoint(c) {
+  return (
+    (c >= 0x1F300 && c <= 0x1FAFF) || // 符号与象形（🌱💪😊✈️ 等）
+    (c >= 0x2600 && c <= 0x27BF) ||   // 杂项符号与印刷符号（☀★⚠🏠 等）
+    (c >= 0x1F000 && c <= 0x1F02F) || // 麻将 / 扑克等
+    (c >= 0x2300 && c <= 0x23FF) ||   // 技术符号
+    (c >= 0x2B00 && c <= 0x2BFF) ||   // 杂项符号和箭头
+    (c >= 0xFE00 && c <= 0xFE0F) ||   // 变体选择符
+    (c >= 0x1F1E6 && c <= 0x1F1FF)    // 区域指示符（国旗）
+  );
+}
+
+// 统计文本里 emoji 个数（按码点，正确计入代理对）。
+function countEmoji(text) {
+  let n = 0;
+  for (const ch of String(text || '')) {
+    if (isEmojiCodepoint(ch.codePointAt(0))) n++;
+  }
+  return n;
+}
+
+// 句尾是否已经是 emoji（避免重复堆叠）。
+function tailIsEmoji(text) {
+  const chars = Array.from(String(text || ''));
+  if (!chars.length) return false;
+  return isEmojiCodepoint(chars[chars.length - 1].codePointAt(0));
 }
 
 // ④ 字数 / 行数统计（不含空白；emoji 计为 1 个符号）。
@@ -126,7 +157,7 @@ function countStats(text) {
   const t = String(text || '');
   const chars = t.replace(/\s/g, '').length;
   const lines = t.split('\n').filter(l => l.trim().length > 0).length;
-  const emojiCount = (t.match(/\p{Extended_Pictographic}/gu) || []).length;
+  const emojiCount = countEmoji(t);
   return { chars, lines, emojiCount };
 }
 

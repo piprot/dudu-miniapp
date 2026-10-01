@@ -11,6 +11,13 @@
     <view class="chip ghost" bindtap="onToggleHelp">{{showHelp ? '收起语法' : '语法说明'}}</view>
   </view>
 
+  <!-- 主题选择（6 套数据化主题，切换后已渲染的分镜免费即时重绘） -->
+  <view class="theme-row">
+    <view wx:for="{{themes}}" wx:key="id"
+      class="theme-chip {{theme === item.id ? 'on' : ''}}"
+      bindtap="onPickTheme" data-id="{{item.id}}">{{item.name}}</view>
+  </view>
+
   <view class="help" wx:if="{{showHelp}}">
     <view class="help-line"># 标题（可选，整篇第一个 # 行）</view>
     <view class="help-line">【分镜标签】 开始一格（或用 --- 另起一格）</view>
@@ -25,7 +32,7 @@
     maxlength="-1" />
 
   <view class="row">
-    <button class="btn primary" bindtap="onGenComic">生成分镜</button>
+    <button class="btn primary" bindtap="onGenComic">生成分镜（{{comicCost}} 积分）</button>
     <button class="btn" bindtap="onClear">清空</button>
     <button class="btn" bindtap="onToggleCols">{{cols === 2 ? '切单列' : '切双列'}}</button>
   </view>
@@ -35,7 +42,7 @@
   <view class="canvas-wrap">
     <canvas type="2d" id="comicCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
     <view wx:if="{{!rendered}}" class="canvas-ph">点「生成分镜」后，分镜图会显示在这里</view>
-    <button wx:if="{{rendered}}" class="btn primary save" bindtap="onSaveImage">保存到相册</button>
+    <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
   </view>
 
   <view class="tip">分镜图保存在你手机本地，可发朋友圈 / 群，无需上传服务器。</view>

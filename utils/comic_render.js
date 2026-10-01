@@ -21,7 +21,9 @@ const DEFAULTS = {
   balloonPad: 10,      // 气泡内边距
   headerFont: '12px sans-serif',
   headerLH: 18,
-  bg: '#f5f0e8'
+  bg: '#f5f0e8',
+  // 「默认」情绪的分镜底色/边框（无主题时兜底；主题化后由 palette.bgSoft/line 接管）
+  moodDefault: { tint: '#f3f1ec', border: '#b9b2a6' }
 };
 
 // 贪婪折行：按字符累加宽度，超宽则换行（兼容中文逐字 / 英文按空格）。
@@ -81,15 +83,21 @@ function computeLayout(model, opts, measure) {
   const panelW = (o.width - o.pad * 2 - o.gap * (o.cols - 1)) / o.cols;
   const textW = panelW - o.panelPad * 2 - o.balloonPad * 2;
 
+  // ⚠️ 高度算法必须与 draw 完全一致，否则画布总高算小 → 文字溢出面板。
+  // draw 里：ly 从 cell.y + panelPad 起；有头部则 +headerLH；每条线 bh = 行数*lineHeight + balloonPad*2，
+  // 之后 +（对白 8 / 旁白 6）间距；末尾再补 panelPad 底部内边距。
   const measured = panels.map(p => {
-    let h = o.panelPad * 2 + o.headerLH; // 头部行
-    if (p.scene) h += o.headerLH;
+    let h = o.panelPad; // 顶部内边距（draw 里 ly 从 cell.y + panelPad 起）
+    const header = p.label || p.scene || '';
+    if (header) h += o.headerLH;
     for (const ln of p.lines) {
       const txt = (ln.type === 'speech' && ln.who ? ln.who + '：' : '') + ln.text;
       const wrapped = wrapText(txt, textW, measure);
-      h += wrapped.length * o.lineHeight + (ln.type === 'speech' ? o.balloonPad * 2 : o.balloonPad);
+      const bh = wrapped.length * o.lineHeight + o.balloonPad * 2;
+      h += bh + (ln.type === 'speech' ? 8 : 6);
     }
-    if (p.lines.length === 0) h += o.lineHeight;
+    if (p.lines.length === 0) h += o.lineHeight + o.balloonPad * 2;
+    h += o.panelPad; // 底部内边距
     return { p, h: Math.max(h, 120) };
   });
 
@@ -123,27 +131,32 @@ function computeLayout(model, opts, measure) {
 }
 
 // 在真实 canvas 上绘制（依赖 ctx）。
+// opts.theme（可选）：utils/themes palette 对象 —— 传入后整套配色主题化：
+//   页面底色→bgSolid、标题/气泡文字→ink、气泡底→bg[0]、气泡描边→line、
+//   旁白底→bgSoft、旁白文字→sub；命名情绪保留自己的色调，「默认」情绪跟随主题。
 function draw(ctx, layout, opts) {
   const o = Object.assign({}, DEFAULTS, opts || {});
+  const pal = o.theme || null;
   const measure = (t, f) => { ctx.font = f; return ctx.measureText(t).width; };
 
   ctx.clearRect(0, 0, layout.width, layout.height);
-  ctx.fillStyle = o.bg;
+  ctx.fillStyle = pal ? pal.bgSolid : o.bg;
   ctx.fillRect(0, 0, layout.width, layout.height);
 
   let y = o.pad;
   if (layout.title) {
-    ctx.fillStyle = '#2b2b2b';
+    ctx.fillStyle = pal ? pal.ink : '#2b2b2b';
     ctx.font = o.titleFont;
     ctx.textBaseline = 'top';
-    ctx.fillText(layout.title, o.pad, y);
+    ctx.fillText(truncate(ctx, layout.title, o.width - o.pad * 2, o.titleFont), o.pad, y);
     y += o.titleLH + 8;
   }
 
   for (const row of layout.rows) {
     for (const cell of row) {
       const p = cell.panel;
-      const m = p.mood || DEFAULTS.mood;
+      // 情绪色调：命名情绪用自己的色；「默认」情绪在主题模式下跟随主题（bgSoft 底 + line 边）。
+      const m = p.mood || (pal ? { tint: pal.bgSoft, border: pal.line } : o.moodDefault);
       const innerX = cell.x + o.panelPad;
       const innerW = cell.w - o.panelPad * 2;
       const textW = innerW - o.balloonPad * 2;
@@ -168,7 +181,7 @@ function draw(ctx, layout, opts) {
         ly += o.headerLH;
       }
 
-      // 内容行：对白→白底气泡；旁白→浅灰说明框。
+      // 内容行：对白→气泡；旁白→说明框。
       for (const ln of p.lines) {
         const txt = (ln.type === 'speech' && ln.who ? ln.who + '：' : '') + ln.text;
         const wrapped = wrapText(txt, textW, measure);
@@ -178,16 +191,16 @@ function draw(ctx, layout, opts) {
 
         roundRectPath(ctx, bx, by, innerW, bh, ln.type === 'speech' ? 8 : 6);
         if (ln.type === 'speech') {
-          ctx.fillStyle = '#ffffff';
+          ctx.fillStyle = pal ? pal.bg[0] : '#ffffff';
           ctx.fill();
           ctx.lineWidth = 1;
-          ctx.strokeStyle = '#d8d2c6';
+          ctx.strokeStyle = pal ? pal.line : '#d8d2c6';
           ctx.stroke();
-          ctx.fillStyle = '#2b2b2b';
+          ctx.fillStyle = pal ? pal.ink : '#2b2b2b';
         } else {
-          ctx.fillStyle = 'rgba(0,0,0,0.05)';
+          ctx.fillStyle = pal ? pal.bgSoft : 'rgba(0,0,0,0.05)';
           ctx.fill();
-          ctx.fillStyle = '#555555';
+          ctx.fillStyle = pal ? pal.sub : '#555555';
         }
         ctx.font = o.font;
         ctx.textBaseline = 'top';

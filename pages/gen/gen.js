@@ -9,6 +9,12 @@ const templates = require('../../utils/templates');
 const tools = require('../../utils/text_tools');
 const knowledge = require('../../utils/knowledge');
 const profile = require('../../utils/profile');
+const { POINTS } = require('../../utils/config');
+const { charge, costOf } = require('../../utils/charge');
+const daily = require('../../utils/templates/daily'); // 每日文案库：今日灵感（本地确定性轮换，零 AI）
+
+// 套模板出文案的单价（与 utils/config.js 的 POINTS.cost.momentsGen 一致，集中配置）。
+const GEN_COST = costOf('momentsGen') || 20;
 
 // ── 类型（顶部 Tab）──
 const KINDS = [
@@ -78,6 +84,7 @@ Page({
   data: {
     points: 0,
     mode: 'tpl',               // 'tpl'=模板匹配 | 'opt'=排版优化
+    showArticleMode: false,    // ③ 公众号文章：暂时搁置（用户尚未确定合理方案），UI 隐藏；置 true 即可恢复，无需改其它。
     kinds: KINDS,
     kind: DEFAULT_KIND,
     kindInfo: { label: '', desc: '', struct: '' },
@@ -101,6 +108,10 @@ Page({
     optResult: '',
     optStats: { chars: 0, lines: 0, emojiCount: 0 },
     optMode: 'antiFold',
+    todayQuote: daily.todayQuote().text,  // 今日灵感（每天自动换一条，点一下填入）
+    // ── 扣分单价（全部从 utils/config.js 的 POINTS.cost 读取，集中不写死）──
+    genCost: GEN_COST,
+    optCost: costOf('optFormat') || 2,
     // ── 交互升级（Apple 流体）：聚焦光环 / 复制翻转 / 生成失败抖动 ──
     fieldFocus: '',          // 当前聚焦的字段 key（label/输入框高亮）
     copiedKey: '',           // 正在展示「✓ 已复制」的按钮：sel | all | opt
@@ -187,11 +198,11 @@ Page({
   onFieldFocus(e) { this.setData({ fieldFocus: e.currentTarget.dataset.key || '' }); },
   onFieldBlur() { this.setData({ fieldFocus: '' }); },
 
-  // 一键套模板出文案（纯本地字符串替换，不调云端）。
+  // 一键套模板出文案（纯本地字符串替换，不调云端；但需扣积分，与 POINTS.cost.momentsGen 对齐）。
   onGenMoments() {
+    if (this._genLock) return;
     const k = this.data.kind;
     const form = this.data.form;
-    const tplCount = (templates.TEMPLATES[k] || []).length;
     const filled = countFilled(FIELDS[k] || [], form);
     if (filled === 0) {
       // 抖动提示：整个表单区左右轻晃（tick 奇偶交替保证连续失败也重放动画）
@@ -204,13 +215,18 @@ Page({
       this.setData({ err: '再补一两项内容，让模板有东西可套', moments: [], selectedMoment: 0, genShakeTick: (this.data.genShakeTick || 0) + 1 });
       return;
     }
-    this.setData({
-      moments: valid,
-      selectedMoment: 0,
-      err: '',
-      readyGen: true
+    // 先本地渲染（免费），校验通过后再扣积分；扣成功才出结果。
+    const cost = this.data.genCost;
+    this._genLock = true;
+    charge('momentsGen', { label: '套模板出文案', reason: '套模板出文案' }).then(() => {
+      this._genLock = false;
+      this.setData({ moments: valid, selectedMoment: 0, err: '', readyGen: true });
+      this.refreshBalance();
+      wx.showToast({ title: '已套出 ' + valid.length + ' 条（-' + cost + '）', icon: 'none' });
+    }).catch(() => {
+      this._genLock = false;
+      // 余额不足 / 扣费失败：charge 内部已弹窗或提示，不产出结果
     });
-    wx.showToast({ title: '已套出 ' + valid.length + ' 条', icon: 'none' });
   },
 
   onSelectMoment(e) {
@@ -328,6 +344,16 @@ Page({
     });
   },
 
+  // 今日灵感：把每日文案库的金句一键填入输入框（本地确定性轮换，同一天所有人看到同一条）
+  onTodayInspire() {
+    this.setData({
+      optRaw: daily.todayQuote().text,
+      optResult: '',
+      optStats: { chars: 0, lines: 0, emojiCount: 0 }
+    });
+    wx.showToast({ title: '已填入今日灵感', icon: 'none' });
+  },
+
   // 应用某一种优化（antiFold / emoji / split）。
   applyOpt(type) {
     const raw = this.data.optRaw;
@@ -335,12 +361,26 @@ Page({
       this.setData({ err: '先在上方粘贴或输入一段文字' });
       return;
     }
-    let out = raw;
-    if (type === 'antiFold') out = tools.antiFold(raw, 20);
-    else if (type === 'emoji') out = tools.insertEmoji(raw);
-    else if (type === 'split') out = tools.autoSplit(raw);
-    const optStats = tools.countStats(out);
-    this.setData({ optResult: out, optStats, optMode: type, err: '' });
+    const self = this;
+    const cost = costOf('optFormat') || 0;
+    // 排版优化 / 公众号文章排版：每次应用都要扣积分（复用 utils/charge 统一流程）。
+    charge('optFormat', { label: (self.data.mode === 'art' ? '公众号文章排版' : '排版优化'), reason: '排版优化' }).then(() => {
+      try {
+        let out = raw;
+        if (type === 'antiFold') out = tools.antiFold(raw, 20);
+        else if (type === 'emoji') out = tools.insertEmoji(raw);
+        else if (type === 'split') out = tools.autoSplit(raw);
+        const optStats = tools.countStats(out);
+        self.setData({ optResult: out, optStats, optMode: type, err: '' });
+        self.refreshBalance();
+        wx.showToast({ title: '已优化（-' + cost + '）', icon: 'none' });
+      } catch (e) {
+        // 任何意外错误都显式提示，而不是「点了没反应」
+        self.setData({ err: '排版处理出错，请重试或换段文字' });
+      }
+    }).catch(() => {
+      // 余额不足 / 扣费失败：charge 内部已弹窗或提示，不产出结果
+    });
   },
 
   onOptAntiFold() { this.applyOpt('antiFold'); },

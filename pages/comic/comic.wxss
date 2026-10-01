@@ -1,12 +1,12 @@
 .page {
   min-height: 100vh;
-  background: #f5f0e8;
+  background: var(--bg-page);
   padding: 24rpx 28rpx 60rpx;
   box-sizing: border-box;
 }
 
 .hd { margin-bottom: 20rpx; }
-.hd-title { font-size: 38rpx; font-weight: 700; color: #2b2b2b; }
+.hd-title { font-size: 38rpx; font-weight: 700; color: var(--ink); }
 .hd-sub { font-size: 24rpx; color: #8a8378; margin-top: 8rpx; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 16rpx; margin-bottom: 18rpx; }
@@ -20,9 +20,16 @@
 }
 .chip.ghost { background: transparent; color: #9a8f7c; border-style: dashed; }
 
+.theme-row { display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 18rpx; }
+.theme-chip {
+  font-size: 24rpx; color: #6b5636; background: #f3ecdf;
+  border: 2rpx solid #e5d9c4; border-radius: 24rpx; padding: 8rpx 24rpx;
+}
+.theme-chip.on { background: var(--ink); color: var(--bg-card); border-color: var(--ink); }
+
 .help {
-  background: #fffdf8;
-  border: 1rpx solid #e7ddca;
+  background: var(--bg-card);
+  border: 1rpx solid var(--border-soft);
   border-radius: 16rpx;
   padding: 18rpx 22rpx;
   margin-bottom: 18rpx;
@@ -33,13 +40,13 @@
   width: 100%;
   box-sizing: border-box;
   min-height: 320rpx;
-  background: #fffdf8;
-  border: 1rpx solid #e0d6c2;
+  background: var(--bg-card);
+  border: 1rpx solid var(--border);
   border-radius: 16rpx;
   padding: 20rpx;
   font-size: 28rpx;
   line-height: 1.7;
-  color: #2b2b2b;
+  color: var(--ink);
 }
 
 .row { display: flex; gap: 16rpx; margin-top: 20rpx; }
@@ -53,20 +60,20 @@
   line-height: 1.4;
   margin: 0;
 }
-.btn.primary { background: #2b2b2b; color: #fffdf8; }
+.btn.primary { background: var(--ink); color: var(--bg-card); }
 .btn.save { flex: none; margin-top: 20rpx; padding: 18rpx 60rpx; }
 
 .err {
   margin-top: 16rpx;
   font-size: 24rpx;
-  color: #c0504d;
+  color: var(--danger);
   line-height: 1.6;
 }
 
 .canvas-wrap { margin-top: 24rpx; }
 .canvas {
   width: 100%;
-  background: #f5f0e8;
+  background: var(--bg-page);
   border-radius: 16rpx;
   display: block;
 }

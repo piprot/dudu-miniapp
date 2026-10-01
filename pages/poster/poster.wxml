@@ -1,0 +1,76 @@
+<view class="page">
+  <view class="hd">
+    <view class="hd-title">🖼️ 海报长图生成器</view>
+    <view class="hd-sub">写一句话，出一张带你头像和专属码的长图 · 高度随内容自适应</view>
+  </view>
+
+  <!-- 主题选择（6 套数据化主题，渲染引擎自动读取配色） -->
+  <view class="theme-row">
+    <view wx:for="{{themes}}" wx:key="id"
+      class="theme-chip {{theme === item.id ? 'on' : ''}}"
+      bindtap="onPickTheme" data-id="{{item.id}}">{{item.name}}</view>
+  </view>
+
+  <view class="help-toggle" bindtap="onToggleHelp">{{showHelp ? '收起说明' : '怎么用'}}</view>
+  <view class="help" wx:if="{{showHelp}}">
+    <view class="help-line">① 填标题 / 金句 / 正文（任填其一），金句默认带今日推荐，可点「换一套」</view>
+    <view class="help-line">② 可选头像和背景图：头像会变成底部圆形徽章 + 昵称；背景图自动转白字保证可读</view>
+    <view class="help-line">③ 点「生成海报」，再「保存到相册」即可发朋友圈（右下角带小程序码，扫码回到小程序）</view>
+    <view class="help-line">图片只存在你手机本地，不会上传任何服务器。</view>
+  </view>
+
+  <!-- 表单 -->
+  <view class="form">
+    <view class="field">
+      <view class="label">标题（可留空）</view>
+      <input class="input" value="{{form.title}}" bindinput="onField" data-field="title" placeholder="如：把日子过成海报" />
+    </view>
+
+    <view class="field">
+      <view class="label">金句（海报主角）</view>
+      <textarea class="ta" value="{{form.quote}}" bindinput="onField" data-field="quote"
+        placeholder="写一句打动人的话" maxlength="-1" />
+      <button class="btn ghost" bindtap="onShuffleQuote">🎲 换一套文案（库存 {{quotePoolSize}} 条）</button>
+      <view class="hint">金句库按天自动换今日推荐，不满意就点上面自己挑</view>
+    </view>
+
+    <view class="field">
+      <view class="label">正文补充（可留空）</view>
+      <textarea class="ta short" value="{{form.body}}" bindinput="onField" data-field="body"
+        placeholder="写点什么…（长图不会截断内容）" maxlength="-1" />
+    </view>
+
+    <view class="field">
+      <view class="label">落款 / 出处（可留空）</view>
+      <input class="input" value="{{form.author}}" bindinput="onField" data-field="author" placeholder="如：dudu" />
+    </view>
+
+    <view class="field">
+      <view class="label">昵称（展示在底部头像旁）</view>
+      <input class="input" value="{{form.nickname}}" bindinput="onField" data-field="nickname" placeholder="你的名字 / 昵称" />
+    </view>
+
+    <view class="field">
+      <view class="label">头像（可选，圆形徽章）</view>
+      <button class="btn ghost" bindtap="onChooseAvatar">{{avatar ? '重新选择头像' : '选择头像'}}</button>
+      <view wx:if="{{avatar}}" class="cover-mini">已选头像 ✓（不选则用昵称首字占位）</view>
+    </view>
+
+    <view class="field">
+      <view class="label">背景图（可选，铺满整张海报）</view>
+      <button class="btn ghost" bindtap="onChooseBgImage">{{bgImg ? '重新选择背景图' : '选择背景图'}}</button>
+      <view wx:if="{{bgImg}}" class="cover-mini">已选背景图 ✓（文字自动转白）</view>
+    </view>
+  </view>
+
+  <button class="btn primary gen" bindtap="onGenPoster">生成海报（{{posterCost}} 积分）</button>
+  <view class="err" wx:if="{{err}}">{{err}}</view>
+
+  <view class="canvas-wrap">
+    <canvas type="2d" id="posterCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
+    <view wx:if="{{!rendered}}" class="canvas-ph">点「生成海报」后，长图会显示在这里</view>
+    <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
+  </view>
+
+  <view class="tip">海报保存在你手机本地，可发朋友圈 / 群，无需上传服务器。</view>
+</view>
