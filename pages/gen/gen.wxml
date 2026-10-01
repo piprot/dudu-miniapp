@@ -140,9 +140,13 @@
           wx:for="{{moments}}"
           wx:key="index"
           class="moment-card {{selectedMoment === index ? 'sel' : ''}}"
-          style="animation-delay:{{index * 60}}ms"
+          style="animation-delay:{{index * 60}}ms;{{tiltIdx === index && (tilt.rx || tilt.ry) ? 'transform:rotateX(' + tilt.rx + 'deg) rotateY(' + tilt.ry + 'deg) scale(1.02);' : ''}}"
           data-idx="{{index}}"
-          bindtap="onSelectMoment">
+          bindtap="onSelectMoment"
+          bindtouchstart="onTiltStart"
+          catchtouchmove="{{tiltIdx === index ? 'onTiltMove' : ''}}"
+          bindtouchend="onTiltEnd"
+          bindtouchcancel="onTiltEnd">
           <view class="moment-no">方案 {{index + 1}} {{selectedMoment === index ? '· 已选中' : ''}}</view>
           <view class="moment-text" user-select="true">{{item}}</view>
         </view>

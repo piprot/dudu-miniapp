@@ -104,7 +104,10 @@ Page({
     // ── 交互升级（Apple 流体）：聚焦光环 / 复制翻转 / 生成失败抖动 ──
     fieldFocus: '',          // 当前聚焦的字段 key（label/输入框高亮）
     copiedKey: '',           // 正在展示「✓ 已复制」的按钮：sel | all | opt
-    genShakeTick: 0          // 生成失败计数：奇偶交替两套 keyframes，连续失败也重放抖动
+    genShakeTick: 0,         // 生成失败计数：奇偶交替两套 keyframes，连续失败也重放抖动
+    // 按压倾斜卡片：按下朝触点方向轻倾，松手弹性复位
+    tiltIdx: null,
+    tilt: { rx: 0, ry: 0 }
   },
 
   onLoad() {
@@ -213,6 +216,26 @@ Page({
   onSelectMoment(e) {
     const idx = e.currentTarget.dataset.idx;
     if (typeof idx === 'number') this.setData({ selectedMoment: idx });
+  },
+
+  // 按压倾斜：按下后朝触点相对按下点的方向轻倾（≤4°），松手弹性复位
+  onTiltStart(e) {
+    if (!e.touches || !e.touches[0]) return;
+    this._t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    this.setData({ tiltIdx: e.currentTarget.dataset.idx });
+  },
+  onTiltMove(e) {
+    if (this.data.tiltIdx == null || !e.touches || !e.touches[0]) return;
+    const clamp = v => Math.max(-4, Math.min(4, v));
+    this.setData({
+      tilt: {
+        rx: clamp(-(e.touches[0].clientY - this._t0.y) * 0.08),
+        ry: clamp((e.touches[0].clientX - this._t0.x) * 0.08)
+      }
+    });
+  },
+  onTiltEnd() {
+    this.setData({ tiltIdx: null, tilt: { rx: 0, ry: 0 } });
   },
 
   // 点知识库金句 → 追加到选中文案末尾（纯本地拼接，非生成）。
