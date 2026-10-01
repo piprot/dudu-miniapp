@@ -140,6 +140,7 @@
           wx:for="{{moments}}"
           wx:key="index"
           class="moment-card {{selectedMoment === index ? 'sel' : ''}}"
+          style="animation-delay:{{index * 60}}ms"
           data-idx="{{index}}"
           bindtap="onSelectMoment">
           <view class="moment-no">方案 {{index + 1}} {{selectedMoment === index ? '· 已选中' : ''}}</view>

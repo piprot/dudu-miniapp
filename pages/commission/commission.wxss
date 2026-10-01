@@ -130,3 +130,10 @@
 @keyframes cmFlip {
   0% { transform: rotateX(0); } 50% { transform: rotateX(90deg); } 100% { transform: rotateX(0); }
 }
+
+/* ── 交互升级二（2026-10-01）：档位选中弹跳 / 确认页入场 ── */
+.tier { transition: border-color .2s ease, background .2s ease, box-shadow .2s ease; }
+.tier.sel .tier-check { animation: cmPop .3s cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes cmPop { from { transform: scale(0.4); } to { transform: scale(1); } }
+.done-card { animation: cmCardIn .35s ease; }
+@keyframes cmCardIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }

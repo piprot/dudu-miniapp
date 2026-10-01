@@ -336,3 +336,13 @@
 }
 .err { animation: errIn .25s ease-out; }
 @keyframes errIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* ── 交互升级二（2026-10-01）：入场动画 / 按压反馈 / 选中过渡 ── */
+.kb-card { animation: genCardIn .3s ease; }
+.sel-banner, .struct-hint { animation: genCardIn .3s ease backwards; }
+.opt-stats, .opt-result { animation: genCardIn .3s ease; }
+.moment-card { animation: genCardIn .35s ease backwards; transition: border-color .2s ease, background .2s ease, box-shadow .2s ease; }
+@keyframes genCardIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.kind-chip { transition: transform .12s ease; }
+.kind-chip:active { transform: scale(0.97); }
+.kb-toggle:active, .kb-q:active, .opt-tool:active { opacity: .8; }
