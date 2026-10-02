@@ -192,7 +192,7 @@ Page({
     const cost = this.data.cardCost;
     this.setData({ err: '' });
     // 生成卡片要扣积分（复用 utils/charge 统一流程）；扣成功才渲染。
-    charge('cardGen', { label: '生成卡片', reason: '生成卡片' }).then(() => {
+    charge('cardGen', { label: '生成卡片' }).then(() => {
       self.renderCard(d);
       wx.showToast({ title: '已生成卡片（-' + cost + '）', icon: 'none' });
     }).catch(() => {

@@ -20,6 +20,29 @@ App({
   },
 
   /**
+   * 全局脚本异常捕获（2026-10-02 排障插桩）。
+   * 背景：comic/card/poster 三页在真机（体验版）上「跳转页面为空」，但
+   *   ① Node 加载模拟器 require + data 初始化全部通过；
+   *   ② 渲染引擎/模板离线预览截图全部正常；
+   *   ③ 静态扫描无顶层 wx/getApp 调用、无低版本 JSCore 不支持的语法。
+   * ⇒ 空白是真机运行期异常，离线不可复现。此钩子把真实报错浮出水面：
+   *   仅 开发版/体验版 弹窗提示一次（正式版静默），并存 globalData.lastError 供页面读取。
+   * 真因定位后可移除或保留（正式版无感知）。
+   */
+  onError(err) {
+    try {
+      const msg = String((err && err.message) || err || 'unknown').slice(0, 300);
+      this.globalData.lastError = msg;
+      let envVersion = 'release';
+      try { envVersion = wx.getAccountInfoSync().miniProgram.envVersion; } catch (e) { /* 取不到按正式版处理 */ }
+      if (envVersion !== 'release' && !this._errShown) {
+        this._errShown = true;
+        wx.showModal({ title: '脚本异常提示（体验/开发版）', content: msg, showCancel: false });
+      }
+    } catch (e) { /* 排障兜底，不再抛错 */ }
+  },
+
+  /**
    * 隐私授权拦截器（个人主体小程序合规刚需，勿删）。
    *
    * 背景：app.json 开了 __usePrivacyCheck__。此后任何「隐私受保护 API」——本项目的

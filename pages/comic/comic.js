@@ -114,7 +114,7 @@ Page({
     const cost = this.data.comicCost;
     this.setData({ err: '' });
     // 生成分镜要扣积分（复用 utils/charge 统一流程）；扣成功才渲染。
-    charge('comicGen', { label: '生成分镜', reason: '生成分镜' }).then(() => {
+    charge('comicGen', { label: '生成分镜' }).then(() => {
       self.renderComic(model);
       wx.showToast({ title: '已生成分镜（-' + cost + '）', icon: 'none' });
     }).catch(() => {

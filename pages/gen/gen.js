@@ -218,7 +218,7 @@ Page({
     // 先本地渲染（免费），校验通过后再扣积分；扣成功才出结果。
     const cost = this.data.genCost;
     this._genLock = true;
-    charge('momentsGen', { label: '套模板出文案', reason: '套模板出文案' }).then(() => {
+    charge('momentsGen', { label: '套模板出文案' }).then(() => {
       this._genLock = false;
       this.setData({ moments: valid, selectedMoment: 0, err: '', readyGen: true });
       this.refreshBalance();
@@ -364,7 +364,7 @@ Page({
     const self = this;
     const cost = costOf('optFormat') || 0;
     // 排版优化 / 公众号文章排版：每次应用都要扣积分（复用 utils/charge 统一流程）。
-    charge('optFormat', { label: (self.data.mode === 'art' ? '公众号文章排版' : '排版优化'), reason: '排版优化' }).then(() => {
+    charge('optFormat', { label: (self.data.mode === 'art' ? '公众号文章排版' : '排版优化') }).then(() => {
       try {
         let out = raw;
         if (type === 'antiFold') out = tools.antiFold(raw, 20);

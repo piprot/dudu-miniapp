@@ -48,6 +48,21 @@ const REDEEM = {
   comic_discount: 200    // 画面感内容 9 折券（2026-09-23 由 100 升为 200）
 };
 
+// ── 端内产出型工具扣费（服务端权威成本表，2026-10-01 重做后所有生成动作走积分）──
+// ⚠️ 与 utils/config.js 的 POINTS.cost 保持一致：云函数跨包 require 前端 config 不可靠，故此处独立一份，
+//    改数值时两处必须同改（test_constants_sync.js 也会校验前端 config 与这里一致）。
+// 前端 utils/charge.js 的 charge(action) 直接以 action 名作为 reason、以 POINTS.cost[action] 作为 delta 调本 action；
+//    此前 spend 只认 REDEEM（兑换权益），导致 optFormat/momentsGen/comicGen/cardGen/posterGen 全部被拒
+//    → 前端统一报「积分扣除失败，请重试」（2026-10-02 真机反馈）。补上生成类 reason 即闭环。
+// generation 只扣积分、不写任何权益（grant 忽略）。
+const GEN_COST = {
+  momentsGen: 20,    // 套模板出文案（需与 config.POINTS.cost.momentsGen 一致）
+  optFormat: 2,      // 排版优化（防折叠/加 emoji/分段，每次应用）
+  comicGen: 20,      // 分镜编辑器·生成分镜
+  cardGen: 20,       // 卡片制作·生成卡片
+  posterGen: 20      // 海报长图·生成海报
+};
+
 const DAY_MS = 86400000;
 const CN_OFFSET_MS = 8 * 3600 * 1000;   // 北京时间 UTC+8
 
@@ -221,6 +236,24 @@ exports.main = async (event) => {
     const reason = (event && event.reason) || '';
     const delta = Math.floor(Number(event && event.delta) || 0);
     if (delta <= 0) return { ok: false, err: 'delta 必须为正整数' };
+
+    // ── ① 端内产出型工具扣费（2026-10-01 重做后所有生成动作走积分）──
+    // 服务端权威成本表 GEN_COST（与 utils/config.js POINTS.cost 同源，独立一份）。
+    // generation 只扣积分、不写权益（grant 忽略）。沿用余额原子扣减 + 不足拦截。
+    if (Object.prototype.hasOwnProperty.call(GEN_COST, reason)) {
+      if (delta !== GEN_COST[reason]) {
+        return { ok: false, err: '扣费成本不符（' + reason + ' 应为 ' + GEN_COST[reason] + ' 积分，收到 ' + delta + '）' };
+      }
+      const _ = db.command;
+      const doc = await getDoc(db, openid);
+      const cur = doc && typeof doc.points === 'number' ? doc.points : 0;
+      if (cur < delta) return { ok: false, err: '积分不足', points: cur };
+      await db.collection('vp_users').doc(openid).update({ data: { points: _.inc(-delta), updateTime: db.serverDate() } });
+      const after = await getDoc(db, openid);
+      return { ok: true, points: after && typeof after.points === 'number' ? after.points : cur - delta, delta: -delta };
+    }
+
+    // ── ② 兑换权益（coupon grant）：沿用既有 REDEEM 校验 ──
     // 服务端权威校验兑换项与成本（2026-09-23）：只认登记过的 reason，且 delta 必须**等于**登记成本。
     // 否则被篡改的客户端可传 { reason:'comic_discount', delta:1 } 用 1 积分换走 200 分的券。
     if (!Object.prototype.hasOwnProperty.call(REDEEM, reason)) {

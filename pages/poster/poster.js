@@ -135,7 +135,7 @@ Page({
     const self = this;
     const cost = this.data.posterCost;
     this.setData({ err: '' });
-    charge('posterGen', { label: '生成海报', reason: '生成海报长图' }).then(() => {
+    charge('posterGen', { label: '生成海报' }).then(() => {
       self.renderPoster(d);
       wx.showToast({ title: '已生成海报（-' + cost + '）', icon: 'none' });
     }).catch(() => {
