@@ -1,4 +1,5 @@
 <view class="page">
+  <view wx:if="{{dbg}}" style="background:#c0504d;color:#fff;padding:12rpx 20rpx;font-size:22rpx;line-height:1.5;word-break:break-all;">🐞 {{dbg}}</view>
   <view class="hd">
     <view class="hd-title">🎞️ 画面感分镜编辑器</view>
     <view class="hd-sub">写一段文字脚本，一键出分镜图 · 全程本地完成</view>

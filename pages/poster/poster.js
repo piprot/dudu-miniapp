@@ -8,7 +8,7 @@ const { THEME_LIST } = require('../../utils/themes');
 const { charge, costOf } = require('../../utils/charge');
 const { exportAndSave, shareConfig } = require('../../utils/share');
 const daily = require('../../utils/templates/daily'); // 每日文案库：金句每天自动换一条（本地确定性轮换，零 AI）
-const { surfaceLastError } = require('../../utils/diag');
+const { surfaceLastError, currentEnvVersion, buildDebug } = require('../../utils/diag');
 
 const QR_PATH = '/images/qrcode_miniapp.png';
 
@@ -40,6 +40,7 @@ Page({
     bgImg: '',
     showHelp: false,
     err: '',
+    dbg: '',               // 调试条（仅体验/开发版）
     rendered: false,
     canvasH: 0,
     savedTick: 0,          // 保存成功翻转计数（奇偶交替换 keyframes，铁律 5）
@@ -56,6 +57,7 @@ Page({
 
   onShow() {
     surfaceLastError(this);
+    if (currentEnvVersion() !== 'release') this.setData({ dbg: buildDebug(this) });
   },
 
   onPickTheme(e) {

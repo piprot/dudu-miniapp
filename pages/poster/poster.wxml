@@ -1,4 +1,5 @@
 <view class="page">
+  <view wx:if="{{dbg}}" style="background:#c0504d;color:#fff;padding:12rpx 20rpx;font-size:22rpx;line-height:1.5;word-break:break-all;">🐞 {{dbg}}</view>
   <view class="hd">
     <view class="hd-title">🖼️ 海报长图生成器</view>
     <view class="hd-sub">写一句话，出一张带你头像和专属码的长图 · 高度随内容自适应</view>

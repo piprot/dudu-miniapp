@@ -24,4 +24,14 @@ function surfaceLastError(ctx) {
   } catch (e) { /* 忽略 */ }
 }
 
-module.exports = { surfaceLastError, currentEnvVersion };
+module.exports = { surfaceLastError, currentEnvVersion, buildDebug };
+
+// 调试条文本（仅 体验/开发版 显示）：把能说明「页面是否真正渲染」的关键量打出来。
+// 用内联样式（不依赖任何 CSS 变量 / class），即使样式系统整体失效也能显示。
+function buildDebug(ctx) {
+  const env = currentEnvVersion();
+  const rec = wx.getStorageSync('__lastAppError__');
+  const cost = ctx.data.comicCost || ctx.data.cardCost || ctx.data.posterCost || '?';
+  return 'env=' + env + ' | themes=' + (ctx.data.themes || []).length + ' | cost=' + cost +
+    ' | err=' + (rec ? String(rec.msg).slice(0, 90) : '-');
+}

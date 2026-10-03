@@ -7,7 +7,7 @@ const { THEME_LIST } = require('../../utils/themes');
 const { exportAndSave, shareConfig } = require('../../utils/share');
 const { charge, costOf } = require('../../utils/charge');
 const daily = require('../../utils/templates/daily'); // 每日文案库：日签/金句每天自动换一条（本地确定性轮换，零 AI）
-const { surfaceLastError } = require('../../utils/diag');
+const { surfaceLastError, currentEnvVersion, buildDebug } = require('../../utils/diag');
 
 const TYPE_KEYS = ['dailysign', 'quote', 'recommend', 'notice', 'checklist', 'imagetext'];
 
@@ -50,6 +50,7 @@ Page({
     bgImg: '',             // 卡片背景图（可选，铺满整卡）
     showHelp: false,
     err: '',
+    dbg: '',               // 调试条（仅体验/开发版）
     rendered: false,
     canvasH: 0,
     savedTick: 0,          // 保存成功翻转计数（奇偶交替换 keyframes，铁律 5）
@@ -66,6 +67,7 @@ Page({
 
   onShow() {
     surfaceLastError(this);
+    if (currentEnvVersion() !== 'release') this.setData({ dbg: buildDebug(this) });
   },
 
   // 切换主题（warm/fresh/graphite/zen/ticket/olive）——数据驱动，渲染引擎自动读取

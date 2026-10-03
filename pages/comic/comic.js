@@ -6,7 +6,7 @@ const { computeLayout, draw } = require('../../utils/comic_render');
 const { THEME_LIST, palette } = require('../../utils/themes');
 const { exportAndSave, shareConfig } = require('../../utils/share');
 const { charge, costOf } = require('../../utils/charge');
-const { surfaceLastError } = require('../../utils/diag');
+const { surfaceLastError, currentEnvVersion, buildDebug } = require('../../utils/diag');
 
 const SAMPLES = {
   story: `# 江边的告别
@@ -60,6 +60,7 @@ Page({
     rendered: false,
     canvasH: 0,
     err: '',
+    dbg: '',               // 调试条（仅体验/开发版）
     savedTick: 0,          // 保存成功翻转计数（奇偶交替换 keyframes，铁律 5）
     savedKey: '',          // 'a'/'b' = 翻转中，'' = 常态
     showHelp: false,
@@ -74,6 +75,7 @@ Page({
 
   onShow() {
     surfaceLastError(this);
+    if (currentEnvVersion() !== 'release') this.setData({ dbg: buildDebug(this) });
   },
 
   onScriptInput(e) {
