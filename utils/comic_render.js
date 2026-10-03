@@ -27,7 +27,10 @@ const DEFAULTS = {
 };
 
 // 贪婪折行：按字符累加宽度，超宽则换行（兼容中文逐字 / 英文按空格）。
-function wrapText(text, maxW, measure) {
+// ⚠️ font 必须显式传给 measure：measure 回调形如 (text, font) => { ctx.font = font; ... }。
+// 若漏传，ctx.font = undefined（无效赋值被忽略）→ 按 canvas 默认 10px 测宽，
+// 而实际绘制用 14px，导致每行塞太多字、渲染时文字顶破气泡（真机溢出根因）。
+function wrapText(text, maxW, measure, font) {
   const out = [];
   const chars = Array.from(String(text || ''));
   let cur = '';
@@ -38,7 +41,7 @@ function wrapText(text, maxW, measure) {
       out.push(cur); cur = ''; curW = 0;
       continue;
     }
-    const w = measure(ch);
+    const w = measure(ch, font);
     if (curW + w > maxW && cur.length > 0) {
       out.push(cur); cur = ch; curW = w;
     } else {
@@ -92,7 +95,7 @@ function computeLayout(model, opts, measure) {
     if (header) h += o.headerLH;
     for (const ln of p.lines) {
       const txt = (ln.type === 'speech' && ln.who ? ln.who + '：' : '') + ln.text;
-      const wrapped = wrapText(txt, textW, measure);
+      const wrapped = wrapText(txt, textW, measure, o.font); // 传入 o.font，按真实字号测宽
       const bh = wrapped.length * o.lineHeight + o.balloonPad * 2;
       h += bh + (ln.type === 'speech' ? 8 : 6);
     }
@@ -184,7 +187,7 @@ function draw(ctx, layout, opts) {
       // 内容行：对白→气泡；旁白→说明框。
       for (const ln of p.lines) {
         const txt = (ln.type === 'speech' && ln.who ? ln.who + '：' : '') + ln.text;
-        const wrapped = wrapText(txt, textW, measure);
+        const wrapped = wrapText(txt, textW, measure, o.font); // 与 computeLayout 同字体，保证高度一致
         const bh = wrapped.length * o.lineHeight + o.balloonPad * 2;
         const bx = innerX;
         const by = ly;
