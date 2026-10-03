@@ -5,7 +5,7 @@ const assert = require('assert');
 const {
   computeLayout, draw, wrapText, roundRectPath, defaultMeasure
 } = require('../utils/core/render_engine');
-const { THEMES, THEME_LIST, getTheme, palette } = require('../utils/themes');
+const { THEMES, THEME_LIST, getTheme, palette } = require('../utils/themes/index.js');
 
 let pass = 0, fail = 0;
 function t(name, fn) {

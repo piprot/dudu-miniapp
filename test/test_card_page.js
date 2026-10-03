@@ -22,7 +22,7 @@ global.Page = origPage;
 
 const daily = require('../utils/templates/daily');
 const { computeLayout, draw, defaultMeasure } = require('../utils/core/render_engine');
-const { THEME_LIST } = require('../utils/themes');
+const { THEME_LIST } = require('../utils/themes/index.js');
 
 function makePage() {
   const page = Object.create(pageCfg);

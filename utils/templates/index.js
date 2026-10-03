@@ -20,7 +20,7 @@
 //   opts: { measure } 可选（页面传 canvas measureText 提升折行精度；缺省用内置估算）
 // ─────────────────────────────────────────────────────────────────────────────
 'use strict';
-const { getTheme, palette } = require('../themes');
+const { getTheme, palette } = require('../themes/index.js');
 const { wrapText, defaultMeasure } = require('../core/render_engine');
 
 const CARD_TYPES = {

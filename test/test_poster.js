@@ -4,7 +4,7 @@
 const assert = require('assert');
 const { buildPosterModel, W } = require('../utils/templates/poster');
 const { computeLayout, draw } = require('../utils/core/render_engine');
-const { THEME_LIST } = require('../utils/themes');
+const { THEME_LIST } = require('../utils/themes/index.js');
 
 let pass = 0, fail = 0;
 function t(name, fn) {

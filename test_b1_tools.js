@@ -1,5 +1,5 @@
 const tools = require('./utils/text_tools');
-const tpl = require('./utils/templates');
+const tpl = require('./utils/templates/index.js');
 const knowledge = require('./utils/knowledge');
 const profile = require('./utils/profile');
 

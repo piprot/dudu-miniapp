@@ -4,7 +4,7 @@
 // 沿用 模板(templates/poster)×主题(themes)×引擎(render_engine) 三层解耦架构。
 const { buildPosterModel } = require('../../utils/templates/poster');
 const { computeLayout, draw } = require('../../utils/core/render_engine');
-const { THEME_LIST } = require('../../utils/themes');
+const { THEME_LIST } = require('../../utils/themes/index.js');
 const { charge, costOf } = require('../../utils/charge');
 const { exportAndSave, shareConfig } = require('../../utils/share');
 const daily = require('../../utils/templates/daily'); // 每日文案库：金句每天自动换一条（本地确定性轮换，零 AI）

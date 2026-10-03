@@ -3,7 +3,7 @@
 // 2026-10-01 重构：渲染切换到 模板(templates)×主题(themes)×引擎(render_engine) 三层解耦架构。
 const { CARD_TYPES, buildCardModel } = require('../../utils/templates/index');
 const { computeLayout, draw } = require('../../utils/core/render_engine');
-const { THEME_LIST } = require('../../utils/themes');
+const { THEME_LIST } = require('../../utils/themes/index.js');
 const { exportAndSave, shareConfig } = require('../../utils/share');
 const { charge, costOf } = require('../../utils/charge');
 const daily = require('../../utils/templates/daily'); // 每日文案库：日签/金句每天自动换一条（本地确定性轮换，零 AI）

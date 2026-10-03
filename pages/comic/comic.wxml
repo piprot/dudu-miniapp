@@ -1,6 +1,4 @@
 <view class="page">
-  <view style="background:#2e7d32;color:#fff;padding:10rpx 20rpx;font-size:22rpx;line-height:1.5;word-break:break-all;">✅ SHELL v1.1.18 · WXML渲染探针（看到这条=页面渲染了）</view>
-  <view wx:if="{{dbg}}" style="background:#c0504d;color:#fff;padding:12rpx 20rpx;font-size:22rpx;line-height:1.5;word-break:break-all;">🐞 {{dbg}}</view>
   <view class="hd">
     <view class="hd-title">🎞️ 画面感分镜编辑器</view>
     <view class="hd-sub">写一段文字脚本，一键出分镜图 · 全程本地完成</view>

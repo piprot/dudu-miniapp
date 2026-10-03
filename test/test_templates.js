@@ -4,7 +4,7 @@
 const assert = require('assert');
 const { CARD_TYPES, buildCardModel, W } = require('../utils/templates/index');
 const { computeLayout, draw } = require('../utils/core/render_engine');
-const { THEME_LIST } = require('../utils/themes');
+const { THEME_LIST } = require('../utils/themes/index.js');
 
 let pass = 0, fail = 0;
 function t(name, fn) {
@@ -115,7 +115,7 @@ t('带 bgImg 时 model 记录 backgroundImage（供页面加载 asset 后注入�
 });
 
 t('照片背景模式：正文/标题自动转白字（引擎叠暗色蒙版后可读）', () => {
-  const { getTheme } = require('../utils/themes');
+  const { getTheme } = require('../utils/themes/index.js');
   const a = buildCardModel('quote', 'warm', SAMPLE.quote);                       // 无背景图 → 主题 ink
   const b = buildCardModel('quote', 'warm', Object.assign({}, SAMPLE.quote, { bgImg: 'local://bg.jpg' }));
   const ta = a.children.find(c => c.type === 'text' && c.content === SAMPLE.quote.body);

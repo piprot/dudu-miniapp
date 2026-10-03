@@ -3,7 +3,7 @@
 // 全程不调用云端 / 不生成内容，不构成深度合成，个人主体可过审。
 const { parseScript } = require('../../utils/comic_markup');
 const { computeLayout, draw } = require('../../utils/comic_render');
-const { THEME_LIST, palette } = require('../../utils/themes');
+const { THEME_LIST, palette } = require('../../utils/themes/index.js');
 const { exportAndSave, shareConfig } = require('../../utils/share');
 const { charge, costOf } = require('../../utils/charge');
 const { surfaceLastError, currentEnvVersion, buildDebug } = require('../../utils/diag');

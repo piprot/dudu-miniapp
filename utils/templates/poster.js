@@ -10,7 +10,7 @@
 //   opts: { measure }（页面传 canvas measureText；缺省内置估算）
 // ─────────────────────────────────────────────────────────────────────────
 'use strict';
-const { getTheme, palette } = require('../themes');
+const { getTheme, palette } = require('../themes/index.js');
 const { wrapText, defaultMeasure } = require('../core/render_engine');
 
 const W = 375;

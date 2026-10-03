@@ -5,7 +5,7 @@
 //   ③ 知识库 + 素材库：内置静态金句/骨架库 + 用户本地素材库，给「指导」与「自动填入」体感。
 // 本页不调用任何云端大模型，不构成深度合成，个人主体可正常过审。
 const points = require('../../utils/points');
-const templates = require('../../utils/templates');
+const templates = require('../../utils/templates/index.js');
 const tools = require('../../utils/text_tools');
 const knowledge = require('../../utils/knowledge');
 const profile = require('../../utils/profile');
