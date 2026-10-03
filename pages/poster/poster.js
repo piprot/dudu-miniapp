@@ -8,6 +8,7 @@ const { THEME_LIST } = require('../../utils/themes');
 const { charge, costOf } = require('../../utils/charge');
 const { exportAndSave, shareConfig } = require('../../utils/share');
 const daily = require('../../utils/templates/daily'); // 每日文案库：金句每天自动换一条（本地确定性轮换，零 AI）
+const { surfaceLastError } = require('../../utils/diag');
 
 const QR_PATH = '/images/qrcode_miniapp.png';
 
@@ -51,6 +52,10 @@ Page({
     if (typeof wx.showShareMenu === 'function') {
       wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] });
     }
+  },
+
+  onShow() {
+    surfaceLastError(this);
   },
 
   onPickTheme(e) {

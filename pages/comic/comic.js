@@ -6,6 +6,7 @@ const { computeLayout, draw } = require('../../utils/comic_render');
 const { THEME_LIST, palette } = require('../../utils/themes');
 const { exportAndSave, shareConfig } = require('../../utils/share');
 const { charge, costOf } = require('../../utils/charge');
+const { surfaceLastError } = require('../../utils/diag');
 
 const SAMPLES = {
   story: `# 江边的告别
@@ -69,6 +70,10 @@ Page({
     if (typeof wx.showShareMenu === 'function') {
       wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] });
     }
+  },
+
+  onShow() {
+    surfaceLastError(this);
   },
 
   onScriptInput(e) {

@@ -7,6 +7,7 @@ const { THEME_LIST } = require('../../utils/themes');
 const { exportAndSave, shareConfig } = require('../../utils/share');
 const { charge, costOf } = require('../../utils/charge');
 const daily = require('../../utils/templates/daily'); // 每日文案库：日签/金句每天自动换一条（本地确定性轮换，零 AI）
+const { surfaceLastError } = require('../../utils/diag');
 
 const TYPE_KEYS = ['dailysign', 'quote', 'recommend', 'notice', 'checklist', 'imagetext'];
 
@@ -61,6 +62,10 @@ Page({
     if (typeof wx.showShareMenu === 'function') {
       wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] });
     }
+  },
+
+  onShow() {
+    surfaceLastError(this);
   },
 
   // 切换主题（warm/fresh/graphite/zen/ticket/olive）——数据驱动，渲染引擎自动读取
