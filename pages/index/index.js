@@ -19,6 +19,7 @@ Page({
     dailyOn: true,         // 是否开启每日登录奖励
     identityText: '',
     lastError: '',         // 上次真机崩溃信息（从 storage 读取，首页横幅显示）
+    sdkVer: '',            // 真机基础库版本（排障：设备级渲染差异）
     // ── 创作工具卡（长按拖拽排序，流体交互库 #6 · B 档）──
     tools: TOOL_DEFS.slice(),
     dragIdx: -1,           // 正在被拖拽的卡下标（-1 = 无拖拽）
@@ -45,6 +46,15 @@ Page({
     this.syncLogin();
     this.claimDaily();
     this.showLastError();
+    this.showSdk();
+  },
+  // 排障：把真机基础库版本显示在首页蓝条上（canvas type=2d / var() 等能力与基础库版本相关）。
+  showSdk() {
+    try {
+      let v = '';
+      try { v = (wx.getSystemInfoSync() || {}).SDKVersion || ''; } catch (e) { v = '?'; }
+      this.setData({ sdkVer: v || '?' });
+    } catch (e) { /* 忽略 */ }
   },
   // 读取并展示上次真机崩溃信息（正式版也能看到，不再静默丢失）。读完即清，避免反复打扰。
   showLastError() {

@@ -1,5 +1,5 @@
 <view class="page">
-  <view style="background:#1a73e8;color:#fff;padding:8rpx 20rpx;font-size:20rpx;line-height:1.5;">build=1.1.19 · 缓存新鲜度检查（首页）</view>
+  <view style="background:#1a73e8;color:#fff;padding:8rpx 20rpx;font-size:20rpx;line-height:1.5;">build=1.1.20 · SDK={{sdkVer}} · 缓存/环境检查（首页）</view>
   <!-- 真机运行异常横幅：任意页崩溃后回首页自动显示上次真机报错（正式版也能看到，不再静默） -->
   <view wx:if="{{lastError}}" class="err-banner">⚠️ 真机异常（已上报）：{{lastError}}</view>
 
