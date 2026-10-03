@@ -195,8 +195,9 @@ Page({
     charge('cardGen', { label: '生成卡片' }).then(() => {
       self.renderCard(d);
       wx.showToast({ title: '已生成卡片（-' + cost + '）', icon: 'none' });
-    }).catch(() => {
-      // 余额不足 / 扣费失败：charge 内部已弹窗或提示，不渲染
+    }).catch((e) => {
+      // 余额不足 / 扣费失败 / 积分云服务不可用：把真因显式显示，避免「点生成毫无反应、画布空空」。
+      self.setData({ err: '生成失败：' + ((e && e.message) || '积分服务暂不可用，请稍后重试') });
     });
   },
 
@@ -208,51 +209,59 @@ Page({
         self.setData({ err: '画布初始化失败，请重试' });
         return;
       }
-      const canvas = res[0].node;
-      const ctx = canvas.getContext('2d');
-      const dpr = getDpr();
-      const cssW = res[0].width || 340;
+      try {
+        const canvas = res[0].node;
+        const ctx = canvas.getContext('2d');
+        const dpr = getDpr();
+        const cssW = res[0].width || 340;
 
-      // 文本测量：用真实 canvas measureText（按字号设置 font，保证折行准确）
-      const measure = (t, fontPx) => {
-        ctx.font = fontPx + 'px sans-serif';
-        return ctx.measureText(t).width;
-      };
+        // 文本测量：用真实 canvas measureText（按字号设置 font，保证折行准确）
+        const measure = (t, fontPx) => {
+          ctx.font = fontPx + 'px sans-serif';
+          return ctx.measureText(t).width;
+        };
 
-      // 模板 × 主题 × 内容 → model（传入 canvas 实测 measure，折行更准）；再加载图片资产注入。
-      const model = buildCardModel(self.data.type, self.data.theme, d, { measure });
-      const loadImg = (src) => new Promise(resolve => {
-        const img = canvas.createImage();
-        img.onload = () => resolve(img);
-        img.onerror = () => resolve(null);
-        img.src = src;
-      });
-      const jobs = [];
-      if (d.cover) jobs.push(loadImg(d.cover).then(im => {
-        const c = model.children.find(x => x.type === 'image' && x.src === d.cover);
-        if (c && im) c.asset = im;
-      }));
-      if (d.qr) jobs.push(loadImg(d.qr).then(im => {
-        const q = model.children.find(x => x.type === 'qrcode');
-        if (q && im) q.asset = im;
-      }));
-      if (d.bgImg) jobs.push(loadImg(d.bgImg).then(im => {
-        if (im) model.backgroundImageAsset = im;
-        else delete model.backgroundImage; // 背景图加载失败 → 回退主题渐变，不画占位
-      }));
+        // 模板 × 主题 × 内容 → model（传入 canvas 实测 measure，折行更准）；再加载图片资产注入。
+        const model = buildCardModel(self.data.type, self.data.theme, d, { measure });
+        const loadImg = (src) => new Promise(resolve => {
+          const img = canvas.createImage();
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null);
+          img.src = src;
+        });
+        const jobs = [];
+        if (d.cover) jobs.push(loadImg(d.cover).then(im => {
+          const c = model.children.find(x => x.type === 'image' && x.src === d.cover);
+          if (c && im) c.asset = im;
+        }));
+        if (d.qr) jobs.push(loadImg(d.qr).then(im => {
+          const q = model.children.find(x => x.type === 'qrcode');
+          if (q && im) q.asset = im;
+        }));
+        if (d.bgImg) jobs.push(loadImg(d.bgImg).then(im => {
+          if (im) model.backgroundImageAsset = im;
+          else delete model.backgroundImage; // 背景图加载失败 → 回退主题渐变，不画占位
+        }));
 
-      Promise.all(jobs).then(() => {
-        const layout = computeLayout(model, {}, measure);
-        // 引擎按 340 逻辑宽布局；画布元素实际 css 宽 cssW → 等比缩放绘制，保证清晰不变形
-        const k = cssW / layout.width;
-        canvas.width = Math.round(layout.width * k * dpr);
-        canvas.height = Math.round(layout.height * k * dpr);
-        ctx.scale(dpr * k, dpr * k);
-        draw(ctx, layout);
-        self.canvasNode = canvas;
-        self._lastRecord = { kind: 'card', type: self.data.type, theme: self.data.theme, title: d.title || '', body: String(d.body || (d.items && d.items.join(' ')) || '').slice(0, 30) };
-        self.setData({ canvasH: Math.round(layout.height * k), rendered: true });
-      });
+        Promise.all(jobs).then(() => {
+          try {
+            const layout = computeLayout(model, {}, measure);
+            // 引擎按 340 逻辑宽布局；画布元素实际 css 宽 cssW → 等比缩放绘制，保证清晰不变形
+            const k = cssW / layout.width;
+            canvas.width = Math.round(layout.width * k * dpr);
+            canvas.height = Math.round(layout.height * k * dpr);
+            ctx.scale(dpr * k, dpr * k);
+            draw(ctx, layout);
+            self.canvasNode = canvas;
+            self._lastRecord = { kind: 'card', type: self.data.type, theme: self.data.theme, title: d.title || '', body: String(d.body || (d.items && d.items.join(' ')) || '').slice(0, 30) };
+            self.setData({ canvasH: Math.round(layout.height * k), rendered: true, err: '' });
+          } catch (e) {
+            self.setData({ err: '卡片渲染失败：' + ((e && e.message) || e || '未知错误') });
+          }
+        });
+      } catch (e) {
+        self.setData({ err: '卡片渲染失败：' + ((e && e.message) || e || '未知错误') });
+      }
     });
   },
 

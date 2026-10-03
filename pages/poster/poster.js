@@ -138,8 +138,9 @@ Page({
     charge('posterGen', { label: '生成海报' }).then(() => {
       self.renderPoster(d);
       wx.showToast({ title: '已生成海报（-' + cost + '）', icon: 'none' });
-    }).catch(() => {
-      // 余额不足 / 扣费失败：charge 内部已弹窗或提示，不渲染
+    }).catch((e) => {
+      // 余额不足 / 扣费失败 / 积分云服务不可用：把真因显式显示，避免「点生成毫无反应、画布空空」。
+      self.setData({ err: '生成失败：' + ((e && e.message) || '积分服务暂不可用，请稍后重试') });
     });
   },
 
@@ -151,53 +152,61 @@ Page({
         self.setData({ err: '画布初始化失败，请重试' });
         return;
       }
-      const canvas = res[0].node;
-      const ctx = canvas.getContext('2d');
-      const dpr = getDpr();
-      const cssW = res[0].width || 340;
-      const measure = (t, fontPx) => {
-        ctx.font = fontPx + 'px sans-serif';
-        return ctx.measureText(t).width;
-      };
+      try {
+        const canvas = res[0].node;
+        const ctx = canvas.getContext('2d');
+        const dpr = getDpr();
+        const cssW = res[0].width || 340;
+        const measure = (t, fontPx) => {
+          ctx.font = fontPx + 'px sans-serif';
+          return ctx.measureText(t).width;
+        };
 
-      const loadImg = (src) => new Promise(resolve => {
-        const img = canvas.createImage();
-        img.onload = () => resolve(img);
-        img.onerror = () => resolve(null);
-        img.src = src;
-      });
-      // 先加载全部图片资产，再按「实际加载成功」的资产建模：
-      // 头像加载失败 → 按「无头像」建模（模板层自动出主色首字圆形占位，不空缺）；
-      // 背景图加载失败 → 回退主题渐变。绝不做半成品渲染。
-      Promise.all([
-        d.avatar ? loadImg(d.avatar) : Promise.resolve(null),
-        loadImg(d.qr),
-        d.bgImg ? loadImg(d.bgImg) : Promise.resolve(null)
-      ]).then(([avatarImg, qrImg, bgImg]) => {
-        const buildData = Object.assign({}, d);
-        if (!avatarImg) delete buildData.avatar; // 模板层会走首字占位分支
-        const model = buildPosterModel(self.data.theme, buildData, { measure });
-        if (avatarImg) {
-          const c = model.children.find(x => x.type === 'image' && x.src === d.avatar);
-          if (c) c.asset = avatarImg;
-        }
-        if (qrImg) {
-          const q = model.children.find(x => x.type === 'qrcode');
-          if (q) q.asset = qrImg;
-        }
-        if (d.bgImg && bgImg) model.backgroundImageAsset = bgImg;
-        else if (d.bgImg && !bgImg) delete model.backgroundImage;
+        const loadImg = (src) => new Promise(resolve => {
+          const img = canvas.createImage();
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null);
+          img.src = src;
+        });
+        // 先加载全部图片资产，再按「实际加载成功」的资产建模：
+        // 头像加载失败 → 按「无头像」建模（模板层自动出主色首字圆形占位，不空缺）；
+        // 背景图加载失败 → 回退主题渐变。绝不做半成品渲染。
+        Promise.all([
+          d.avatar ? loadImg(d.avatar) : Promise.resolve(null),
+          loadImg(d.qr),
+          d.bgImg ? loadImg(d.bgImg) : Promise.resolve(null)
+        ]).then(([avatarImg, qrImg, bgImg]) => {
+          try {
+            const buildData = Object.assign({}, d);
+            if (!avatarImg) delete buildData.avatar; // 模板层会走首字占位分支
+            const model = buildPosterModel(self.data.theme, buildData, { measure });
+            if (avatarImg) {
+              const c = model.children.find(x => x.type === 'image' && x.src === d.avatar);
+              if (c) c.asset = avatarImg;
+            }
+            if (qrImg) {
+              const q = model.children.find(x => x.type === 'qrcode');
+              if (q) q.asset = qrImg;
+            }
+            if (d.bgImg && bgImg) model.backgroundImageAsset = bgImg;
+            else if (d.bgImg && !bgImg) delete model.backgroundImage;
 
-        const layout = computeLayout(model, {}, measure);
-        const k = cssW / layout.width;
-        canvas.width = Math.round(layout.width * k * dpr);
-        canvas.height = Math.round(layout.height * k * dpr);
-        ctx.scale(dpr * k, dpr * k);
-        draw(ctx, layout);
-        self.canvasNode = canvas;
-        self._lastRecord = { kind: 'poster', theme: self.data.theme, title: d.title, quote: (d.quote || '').slice(0, 30), date: d.dateLabel };
-        self.setData({ canvasH: Math.round(layout.height * k), rendered: true });
-      });
+            const layout = computeLayout(model, {}, measure);
+            const k = cssW / layout.width;
+            canvas.width = Math.round(layout.width * k * dpr);
+            canvas.height = Math.round(layout.height * k * dpr);
+            ctx.scale(dpr * k, dpr * k);
+            draw(ctx, layout);
+            self.canvasNode = canvas;
+            self._lastRecord = { kind: 'poster', theme: self.data.theme, title: d.title, quote: (d.quote || '').slice(0, 30), date: d.dateLabel };
+            self.setData({ canvasH: Math.round(layout.height * k), rendered: true, err: '' });
+          } catch (e) {
+            self.setData({ err: '海报渲染失败：' + ((e && e.message) || e || '未知错误') });
+          }
+        });
+      } catch (e) {
+        self.setData({ err: '海报渲染失败：' + ((e && e.message) || e || '未知错误') });
+      }
     });
   },
 

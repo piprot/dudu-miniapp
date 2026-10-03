@@ -31,8 +31,10 @@ App({
    */
   onError(err) {
     try {
-      const msg = String((err && err.message) || err || 'unknown').slice(0, 300);
+      const msg = String((err && err.message) || err || 'unknown').slice(0, 500);
       this.globalData.lastError = msg;
+      // 持久化：globalData 在冷启动即丢失，存 storage 才能事后排查（含正式版）。
+      try { wx.setStorageSync('__lastAppError__', { msg, t: Date.now() }); } catch (e) { /* 忽略 */ }
       let envVersion = 'release';
       try { envVersion = wx.getAccountInfoSync().miniProgram.envVersion; } catch (e) { /* 取不到按正式版处理 */ }
       if (envVersion !== 'release' && !this._errShown) {
@@ -40,6 +42,23 @@ App({
         wx.showModal({ title: '脚本异常提示（体验/开发版）', content: msg, showCancel: false });
       }
     } catch (e) { /* 排障兜底，不再抛错 */ }
+  },
+
+  // 未处理的 Promise 拒绝（charge 链、cloud.callFunction 拒绝等）默认不触发 onError，
+  // 会静默吞掉真因 → 页面表现就是「点生成毫无反应 / 整页空」。这里补上捕获并持久化。
+  onUnhandledRejection(res) {
+    try {
+      const reason = (res && (res.reason || res.message)) || res || 'unhandledRejection';
+      const msg = 'UnhandledRejection: ' + String(reason && reason.message ? reason.message : reason).slice(0, 500);
+      this.globalData.lastError = msg;
+      try { wx.setStorageSync('__lastAppError__', { msg, t: Date.now() }); } catch (e) { /* 忽略 */ }
+      let envVersion = 'release';
+      try { envVersion = wx.getAccountInfoSync().miniProgram.envVersion; } catch (e) { /* 忽略 */ }
+      if (envVersion !== 'release' && !this._errShown) {
+        this._errShown = true;
+        wx.showModal({ title: '脚本异常提示（体验/开发版）', content: msg, showCancel: false });
+      }
+    } catch (e) { /* 忽略 */ }
   },
 
   /**

@@ -117,8 +117,9 @@ Page({
     charge('comicGen', { label: '生成分镜' }).then(() => {
       self.renderComic(model);
       wx.showToast({ title: '已生成分镜（-' + cost + '）', icon: 'none' });
-    }).catch(() => {
-      // 余额不足 / 扣费失败：charge 内部已弹窗或提示，不渲染
+    }).catch((e) => {
+      // 余额不足 / 扣费失败 / 积分云服务不可用：把真因显式显示，避免「点生成毫无反应、画布空空」。
+      self.setData({ err: '生成失败：' + ((e && e.message) || '积分服务暂不可用，请稍后重试') });
     });
   },
 
@@ -130,22 +131,26 @@ Page({
         self.setData({ err: '画布初始化失败，请重试' });
         return;
       }
-      const canvas = res[0].node;
-      const ctx = canvas.getContext('2d');
-      const dpr = getDpr();
-      const cssW = res[0].width || 340;
-      const layout = computeLayout(m, { width: cssW, cols: self.data.cols }, (t, f) => {
-        ctx.font = f;
-        return ctx.measureText(t).width;
-      });
-      canvas.width = Math.round(layout.width * dpr);
-      canvas.height = Math.round(layout.height * dpr);
-      ctx.scale(dpr, dpr);
-      // 主题化配色：palette 喂给 draw，底色/标题/气泡/旁白随主题切换
-      draw(ctx, layout, { width: layout.width, cols: self.data.cols, theme: palette(self.data.theme) });
-      self.canvasNode = canvas;
-      self._lastRecord = { kind: 'comic', theme: self.data.theme, title: m.title || '', panels: m.panels.length };
-      self.setData({ canvasH: layout.height, rendered: true });
+      try {
+        const canvas = res[0].node;
+        const ctx = canvas.getContext('2d');
+        const dpr = getDpr();
+        const cssW = res[0].width || 340;
+        const layout = computeLayout(m, { width: cssW, cols: self.data.cols }, (t, f) => {
+          ctx.font = f;
+          return ctx.measureText(t).width;
+        });
+        canvas.width = Math.round(layout.width * dpr);
+        canvas.height = Math.round(layout.height * dpr);
+        ctx.scale(dpr, dpr);
+        // 主题化配色：palette 喂给 draw，底色/标题/气泡/旁白随主题切换
+        draw(ctx, layout, { width: layout.width, cols: self.data.cols, theme: palette(self.data.theme) });
+        self.canvasNode = canvas;
+        self._lastRecord = { kind: 'comic', theme: self.data.theme, title: m.title || '', panels: m.panels.length };
+        self.setData({ canvasH: layout.height, rendered: true, err: '' });
+      } catch (e) {
+        self.setData({ err: '分镜渲染失败：' + ((e && e.message) || e || '未知错误') });
+      }
     });
   },
 

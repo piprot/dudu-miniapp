@@ -18,6 +18,7 @@ Page({
     dailyChecked: false,   // 今日是否已签到
     dailyOn: true,         // 是否开启每日登录奖励
     identityText: '',
+    lastError: '',         // 上次真机崩溃信息（从 storage 读取，首页横幅显示）
     // ── 创作工具卡（长按拖拽排序，流体交互库 #6 · B 档）──
     tools: TOOL_DEFS.slice(),
     dragIdx: -1,           // 正在被拖拽的卡下标（-1 = 无拖拽）
@@ -43,6 +44,17 @@ Page({
   onShow() {
     this.syncLogin();
     this.claimDaily();
+    this.showLastError();
+  },
+  // 读取并展示上次真机崩溃信息（正式版也能看到，不再静默丢失）。读完即清，避免反复打扰。
+  showLastError() {
+    try {
+      const e = wx.getStorageSync('__lastAppError__');
+      if (e && e.msg) {
+        this.setData({ lastError: e.msg });
+        wx.removeStorageSync('__lastAppError__');
+      }
+    } catch (e) { /* 忽略 */ }
   },
   syncLogin() {
     // 个人主体以 openid 标识用户（虚拟支付服务端注入），无需登录入口；仅展示本地缓存的已登录态

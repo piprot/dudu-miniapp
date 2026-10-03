@@ -1,4 +1,7 @@
 <view class="page">
+  <!-- 真机运行异常横幅：任意页崩溃后回首页自动显示上次真机报错（正式版也能看到，不再静默） -->
+  <view wx:if="{{lastError}}" class="err-banner">⚠️ 真机异常（已上报）：{{lastError}}</view>
+
   <!-- 顶部：品牌（轻量，让位给创作入口） -->
   <view class="hero">
     <view class="hero-title">dudu 画面感</view>
