@@ -101,7 +101,15 @@ Page({
   onTapTool(e) {
     const key = e.currentTarget.dataset.key;
     const routes = { gen: '/pages/gen/gen', comic: '/pages/comic/comic', card: '/pages/card/card', poster: '/pages/poster/poster' };
-    if (routes[key]) wx.navigateTo({ url: routes[key] });
+    if (routes[key]) {
+      wx.navigateTo({
+        url: routes[key],
+        fail: (err) => {
+          // 导航失败（页面不存在/被拦截）会表现为「点进去是空的」——显式暴露原因，不再静默。
+          wx.showModal({ title: '打不开该工具', content: '导航失败：' + ((err && err.errMsg) || '未知错误'), showCancel: false });
+        }
+      });
+    }
   },
   // ── 长按拖拽排序（流体交互库 #6 · B 档）──
   // 铁律 1：catchtouchmove 动态绑定，仅拖拽中拦截滚动；铁律 2/3：被拖卡 inline 跟手、
