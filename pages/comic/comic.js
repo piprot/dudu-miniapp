@@ -6,7 +6,7 @@ const { computeLayout, draw } = require('../../utils/comic_render');
 const { THEME_LIST, palette } = require('../../utils/themes/index.js');
 const { exportAndSave, shareConfig } = require('../../utils/share');
 const { charge, costOf } = require('../../utils/charge');
-const { surfaceLastError, currentEnvVersion, buildDebug } = require('../../utils/diag');
+const { surfaceLastError, currentEnvVersion, buildDebug } = require('../../utils/diag.js');
 
 const SAMPLES = {
   story: `# 江边的告别

@@ -17,10 +17,12 @@
 //      （写入 __lastAppError__，首页错误横幅可见，便于事后定位）。
 // ─────────────────────────────────────────────────────────────────────────
 
+const { reportError } = require('./diag.js');
+
 const ERR_KEY = '__lastAppError__';
 
 function reportErr(msg) {
-  try { wx.setStorageSync(ERR_KEY, { msg: String(msg).slice(0, 500), t: Date.now() }); } catch (e) { /* 忽略 */ }
+  reportError(msg);
 }
 
 function saveImageToAlbum(filePath) {

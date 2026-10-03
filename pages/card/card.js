@@ -7,7 +7,7 @@ const { THEME_LIST } = require('../../utils/themes/index.js');
 const { exportAndSave, shareConfig } = require('../../utils/share');
 const { charge, costOf } = require('../../utils/charge');
 const daily = require('../../utils/templates/daily'); // 每日文案库：日签/金句每天自动换一条（本地确定性轮换，零 AI）
-const { surfaceLastError, currentEnvVersion, buildDebug } = require('../../utils/diag');
+const { surfaceLastError, currentEnvVersion, buildDebug, handlePrivacyApiFail } = require('../../utils/diag.js');
 
 const TYPE_KEYS = ['dailysign', 'quote', 'recommend', 'notice', 'checklist', 'imagetext'];
 
@@ -136,7 +136,8 @@ Page({
           wx.showToast({ title: '已选图，点生成', icon: 'none' });
         }
       },
-      fail() { /* 用户取消，忽略 */ }
+      // ⚠️ 绝不能空 fail：隐私拦截/权限拒绝都会走这里，空实现会让「点了没反应」的真因被吞掉。
+      fail(e) { handlePrivacyApiFail(self, '选择配图', e); }
     });
   },
 
@@ -154,7 +155,7 @@ Page({
           wx.showToast({ title: '已选背景图，点生成', icon: 'none' });
         }
       },
-      fail() { /* 用户取消，忽略 */ }
+      fail(e) { handlePrivacyApiFail(self, '选择背景图', e); }
     });
   },
 
