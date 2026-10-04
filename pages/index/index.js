@@ -1,6 +1,7 @@
 const { POINTS, COMMISSION } = require('../../utils/config.js');
 const login = require('../../utils/login.js');
 const points = require('../../utils/points.js');
+const { getFreshError } = require('../../utils/diag.js');
 
 // 工具卡定义（key 稳定不变，顺序可被用户长按拖拽自定义，持久化到 storage）。
 const TOOL_ORDER_KEY = 'dudu_tool_order_v1';
@@ -46,15 +47,26 @@ Page({
     this.claimDaily();
     this.showLastError();
   },
-  // 读取并展示上次真机崩溃信息（正式版也能看到，不再静默丢失）。读完即清，避免反复打扰。
+  // 读取并展示上次真机崩溃信息（正式版也能看到，不再静默丢失）。
+  // ⚠️ 仅展示"新鲜"错误（默认 3 分钟内）：旧 session 的陈年错误会自动过期清除，不再反复骚扰。
   showLastError() {
     try {
-      const e = wx.getStorageSync('__lastAppError__');
+      const e = getFreshError();
       if (e && e.msg) {
         this.setData({ lastError: e.msg });
         wx.removeStorageSync('__lastAppError__');
       }
     } catch (e) { /* 忽略 */ }
+  },
+  // 把错误文案复制到剪贴板，便于一键发给开发者定位（红横幅上"复制"按钮调用）。
+  copyError() {
+    const msg = this.data.lastError || '';
+    if (!msg) return;
+    wx.setClipboardData({
+      data: msg,
+      success: () => wx.showToast({ title: '已复制错误，可发给开发者', icon: 'none', duration: 2200 }),
+      fail: () => wx.showToast({ title: '复制失败', icon: 'none' })
+    });
   },
   syncLogin() {
     // 个人主体以 openid 标识用户（虚拟支付服务端注入），无需登录入口；仅展示本地缓存的已登录态

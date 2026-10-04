@@ -1,6 +1,9 @@
 <view class="page">
-  <!-- 真机运行异常横幅：任意页崩溃后回首页自动显示上次真机报错（正式版也能看到，不再静默） -->
-  <view wx:if="{{lastError}}" class="err-banner">⚠️ 真机异常（已上报）：{{lastError}}</view>
+  <!-- 真机运行异常横幅：任意页崩溃后回首页自动显示最近一次"新鲜"报错（陈旧错误自动过期不再显示） -->
+  <view wx:if="{{lastError}}" class="err-banner">
+    <text class="err-text">⚠️ 真机异常（已上报）：{{lastError}}</text>
+    <text class="err-copy" bindtap="copyError">复制</text>
+  </view>
 
   <!-- 顶部：品牌（轻量，让位给创作入口） -->
   <view class="hero">

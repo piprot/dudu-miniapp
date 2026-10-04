@@ -1,5 +1,7 @@
 .page { padding: 24rpx 24rpx 200rpx; }
-.err-banner { margin: 0 0 16rpx; padding: 18rpx 22rpx; border-radius: 14rpx; background: #fdecea; border: 2rpx solid #f5c6c0; color: #c0504d; font-size: 24rpx; line-height: 1.6; word-break: break-all; }
+.err-banner { margin: 0 0 16rpx; padding: 18rpx 22rpx; border-radius: 14rpx; background: #fdecea; border: 2rpx solid #f5c6c0; color: #c0504d; font-size: 24rpx; line-height: 1.6; word-break: break-all; display: flex; align-items: flex-start; justify-content: space-between; }
+.err-text { flex: 1; }
+.err-copy { flex: none; margin-left: 16rpx; padding: 4rpx 16rpx; background: #c0504d; color: #fff; border-radius: 20rpx; font-size: 22rpx; }
 .hero {
   position: relative; margin: 8rpx 0 20rpx; padding: 36rpx 32rpx;
   border-radius: 24rpx;
