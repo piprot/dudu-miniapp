@@ -4,7 +4,7 @@
 const { CARD_TYPES, buildCardModel } = require('../../utils/templates/index');
 const { computeLayout, draw } = require('../../utils/core/render_engine');
 const { THEME_LIST } = require('../../utils/themes/index.js');
-const { exportAndSave, shareConfig } = require('../../utils/share');
+const { exportAndSave } = require('../../utils/share');
 const { charge, costOf } = require('../../utils/charge');
 const daily = require('../../utils/templates/daily'); // 每日文案库：日签/金句每天自动换一条（本地确定性轮换，零 AI）
 const { surfaceLastError, currentEnvVersion, buildDebug, handlePrivacyApiFail } = require('../../utils/diag.js');
@@ -57,12 +57,6 @@ Page({
     savedKey: '',          // 'a'/'b' = 翻转中，'' = 常态（铁律 6 内联反馈替代 toast）
     poolSize: daily.poolSizeFor('dailysign'),  // 当前类型文案库储备量（按钮展示「库存 N 条」）
     cardCost: costOf('cardGen') || 20   // 生成卡片单价（来自 POINTS.cost，集中配置）
-  },
-
-  onLoad() {
-    if (typeof wx.showShareMenu === 'function') {
-      wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] });
-    }
   },
 
   onShow() {
@@ -165,7 +159,6 @@ Page({
     const d = {};
     if (f.title !== undefined) d.title = f.title;
     if (f.body !== undefined) d.body = f.body;
-    if (f.author !== undefined) d.author = f.author;
     if (f.tag !== undefined) d.tag = f.tag;
     if (this.data.cover) d.cover = this.data.cover;
     if (this.data.type === 'checklist') {
@@ -190,7 +183,7 @@ Page({
 
   onGenCard() {
     const d = this.collectData();
-    const hasText = (d.title || d.body || (d.items && d.items.length) || d.author);
+    const hasText = (d.title || d.body || (d.items && d.items.length));
     const tpl = CARD_TYPES[this.data.type];
     if (!hasText && !(tpl.hasCover && d.cover)) {
       this.setData({ err: '先填点内容，或选一张图再生成', rendered: false });
@@ -305,12 +298,5 @@ Page({
       // 其余失败（导出/写入等）不允许静默：带真因提示，方便用户反馈与自查
       wx.showToast({ title: '保存失败：' + (msg ? msg.slice(0, 40) : '请重试'), icon: 'none', duration: 2600 });
     });
-  },
-
-  onShareAppMessage() {
-    return shareConfig('选模板填文字，一键出日签卡片 · dudu 画面感', '/pages/card/card');
-  },
-  onShareTimeline() {
-    return { title: '选模板填文字，一键出日签卡片 · dudu 画面感', query: '' };
   }
 });

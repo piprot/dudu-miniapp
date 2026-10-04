@@ -4,7 +4,7 @@
 const { parseScript } = require('../../utils/comic_markup');
 const { computeLayout, draw } = require('../../utils/comic_render');
 const { THEME_LIST, palette } = require('../../utils/themes/index.js');
-const { exportAndSave, shareConfig } = require('../../utils/share');
+const { exportAndSave } = require('../../utils/share');
 const { charge, costOf } = require('../../utils/charge');
 const { surfaceLastError, currentEnvVersion, buildDebug } = require('../../utils/diag.js');
 
@@ -65,12 +65,6 @@ Page({
     savedKey: '',          // 'a'/'b' = 翻转中，'' = 常态
     showHelp: false,
     comicCost: costOf('comicGen') || 20   // 生成分镜单价（来自 POINTS.cost，集中配置）
-  },
-
-  onLoad() {
-    if (typeof wx.showShareMenu === 'function') {
-      wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] });
-    }
   },
 
   onShow() {
@@ -191,12 +185,5 @@ Page({
       if (/auth|deny|authorize/i.test(msg)) return; // 权限引导由 album.js 内部处理
       wx.showToast({ title: '保存失败：' + (msg ? msg.slice(0, 40) : '请重试'), icon: 'none', duration: 2600 });
     });
-  },
-
-  onShareAppMessage() {
-    return shareConfig('写文字脚本，一键出分镜图 · dudu 画面感', '/pages/comic/comic');
-  },
-  onShareTimeline() {
-    return { title: '写文字脚本，一键出分镜图 · dudu 画面感', query: '' };
   }
 });

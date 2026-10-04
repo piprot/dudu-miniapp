@@ -45,5 +45,5 @@
     <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
   </view>
 
-  <view class="tip">分镜图保存在你手机本地，可发朋友圈 / 群，无需上传服务器。</view>
+  <view class="tip">分镜图保存在你手机本地相册，不上传任何服务器。</view>
 </view>

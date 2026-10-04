@@ -25,7 +25,7 @@
   <view class="help" wx:if="{{showHelp}}">
     <view class="help-line">① 选上方模板（每日日签 / 金句 / 种草 / 公告 / 清单 / 图文）</view>
     <view class="help-line">② 在下方填文字；种草 / 图文可点「选择图片」取本地照片；日签自动带日期与小程序码</view>
-    <view class="help-line">③ 点「生成卡片」，再「保存到相册」即可发朋友圈 / 群（卡片右下角带小程序码，扫码回到小程序）</view>
+    <view class="help-line">③ 点「生成卡片」，再「保存到相册」即可（卡片右下角带小程序码，扫码回到小程序）</view>
     <view class="help-line">图片只存在你手机本地，不会上传任何服务器。</view>
   </view>
 
@@ -55,11 +55,6 @@
       <input class="input" value="{{form.tag}}" bindinput="onField" data-field="tag" placeholder="如：¥ 39 起 / 限时好物" />
     </view>
 
-    <view class="field" wx:if="{{type === 'notice' || type === 'quote'}}">
-      <view class="label">落款 / 出处</view>
-      <input class="input" value="{{form.author}}" bindinput="onField" data-field="author" placeholder="如：dudu 画面感 · 9 月" />
-    </view>
-
     <view class="field" wx:if="{{type === 'recommend' || type === 'imagetext'}}">
       <view class="label">配图（取本地照片，不上传）</view>
       <button class="btn ghost" bindtap="onChooseImage">{{cover ? '重新选择图片' : '选择图片'}}</button>
@@ -82,5 +77,5 @@
     <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
   </view>
 
-  <view class="tip">卡片保存在你手机本地，可发朋友圈 / 群，无需上传服务器。</view>
+  <view class="tip">卡片保存在你手机本地相册，不上传任何服务器。</view>
 </view>

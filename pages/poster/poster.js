@@ -1,12 +1,13 @@
 // pages/poster/poster.js —— 海报长图生成器（纯本地 canvas，零 AI）
-// 竖版 375 宽长图，高度随内容流式增长（不裁切金句/正文）；
-// 个性化三件套：头像（圆形裁剪）+ 昵称 + 专属小程序码，发朋友圈后扫码回流。
+// 竖版 375 宽长图，高度随内容流式增长（不裁切金句/正文）。
+// 合规（2026-10-04 提审被拒「社交-笔记」后整改）：已移除署名（落款/昵称/头像）与
+// 站内转发/朋友圈分享入口；生成内容仅保存到用户本机相册，不做发布与传播。
 // 沿用 模板(templates/poster)×主题(themes)×引擎(render_engine) 三层解耦架构。
 const { buildPosterModel } = require('../../utils/templates/poster');
 const { computeLayout, draw } = require('../../utils/core/render_engine');
 const { THEME_LIST } = require('../../utils/themes/index.js');
 const { charge, costOf } = require('../../utils/charge');
-const { exportAndSave, shareConfig } = require('../../utils/share');
+const { exportAndSave } = require('../../utils/share');
 const daily = require('../../utils/templates/daily'); // 每日文案库：金句每天自动换一条（本地确定性轮换，零 AI）
 const { surfaceLastError, currentEnvVersion, buildDebug, handlePrivacyApiFail } = require('../../utils/diag.js');
 
@@ -32,11 +33,8 @@ Page({
     form: {
       title: '',
       quote: daily.todayQuote().text,   // 默认带今日金句，每天自动换
-      body: '',
-      author: '',
-      nickname: ''
+      body: ''
     },
-    avatar: '',
     bgImg: '',
     showHelp: false,
     err: '',
@@ -47,12 +45,6 @@ Page({
     savedKey: '',          // 'a'/'b' = 翻转中，'' = 常态
     quotePoolSize: daily.poolSize(),          // 金句库储备量
     posterCost: costOf('posterGen') || 20
-  },
-
-  onLoad() {
-    if (typeof wx.showShareMenu === 'function') {
-      wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] });
-    }
   },
 
   onShow() {
@@ -82,23 +74,6 @@ Page({
     this.setData({ form: Object.assign({}, this.data.form, { quote: q.t }), rendered: false });
   },
 
-  onChooseAvatar() {
-    const self = this;
-    wx.chooseMedia({
-      count: 1,
-      mediaType: ['image'],
-      sourceType: ['album', 'camera'],
-      success(r) {
-        const p = r.tempFiles && r.tempFiles[0] && r.tempFiles[0].tempFilePath;
-        if (p) {
-          self.setData({ avatar: p, rendered: false });
-          wx.showToast({ title: '已选头像，点生成', icon: 'none' });
-        }
-      },
-      fail(e) { handlePrivacyApiFail(self, '选择头像', e); }
-    });
-  },
-
   onChooseBgImage() {
     const self = this;
     wx.chooseMedia({
@@ -123,12 +98,9 @@ Page({
       title: f.title || '',
       quote: f.quote || '',
       body: f.body || '',
-      author: f.author || '',
-      nickname: f.nickname || '',
       dateLabel: todayLabel(),
       qr: QR_PATH
     };
-    if (this.data.avatar) d.avatar = this.data.avatar;
     if (this.data.bgImg) d.bgImg = this.data.bgImg;
     // 金句留空且没有任何内容时，自动回填今日金句，保证首用永远有产出
     if (!d.quote && !d.title && !d.body) d.quote = daily.todayQuote().text;
@@ -176,21 +148,13 @@ Page({
           img.src = src;
         });
         // 先加载全部图片资产，再按「实际加载成功」的资产建模：
-        // 头像加载失败 → 按「无头像」建模（模板层自动出主色首字圆形占位，不空缺）；
         // 背景图加载失败 → 回退主题渐变。绝不做半成品渲染。
         Promise.all([
-          d.avatar ? loadImg(d.avatar) : Promise.resolve(null),
           loadImg(d.qr),
           d.bgImg ? loadImg(d.bgImg) : Promise.resolve(null)
-        ]).then(([avatarImg, qrImg, bgImg]) => {
+        ]).then(([qrImg, bgImg]) => {
           try {
-            const buildData = Object.assign({}, d);
-            if (!avatarImg) delete buildData.avatar; // 模板层会走首字占位分支
-            const model = buildPosterModel(self.data.theme, buildData, { measure });
-            if (avatarImg) {
-              const c = model.children.find(x => x.type === 'image' && x.src === d.avatar);
-              if (c) c.asset = avatarImg;
-            }
+            const model = buildPosterModel(self.data.theme, d, { measure });
             if (qrImg) {
               const q = model.children.find(x => x.type === 'qrcode');
               if (q) q.asset = qrImg;
@@ -246,12 +210,5 @@ Page({
       if (/auth|deny|authorize/i.test(msg)) return; // 权限引导由 album.js 内部处理
       wx.showToast({ title: '保存失败：' + (msg ? msg.slice(0, 40) : '请重试'), icon: 'none', duration: 2600 });
     });
-  },
-
-  onShareAppMessage() {
-    return shareConfig('写一句话，生成你的专属海报长图 · dudu 画面感', '/pages/poster/poster');
-  },
-  onShareTimeline() {
-    return { title: '写一句话，生成你的专属海报长图 · dudu 画面感', query: '' };
   }
 });

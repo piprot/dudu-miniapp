@@ -393,22 +393,4 @@ Page({
     this.copyText(t, 'opt', '已复制排版结果');
   },
 
-  // ── 分享能力（个人主体：原生转发 / 朋友圈正常开放）──
-  onShareAppMessage() {
-    return {
-      title: '套模板 3 秒写出能直接发的朋友圈文案 · dudu 画面感',
-      path: '/pages/gen/gen'
-    };
-  },
-  onShareTimeline() {
-    return {
-      title: '套模板 3 秒写出能直接发的朋友圈文案 · dudu 画面感',
-      query: ''
-    };
-  },
-  onReady() {
-    if (typeof wx.showShareMenu === 'function') {
-      wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] });
-    }
-  }
 });
