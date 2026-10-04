@@ -41,9 +41,29 @@ function buildDebug(ctx) {
       if (rec && rec.msg) lastErr = String(rec.msg).slice(0, 120);
     } catch (e) { /* 忽略 */ }
     const dataKeys = (ctx && ctx.data) ? Object.keys(ctx.data).join(',') : '';
-    return 'env=' + env + ' | 最近异常：' + lastErr + ' | data: ' + dataKeys;
+    return 'env=' + env + ' | 隐私: ' + privacySelfCheck() + ' | 最近异常：' + lastErr + ' | data: ' + dataKeys;
   } catch (e) {
     return 'buildDebug 异常：' + (e && e.message);
+  }
+}
+
+// 隐私自检：把平台当前的隐私协议状态直接读出来，用于判断「后台没配」还是「配了没发布」。
+// ⚠️ 判读要点（2026-10-04 实测确认）：
+//   needAuthorization === false  ⇒ 用户已同意过当前生效的版本；若此时仍报
+//                                   scope is not declared ⇒ **新版指引没生效**（后台多半只保存未发布）
+//   needAuthorization === true   ⇒ 新版指引已生效、平台要求用户重新点一次同意（这是正常现象）
+//   privacyContractName 为空      ⇒ 指引压根没发布过
+function privacySelfCheck() {
+  try {
+    const s = wx.getPrivacySetting ? wx.getPrivacySetting() : null;
+    if (!s) return '隐私自检: getPrivacySetting 不可用（基础库过旧）';
+    return '隐私自检: needAuthorization=' + (s.needAuthorization === true ? 'true' : 'false')
+      + ' | 协议名=' + (s.privacyContractName || '(空=未发布)')
+      + ' | 判读=' + (s.needAuthorization === true
+        ? '新版已生效,应可正常使用'
+        : (s.privacyContractName ? '当前生效版本未含本次新增类型,需后台发布' : '指引未发布'));
+  } catch (e) {
+    return '隐私自检失败: ' + ((e && e.message) || e);
   }
 }
 
@@ -81,19 +101,25 @@ function handlePrivacyApiFail(ctx, apiName, e) {
   const detail = apiName + ' 失败：' + msg;
   reportError(detail);
   const privacy = isPrivacyScopeError(msg);
+  // 自检状态直接拼进提示：一眼区分「压根没配」与「配了但没发布」
+  const hint = privacy ? '｜' + privacySelfCheck().replace(/^隐私自检: /, '') : '';
   try {
     if (currentEnvVersion() !== 'release') {
       ctx.setData({
         err: privacy
-          ? '⚠️ 需到微信公众平台 → 设置 → 服务内容 → 用户隐私保护指引，勾选并发布对应「信息类型」（选图/存图/剪贴板等）后重试'
+          ? '⚠️ 需到微信公众平台 → 设置 → 服务内容 → 用户隐私保护指引，勾选并发布对应「信息类型」（选图/存图/剪贴板/openid）后重试' + hint
           : '⚠️ ' + detail
       });
     }
   } catch (e2) { /* 忽略 */ }
-  wx.showToast({
-    title: privacy ? '需到公众平台配隐私指引' : String(msg).slice(0, 40),
-    icon: 'none', duration: 3000
+  wx.showModal({
+    title: privacy ? '需配置隐私指引' : '操作失败',
+    content: privacy
+      ? '平台提示该信息类型「未声明」。\n\n请到微信公众平台 → 设置 → 服务内容 → 用户隐私保护指引：\n1. 勾选「收集的信息类型」多选列表（选中的照片或视频 / 相册 / 剪切板 / openid）\n2. 用途填满（不要留占位符）\n3. 提交 → 发布，等状态变「已发布」\n\n当前状态：' + privacySelfCheck().replace(/^隐私自检: /, '')
+      : String(msg).slice(0, 200),
+    showCancel: false,
+    confirmText: '知道了'
   });
 }
 
-module.exports = { surfaceLastError, currentEnvVersion, reportError, handlePrivacyApiFail, isPrivacyScopeError, getFreshError, ERROR_TTL_MS, buildDebug };
+module.exports = { surfaceLastError, currentEnvVersion, reportError, handlePrivacyApiFail, isPrivacyScopeError, getFreshError, ERROR_TTL_MS, buildDebug, privacySelfCheck };
