@@ -17,7 +17,7 @@
 //      （写入 __lastAppError__，首页错误横幅可见，便于事后定位）。
 // ─────────────────────────────────────────────────────────────────────────
 
-const { reportError, isPrivacyScopeError, privacySelfCheck } = require('./diag.js');
+const { reportError, isPrivacyScopeError, isPrivacyRefusedError, privacySelfCheck } = require('./diag.js');
 
 const ERR_KEY = '__lastAppError__';
 
@@ -35,11 +35,23 @@ function saveImageToAlbum(filePath) {
         success() { resolve({ ok: true }); },
         fail(e) {
           const msg = (e && e.errMsg) || '';
-          // 隐私信息类型未声明（后台《用户隐私保护指引》没勾选「相册（保存到相册）」）→ 直接指路后台，不进授权重试逻辑。
-          if (isPrivacyScopeError(msg)) {
-            const tip = '保存失败：后台《用户隐私保护指引》未声明「相册（保存到相册）」信息类型。请到 mp.weixin.qq.com → 设置 → 服务内容 → 用户隐私保护指引，勾选并发布后重试。\n\n当前状态：' + privacySelfCheck().replace(/^隐私自检: /, '');
+          // ⚠️ 传错误对象而非字符串：diag 的判定改为读 errno 精确分类（112=未声明 / 103,104=用户拒绝）。
+          // 若传字符串，errno 丢失，103/104 会被降级成普通 auth 分支或再次误判。
+          if (isPrivacyScopeError(e)) {
+            const tip = '平台提示「相册（保存到相册）」信息类型未声明（errno 112）。\n\n'
+              + '请到微信公众平台 → 设置 → 服务内容 → 用户隐私保护指引：\n'
+              + '1. 在「收集的信息类型」勾选「相册（仅写入）」\n'
+              + '2. 用途填满，不要留占位符\n'
+              + '3. 提交 → 发布（官方：声明补充约 5 分钟生效）\n\n'
+              + '当前状态：' + privacySelfCheck().replace(/^隐私自检: /, '');
             reportErr(tip);
             wx.showModal({ title: '需配置隐私指引', content: tip, showCancel: false });
+            reject(e); return;
+          }
+          if (isPrivacyRefusedError(e)) {
+            const tip = '你拒绝了隐私授权，无法保存到相册。\n请重新进入本页面再点一次保存，并选择「同意」。\n（这是授权被拒，不是后台配置问题。）';
+            reportErr(tip);
+            wx.showModal({ title: '需要隐私授权', content: tip, showCancel: false });
             reject(e); return;
           }
           // 只处理「授权 / 拒绝 / 需要授权」类错误；其他（如导出失败）直接 reject。

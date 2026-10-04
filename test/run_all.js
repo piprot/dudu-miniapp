@@ -66,6 +66,8 @@ const SUITES = [
   'test/test_poster.js',
   'test/test_history.js',
   'test/test_poster_page.js',
+  // ── 2026-10-04 隐私错误分类（errno 精确判定，防「用户拒绝」被误当成「后台没配」）──
+  'test/test_privacy_classify.js',
   // ── 2026-10-01 设计规范 + 流体交互（拖拽排序/保存翻转/令牌）──
   'test/test_ui_fluid.js',
   'test/test_h5_comic.js',

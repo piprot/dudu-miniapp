@@ -86,40 +86,93 @@ function surfaceLastError(ctx) {
   } catch (e) { /* 忽略 */ }
 }
 
-// 判断是否为「隐私信息类型未声明」类错误（后台《用户隐私保护指引》未勾选对应信息类型）。
-// 典型原文：fail api scope is not declared in the privacy agreement
-function isPrivacyScopeError(msg) {
-  return /scope is not declared|not declared|privacy|隐私|未声明|指引/i.test(msg || '');
+// 隐私类失败的**精确分类**。⚠️ 曾踩大坑：用 `/privacy/` 这类宽泛正则判「未声明」，
+//    结果把 103/104（用户主动拒绝）、权限不足、真机 bug 全都误判成「后台没配」，
+//    于是弹出「需到公众平台配隐私指引」把真实原因盖住 —— 用户反复去后台折腾却永远不好。
+// 正确做法（官方《小程序隐私协议开发指南》五、常见错误说明）：以 errno 精确判定。
+//   errno 112 / errMsg 含 scope is not declared ⇒ 后台确实没声明该信息类型（唯一需要去后台配的情况）
+//   errno 103 / 104                                ⇒ 用户拒绝了官方隐私弹窗（不是后台问题，别去折腾后台）
+//   appid privacy api banned                        ⇒ 提审时勾了「未采集隐私」，接口权限被回收
+//   其它 privacy 字样                              ⇒ 权限/其它原因，与「信息类型」无关
+const SCOPE_UNDECLARED = /api scope is not declared|scope is not declared/i;
+const API_BANNED = /privacy api banned/i;
+const USER_REFUSED = /\b(103|104)\b/;
+
+function errnoOf(e) {
+  const n = e && (e.errno !== undefined ? e.errno : e.errNo);
+  return typeof n === 'number' ? n : null;
 }
 
-// 隐私/权限类接口的统一失败处理：区分「用户主动取消」与「真实失败」。
-// cancel 不上报（用户就是不想给），其余一律上报真实 errMsg —— 避免真因被静默吞掉。
-// ⚠️ 若为「信息类型未声明」类错误，直接指路 MP 后台配置，不再给一堆 raw 英文 errMsg。
+// 唯一该弹「去后台配信息类型」的判据：errno 112 或官方原文 errMsg。
+function isPrivacyScopeError(e) {
+  const msg = (e && (e.errMsg || e.message)) || String(e || '');
+  const en = errnoOf(e);
+  if (en === 112) return true;
+  if (API_BANNED.test(msg)) return false;   // banned 是另一种问题，别混进「去后台勾选」
+  if (USER_REFUSED.test(String(en)) ) return false;
+  return SCOPE_UNDECLARED.test(msg);
+}
+
+// 用户拒绝了隐私弹窗（103/104）—— 独立分支，提示应是「重新同意」而非「去后台」。
+function isPrivacyRefusedError(e) {
+  const msg = (e && (e.errMsg || e.message)) || String(e || '');
+  const en = errnoOf(e);
+  return en === 103 || en === 104 || /user.*refus|disagree|deny.*privacy/i.test(msg);
+}
+
+// 后台「未采集隐私」导致接口权限被回收 —— 提审时的勾选项问题，与运行时无关。
+function isPrivacyBannedError(e) {
+  const msg = (e && (e.errMsg || e.message)) || String(e || '');
+  return API_BANNED.test(msg);
+}
+
+// 隐私/权限类接口的统一失败处理：按官方 errno 精确分流，不再一律指向后台配置。
 function handlePrivacyApiFail(ctx, apiName, e) {
   const msg = (e && (e.errMsg || e.message)) || 'unknown';
-  if (/cancel/i.test(msg)) return; // 用户主动取消，不打扰、不算错误
-  const detail = apiName + ' 失败：' + msg;
+  const en = errnoOf(e);
+  if (/cancel/i.test(msg)) return; // 用户主动取消选图/拍照，不打扰、不算错误
+  const detail = apiName + ' 失败：' + msg + (en !== null ? '（errno ' + en + '）' : '');
   reportError(detail);
-  const privacy = isPrivacyScopeError(msg);
-  // 自检状态直接拼进提示：一眼区分「压根没配」与「配了但没发布」
-  const hint = privacy ? '｜' + privacySelfCheck().replace(/^隐私自检: /, '') : '';
+
+  const undeclared = isPrivacyScopeError(e);
+  const refused = !undeclared && isPrivacyRefusedError(e);
+  const banned = !undeclared && !refused && isPrivacyBannedError(e);
+  const state = privacySelfCheck().replace(/^隐私自检: /, '');
+
+  let title, content;
+  if (undeclared) {
+    // errno 112：唯一需要去后台勾选信息类型的情况。
+    title = '需配置隐私指引';
+    content = '平台提示该信息类型「未声明」（errno 112）。\n\n'
+      + '请到微信公众平台 → 设置 → 服务内容 → 用户隐私保护指引：\n'
+      + '1. 在「收集的信息类型」多选列表勾选（选中的照片或视频 / 摄像头 / 相册 / 剪切板 / openid）\n'
+      + '2. 用途填满，不要留占位符\n'
+      + '3. 提交 → 发布，等状态变「已发布」（官方：声明补充约 5 分钟生效）\n\n'
+      + '当前状态：' + state;
+  } else if (refused) {
+    title = '需要隐私授权';
+    content = '你刚才拒绝了隐私授权，所以无法使用「' + apiName + '」。\n\n'
+      + '请重新进入本页面再点一次，并选择「同意」。\n'
+      + '（这是授权被拒，不是后台配置问题，无需去公众平台配置。）\n\n'
+      + '原始信息：' + String(msg).slice(0, 80);
+  } else if (banned) {
+    title = '接口权限被回收';
+    content = '平台返回 appid privacy api banned —— 说明提审时勾选了「未采集隐私」，'
+      + '或未声明隐私协议，平台回收了隐私接口调用权限。\n\n'
+      + '处理：重新提审时如实勾选隐私声明（或勾选实际收集的信息类型），审核通过后自动恢复。';
+  } else {
+    // 其它：老老实实把真因说出来，不再伪装成「后台没配」
+    title = apiName + '失败';
+    content = '原始错误：' + String(msg).slice(0, 150) + '\n'
+      + (en !== null ? 'errno：' + en + '\n' : '')
+      + '\n（这不是「信息类型未声明」问题，请勿去公众平台反复配置。）\n\n'
+      + '当前状态：' + state;
+  }
+
   try {
-    if (currentEnvVersion() !== 'release') {
-      ctx.setData({
-        err: privacy
-          ? '⚠️ 需到微信公众平台 → 设置 → 服务内容 → 用户隐私保护指引，勾选并发布对应「信息类型」（选图/存图/剪贴板/openid）后重试' + hint
-          : '⚠️ ' + detail
-      });
-    }
+    if (currentEnvVersion() !== 'release') ctx.setData({ err: '⚠️ ' + detail });
   } catch (e2) { /* 忽略 */ }
-  wx.showModal({
-    title: privacy ? '需配置隐私指引' : '操作失败',
-    content: privacy
-      ? '平台提示该信息类型「未声明」。\n\n请到微信公众平台 → 设置 → 服务内容 → 用户隐私保护指引：\n1. 勾选「收集的信息类型」多选列表（选中的照片或视频 / 相册 / 剪切板 / openid）\n2. 用途填满（不要留占位符）\n3. 提交 → 发布，等状态变「已发布」\n\n当前状态：' + privacySelfCheck().replace(/^隐私自检: /, '')
-      : String(msg).slice(0, 200),
-    showCancel: false,
-    confirmText: '知道了'
-  });
+  wx.showModal({ title, content, showCancel: false, confirmText: '知道了' });
 }
 
-module.exports = { surfaceLastError, currentEnvVersion, reportError, handlePrivacyApiFail, isPrivacyScopeError, getFreshError, ERROR_TTL_MS, buildDebug, privacySelfCheck };
+module.exports = { surfaceLastError, currentEnvVersion, reportError, handlePrivacyApiFail, isPrivacyScopeError, isPrivacyRefusedError, isPrivacyBannedError, getFreshError, ERROR_TTL_MS, buildDebug, privacySelfCheck };
