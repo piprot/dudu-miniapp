@@ -70,15 +70,17 @@ t('换一套：连续换 5 套均与文案库一致', () => {
   }
 });
 
-t('collectData：带日期标签、二维码；头像/背景图按所选注入', () => {
+t('collectData：带日期标签、二维码；背景图按所选注入（合规后无头像）', () => {
   const page = makePage();
-  page.data.avatar = 'local://a.jpg';
   page.data.bgImg = 'local://b.jpg';
   const d = page.collectData();
   assert.ok(d.dateLabel.indexOf('月') >= 0 && d.dateLabel.indexOf('星期') >= 0, '应有今天日期标签');
   assert.ok(d.qr, '应带小程序码路径');
-  assert.strictEqual(d.avatar, 'local://a.jpg');
   assert.strictEqual(d.bgImg, 'local://b.jpg');
+  // 合规整改（社交-笔记）后已移除署名头像：collectData 不应再产出 avatar/nickname/author
+  assert.strictEqual(d.avatar, undefined, '不应再有 avatar');
+  assert.strictEqual(d.nickname, undefined, '不应再有 nickname');
+  assert.strictEqual(d.author, undefined, '不应再有 author');
   assert.ok(d.quote, '金句不应为空');
 });
 

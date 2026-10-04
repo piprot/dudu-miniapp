@@ -272,5 +272,50 @@ console.log('=== 前端回归守卫 ===\n');
   }
 }
 
-console.log('\n──────── 结果：' + pass + ' PASS / ' + fail + ' FAIL ────────');
+// ── F11 合规红线：UGC 生成页不得有「转发/朋友圈分享」与「署名」入口（个人主体）──
+// 真踩过：v1.1.23 官方提审被拒 —— 「涉及用户自行生成内容（文字、图片）的记录、分享，
+// 属社交-笔记范畴，为个人主体小程序未开放类目」。根因正是 4 个 UGC 生成页
+// （gen/comic/card/poster）都带 onShareAppMessage/onShareTimeline + showShareMenu，
+// 且 poster 还带落款/昵称/头像「署名」。整改后（1df92ba）全部移除。
+// 本守卫的作用：防止以后「顺手加个分享按钮」把类目又打回社交-笔记 —— 那种回退
+// 在提交前没有任何编译/单测会红，只有提审被拒才发现，代价极高。
+// 注意：这里刻意**只查 4 个 UGC 生成页**，不管 index/commission/points/order
+// （那几个是「转发小程序本体」，不涉及 UGC 分享，合法且需保留）。
+{
+  const UGC_PAGES = ['pages/gen/gen', 'pages/comic/comic', 'pages/card/card', 'pages/poster/poster'];
+
+  UGC_PAGES.forEach(p => {
+    const js = live(p + '.js');
+    const wxml = fs.existsSync(path.join(ROOT, p + '.wxml')) ? live(p + '.wxml') : '';
+
+    // F11a 不得注册转发/朋友圈分享处理器
+    ok('F11a ' + p + ' 无 onShareAppMessage/onShareTimeline',
+      !/\bonShareAppMessage\b/.test(js) && !/\bonShareTimeline\b/.test(js),
+      p + ' 又注册了分享处理器 —— 叠加「用户自行生成内容」即触发社交-笔记类目，'
+      + '个人主体会被驳回。若确需分享，先评估申请企业主体。');
+
+    // F11b 不得主动开启分享菜单（转发/朋友圈入口）
+    ok('F11b ' + p + ' 无 wx.showShareMenu', !/wx\.showShareMenu/.test(js),
+      p + ' 又调用了 wx.showShareMenu 开启转发/朋友圈入口，同样触发社交-笔记类目。');
+
+    // F11c 不得残留署名（落款/昵称/头像）输入
+    const sigFields = wxml.match(/data-field="(author|nickname)"/g) || [];
+    ok('F11c ' + p + ' 无署名输入字段（落款/昵称）', sigFields.length === 0,
+      p + ' 的 wxml 又出现了署名输入（' + sigFields.join(',') + '）—— 署名+生成+分享'
+      + '是社交-笔记的完整特征。');
+
+    // F11d 页面不得出现「发朋友圈 / 群」类传播引导文案
+    const spread = /发朋友圈|分享给|一键发布/.exec(wxml);
+    ok('F11d ' + p + ' 无传播引导文案', !spread,
+      p + ' 的文案里出现「' + (spread ? spread[0] : '') + '」—— 应统一表述为'
+      + '「仅保存到本机相册，不提供内容发布与传播功能」。');
+  });
+
+  // F11e poster 不得再残留头像/署名相关逻辑（头像是最典型的 UGC 署名载体）
+  const posterJs = live('pages/poster/poster.js');
+  ok('F11e poster 页无 onChooseAvatar/data.avatar 署名逻辑',
+    !/\bonChooseAvatar\b/.test(posterJs) && !/data\.avatar/.test(posterJs),
+    'poster 页又出现头像署名逻辑 —— 整改后已移除，选图仅保留「背景图」。');
+}
+
 process.exitCode = fail ? 1 : 0;
