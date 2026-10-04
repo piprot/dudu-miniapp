@@ -7,6 +7,7 @@ const { THEME_LIST, palette } = require('../../utils/themes/index.js');
 const { exportAndSave } = require('../../utils/share');
 const { charge, costOf } = require('../../utils/charge');
 const { surfaceLastError, currentEnvVersion, buildDebug } = require('../../utils/diag.js');
+const privacyPanel = require('../../utils/privacy_panel.js'); // 隐私授权面板：同意按钮须用 open-type=agreePrivacyAuthorization
 
 const SAMPLES = {
   story: `# 江边的告别
@@ -51,8 +52,9 @@ function getDpr() {
   } catch (e) { return 2; }
 }
 
-Page({
+const __pageCfg = {
   data: {
+    privacyShow: false,   // 隐私授权面板显隐（组件 privacy-panel 消费）
     script: SAMPLES.story,
     cols: 2,
     themes: THEME_LIST.map(t => ({ id: t.id, name: t.name })), // 主题选择器（6 套，数据驱动）
@@ -186,4 +188,6 @@ Page({
       wx.showToast({ title: '保存失败：' + (msg ? msg.slice(0, 40) : '请重试'), icon: 'none', duration: 2600 });
     });
   }
-});
+};
+Object.assign(__pageCfg, privacyPanel.privacyPanelMethods);
+Page(__pageCfg);

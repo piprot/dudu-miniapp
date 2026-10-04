@@ -10,6 +10,7 @@ const { charge, costOf } = require('../../utils/charge');
 const { exportAndSave } = require('../../utils/share');
 const daily = require('../../utils/templates/daily'); // 每日文案库：金句每天自动换一条（本地确定性轮换，零 AI）
 const { surfaceLastError, currentEnvVersion, buildDebug, handlePrivacyApiFail } = require('../../utils/diag.js');
+const privacyPanel = require('../../utils/privacy_panel.js'); // 隐私授权面板：同意按钮须用 open-type=agreePrivacyAuthorization
 
 const QR_PATH = '/images/qrcode_miniapp.png';
 
@@ -26,8 +27,9 @@ function getDpr() {
   } catch (e) { return 2; }
 }
 
-Page({
+const __pageCfg = {
   data: {
+    privacyShow: false,   // 隐私授权面板显隐（组件 privacy-panel 消费）
     themes: THEME_LIST.map(t => ({ id: t.id, name: t.name })),
     theme: 'warm',
     form: {
@@ -211,4 +213,6 @@ Page({
       wx.showToast({ title: '保存失败：' + (msg ? msg.slice(0, 40) : '请重试'), icon: 'none', duration: 2600 });
     });
   }
-});
+};
+Object.assign(__pageCfg, privacyPanel.privacyPanelMethods);
+Page(__pageCfg);

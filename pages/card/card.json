@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "画面感卡片制作 / 日签生成器",
-  "usingComponents": {}
+  "usingComponents": {
+    "privacy-panel": "../../components/privacy-panel/index"
+  }
 }

@@ -1,0 +1,24 @@
+<!-- components/privacy-panel/index.wxml -->
+<!-- 隐私授权面板
+     ⚠️ 合规关键：同意按钮必须带 open-type="agreePrivacyAuthorization"。
+        这是微信平台唯一认可的「用户同意隐私协议」凭证。
+        用普通按钮 + showModal 模拟同意 ⇒ 真机报
+        "privacy permission is not authorized or buttonId is wrong"（2026-10-05 真踩）。
+        事件必须绑 bindagreeprivacyauthorization（不是 bindtap）。 -->
+<view wx:if="{{privacyShow}}" class="pp-mask" catchtouchmove="noop">
+  <view class="pp-card">
+    <view class="pp-title">隐私授权说明</view>
+    <view class="pp-body">
+      为使用「选择图片」「复制文案」「保存图片到相册」等功能，需要你同意
+      <text class="pp-link" bindtap="onOpenPrivacyContract">《用户隐私保护指引》</text>。
+      你的图片与文案仅用于本机生成与保存，不会上传服务器，也不会提供给第三方。
+    </view>
+    <view class="pp-actions">
+      <button class="pp-btn pp-btn-ghost" id="privacy-disagree-btn" bindtap="onDisagreePrivacy">暂不</button>
+      <!-- ⚠️ id 必须与 app.settlePrivacyAgree(AGREE_BTN_ID) 传入的一致 -->
+      <button class="pp-btn pp-btn-primary" id="privacy-agree-btn"
+        open-type="agreePrivacyAuthorization"
+        bindagreeprivacyauthorization="onAgreePrivacy">同意</button>
+    </view>
+  </view>
+</view>

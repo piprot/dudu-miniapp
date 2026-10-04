@@ -8,6 +8,7 @@ const { exportAndSave } = require('../../utils/share');
 const { charge, costOf } = require('../../utils/charge');
 const daily = require('../../utils/templates/daily'); // 每日文案库：日签/金句每天自动换一条（本地确定性轮换，零 AI）
 const { surfaceLastError, currentEnvVersion, buildDebug, handlePrivacyApiFail } = require('../../utils/diag.js');
+const privacyPanel = require('../../utils/privacy_panel.js'); // 隐私授权面板：同意按钮须用 open-type=agreePrivacyAuthorization
 
 const TYPE_KEYS = ['dailysign', 'quote', 'recommend', 'notice', 'checklist', 'imagetext'];
 
@@ -39,8 +40,9 @@ const SEED = {
   imagetext: { type: 'imagetext', title: '一张图，一段话', body: '记录此刻，分享给在意的人。', cover: '' }
 };
 
-Page({
+const __pageCfg = {
   data: {
+    privacyShow: false,   // 隐私授权面板显隐（组件 privacy-panel 消费）
     types: TYPE_KEYS.map(k => ({ key: k, name: CARD_TYPES[k].name, hint: CARD_TYPES[k].scene })),
     themes: THEME_LIST.map(t => ({ id: t.id, name: t.name })), // 主题选择器（6 套，数据驱动）
     theme: 'warm',
@@ -299,4 +301,6 @@ Page({
       wx.showToast({ title: '保存失败：' + (msg ? msg.slice(0, 40) : '请重试'), icon: 'none', duration: 2600 });
     });
   }
-});
+};
+Object.assign(__pageCfg, privacyPanel.privacyPanelMethods);
+Page(__pageCfg);

@@ -318,4 +318,50 @@ console.log('=== 前端回归守卫 ===\n');
     'poster 页又出现头像署名逻辑 —— 整改后已移除，选图仅保留「背景图」。');
 }
 
+// ── F12 隐私授权面板：同意必须走 open-type（2026-10-05 真机事故回归）──
+// 真踩过：真机 `chooseMedia:fail privacy permission is not authorized or buttonId is wrong`。
+// 起因是我用 wx.showModal 自造「同意」+ 裸 resolve({event:'agree'}) —— 平台不认这种同意：
+//   官方要求同意动作必须由 <button open-type="agreePrivacyAuthorization"> 触发，
+//   且 resolve 要带该按钮的 buttonId，否则判 buttonId is wrong ⇒ 授权不成立 ⇒
+//   「点了同意、弹窗关了，接口照样 fail」，用户看不到真因。
+// 官方正解（demo2）：resolve 收进 Set（不能用单个变量覆盖，否则并发接口要点两次）+ 同意时带 buttonId。
+{
+  const appLive = live('app.js');   // 去掉注释的活代码：注释里提到 showModal 不算违规
+  const panelWxml = read('components/privacy-panel/index.wxml');
+
+  ok('F12a app.js 不再用 showModal 模拟隐私同意',
+    !/showModal\(\{[\s\S]{0,200}隐私授权/.test(appLive),
+    '❌ 回到事故写法：用 showModal 当同意按钮，平台不认（buttonId is wrong）。'
+    + '同意必须由 <button open-type="agreePrivacyAuthorization"> 触发。');
+  ok('F12b app.js 提供 settlePrivacyAgree 且带 buttonId',
+    /settlePrivacyAgree/.test(appLive) && /buttonId/.test(appLive),
+    '缺 settlePrivacyAgree/buttonId ⇒ 无法把同意凭证回传给平台');
+  ok('F12c resolve 用 Set 收集（不用单个变量覆盖）',
+    /_privacyResolves\s*=\s*this\._privacyResolves\s*\|\|\s*new Set\(\)/.test(appLive),
+    '用单个变量存 resolve 会在多接口并发时被覆盖，用户得点两次才通过（社区实测）。');
+  ok('F12d 组件同意按钮带 open-type="agreePrivacyAuthorization"',
+    /open-type="agreePrivacyAuthorization"/.test(panelWxml),
+    '❌ 同意按钮缺 open-type ⇒ 平台不认这次授权，真机报 buttonId is wrong。');
+  ok('F12e 同意事件绑 bindagreeprivacyauthorization（不是 bindtap）',
+    /bindagreeprivacyauthorization="onAgreePrivacy"/.test(panelWxml),
+    '必须用 bindagreeprivacyauthorization；用 bindtap 平台收不到同意凭证。');
+  ok('F12f 同意按钮 id 与 settlePrivacyAgree 的 buttonId 一致',
+    /id="privacy-agree-btn"/.test(panelWxml)
+    && /AGREE_BTN_ID\s*=\s*'privacy-agree-btn'/.test(read('utils/privacy_panel.js')),
+    '两处 buttonId 不一致 ⇒ 平台判 buttonId is wrong，授权不成立。');
+  ok('F12g 拒绝也会 resolve（否则原接口永久 pending）',
+    /settlePrivacyDisagree/.test(appLive) && /event:\s*'disagree'/.test(appLive),
+    '拒绝分支不 resolve ⇒ 受保护 API 永久挂起，表现为「点了没反应」。');
+
+  // 每个含隐私接口的页面都必须挂上组件，否则平台无同意凭证可认
+  ['index', 'gen', 'comic', 'card', 'poster'].forEach(p => {
+    const json = read('pages/' + p + '/' + p + '.json');
+    const wxml = read('pages/' + p + '/' + p + '.wxml');
+    const js = read('pages/' + p + '/' + p + '.js');
+    ok('F12h ' + p + ' 页已挂载 privacy-panel 组件',
+      /privacy-panel/.test(json) && /<privacy-panel/.test(wxml) && /privacyPanel/.test(js),
+      p + ' 用了隐私接口却没挂 privacy-panel ⇒ 用户无处点击「同意」，接口必然失败。');
+  });
+}
+
 process.exitCode = fail ? 1 : 0;

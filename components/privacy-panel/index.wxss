@@ -1,0 +1,51 @@
+/* components/privacy-panel/index.wxss —— 复用 app.wxss 设计令牌 */
+.pp-mask {
+  position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 999;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex; align-items: center; justify-content: center;
+  padding: 48rpx;
+}
+.pp-card {
+  width: 100%; box-sizing: border-box;
+  background: var(--bg-card, #fffdf8);
+  border-radius: var(--r-lg, 28rpx);
+  padding: 40rpx 36rpx 32rpx;
+  box-shadow: var(--shadow-card, 0 12rpx 40rpx rgba(0,0,0,.12));
+}
+.pp-title {
+  font-size: var(--fs-title, 32rpx);
+  color: var(--ink, #2b2b2b);
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 20rpx;
+}
+.pp-body {
+  font-size: var(--fs-body, 28rpx);
+  color: var(--text-body, #5b5346);
+  line-height: 1.7;
+  margin-bottom: 32rpx;
+}
+.pp-link {
+  color: var(--primary, #f5793b);
+  text-decoration: underline;
+}
+.pp-actions { display: flex; }
+.pp-btn {
+  flex: 1; height: 84rpx; line-height: 84rpx;
+  border-radius: var(--r-pill, 999rpx);
+  font-size: var(--fs-body, 28rpx);
+  margin: 0 12rpx;
+  padding: 0;
+}
+.pp-btn-ghost {
+  background: transparent;
+  color: var(--text-sub, #8a8378);
+  border: 2rpx solid var(--border, #e0d6c2);
+}
+.pp-btn-primary {
+  background: var(--primary, #f5793b);
+  color: #fff;
+  border: none;
+}
+/* ⚠️ 微信 button 默认有边框与背景，必须显式去掉，否则 open-type 按钮样式不生效 */
+.pp-btn::after { border: none; }

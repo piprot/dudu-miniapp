@@ -58,3 +58,6 @@
 
   <view class="tip">生成内容仅保存在你手机本地；本小程序不提供内容发布与传播功能。</view>
 </view>
+
+  <!-- 隐私授权面板：同意按钮必须是 open-type="agreePrivacyAuthorization"，见组件注释 -->
+  <privacy-panel privacy-show="{{privacyShow}}" />

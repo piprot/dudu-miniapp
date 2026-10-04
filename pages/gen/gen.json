@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "朋友圈文案",
-  "usingComponents": {}
+  "usingComponents": {
+    "privacy-panel": "../../components/privacy-panel/index"
+  }
 }

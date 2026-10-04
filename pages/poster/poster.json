@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "海报长图生成器",
-  "usingComponents": {}
+  "usingComponents": {
+    "privacy-panel": "../../components/privacy-panel/index"
+  }
 }

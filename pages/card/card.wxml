@@ -79,3 +79,6 @@
 
   <view class="tip">卡片保存在你手机本地相册，不上传任何服务器。</view>
 </view>
+
+  <!-- 隐私授权面板：同意按钮必须是 open-type="agreePrivacyAuthorization"，见组件注释 -->
+  <privacy-panel privacy-show="{{privacyShow}}" />

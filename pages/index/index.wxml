@@ -40,3 +40,6 @@
     <view class="tool-hint-drag">长按工具卡可拖动排序 · 顺序自动记住</view>
   </view>
 </view>
+
+  <!-- 隐私授权面板：同意按钮必须是 open-type="agreePrivacyAuthorization"，见组件注释 -->
+  <privacy-panel privacy-show="{{privacyShow}}" />

@@ -12,6 +12,7 @@ const profile = require('../../utils/profile');
 const { POINTS } = require('../../utils/config');
 const { charge, costOf } = require('../../utils/charge');
 const daily = require('../../utils/templates/daily'); // 每日文案库：今日灵感（本地确定性轮换，零 AI）
+const privacyPanel = require('../../utils/privacy_panel.js'); // 隐私授权面板：同意按钮须用 open-type=agreePrivacyAuthorization
 
 // 套模板出文案的单价（与 utils/config.js 的 POINTS.cost.momentsGen 一致，集中配置）。
 const GEN_COST = costOf('momentsGen') || 20;
@@ -80,8 +81,9 @@ function withNo(list) {
   return (list || []).map((f, i) => Object.assign({}, f, { no: i + 1 }));
 }
 
-Page({
+const __pageCfg = {
   data: {
+    privacyShow: false,   // 隐私授权面板显隐（组件 privacy-panel 消费）
     points: 0,
     mode: 'tpl',               // 'tpl'=模板匹配 | 'opt'=排版优化
     showArticleMode: false,    // ③ 公众号文章：暂时搁置（用户尚未确定合理方案），UI 隐藏；置 true 即可恢复，无需改其它。
@@ -393,4 +395,6 @@ Page({
     this.copyText(t, 'opt', '已复制排版结果');
   },
 
-});
+};
+Object.assign(__pageCfg, privacyPanel.privacyPanelMethods);
+Page(__pageCfg);

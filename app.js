@@ -65,44 +65,39 @@ App({
    * 隐私授权拦截器（个人主体小程序合规刚需，勿删）。
    *
    * 背景：app.json 开了 __usePrivacyCheck__。此后任何「隐私受保护 API」——本项目的
-   * wx.chooseMedia（添加图片）、wx.setClipboardData（复制文案）——在用户未同意
-   * 《隐私保护指引》前都会被静默拦截（表现为「点了没反应」）或走系统空授权页。
+   * wx.chooseMedia（选背景图）、wx.setClipboardData（复制文案）——在用户未同意
+   * 《隐私保护指引》前都会被拦截。
    *
-   * 正解 = 注册 onNeedPrivacyAuthorize 监听：框架把该 API 挂起（pending），回调里
-   * 由我们弹出说明，用户点「同意」后调用 resolve({event:'agree'})，框架自动**重跑**
-   * 原 API，复制/选图即正常执行。
+   * ⚠️⚠️ 真踩过的坑（2026-10-05，真机 errMsg 原文）：
+   *   `chooseMedia:fail privacy permission is not authorized or buttonId is wrong`
+   * 起因是我用 **wx.showModal 自造弹窗 + 裸 resolve({event:'agree'})** —— 这是错的写法：
+   *   ① 官方要求「同意」动作必须由 **`<button open-type="agreePrivacyAuthorization">`** 触发，
+   *      平台只认这个 open-type 作同意凭证，纯 showModal 的「同意」不算；
+   *   ② resolve 必须带 **buttonId** 且与该 button 的 id 一致，否则平台判
+   *      buttonId is wrong ⇒ 授权不成立 ⇒ 原接口永久失败。
+   *   ⇒ 症状是「点了同意、弹窗关了，但接口照样 fail」，用户看不到真因。
    *
-   * ⚠️ 铁律（踩过两次）：
-   * 1) 回调里【绝不能再调用 wx.requirePrivacyAuthorize】——它本身就会触发本监听器，
-   *    会与 showModal 形成「同意→再弹→再同意」的无限循环。
-   * 2) 确认时【只调用一次 resolve({event:'agree'})】，**不要再先调 exposureAuthorization**。
-   *    resolve 是一次性回调，先调 exposureAuthorization 会消耗它，导致 agree 被忽略、
-   *    原隐私接口（选图/复制）永不重跑 —— 表现就是「点了没反应」。曝光由弹窗已展示隐含。
+   * ✅ 正解（官方 demo2 + 社区推荐）：
+   *   1) 注册 wx.onNeedPrivacyAuthorization，把 resolve 存进 **Set**（用单个变量会被覆盖，
+   *      并发接口时用户要点两次 —— 社区实测确认）；
+   *   2) 面板「同意」按钮用 open-type="agreePrivacyAuthorization"，
+   *      在 bindagreeprivacyauthorization 里调 settlePrivacyAgree(buttonId)；
+   *   3) 全部 resolve 后清空 Set。
+   * 关联守卫：test/test_privacy_classify.js、test/test_frontend_guards.js F4/F12。
    */
   setupPrivacyGuard() {
+    // ⚠️ 用 Set 收集待 resolve 的回调，**不要用单个变量覆盖**：
+    //    多个隐私接口同时触发时后一个会覆盖前一个，用户得点两次才过（社区实测确认）。
+    this._privacyResolves = this._privacyResolves || new Set();
+
     const handler = (resolve) => {
-      const settle = (event) => {
-        if (typeof resolve === 'function') resolve({ event });
-      };
-      wx.showModal({
-        title: '隐私授权说明',
-        content: '为使用「添加图片」「复制文案」「保存图片到相册」功能，需要你同意《隐私保护指引》。你的图片与文案仅用于本次操作，不会另作他用，也不会提供给第三方。',
-        confirmText: '同意',
-        cancelText: '暂不',
-        success: (res) => {
-          if (res.confirm) {
-            // ⚠️ 确认时【只调用一次】 resolve({event:'agree'})。
-            // resolve 是一次性回调：若先调 exposureAuthorization 会消耗本次回调，
-            // 导致 agree 被忽略、原隐私接口（选图/复制）永不重跑 —— 表现就是「点了没反应」。
-            // 曝光由「弹窗已展示」隐含，无需单独上报。
-            settle('agree');
-          } else {
-            settle('disagree');
-          }
-        },
-        // 弹窗自身异常时按拒绝处理，避免原 API 永久 pending
-        fail: () => settle('disagree')
-      });
+      if (typeof resolve === 'function') this._privacyResolves.add(resolve);
+      // 唤起自定义隐私说明面板；面板内「同意」按钮用 open-type="agreePrivacyAuthorization"
+      try {
+        const pages = getCurrentPages();
+        const top = pages && pages[pages.length - 1];
+        if (top && typeof top.showPrivacyPanel === 'function') top.showPrivacyPanel();
+      } catch (e) { /* 忽略 */ }
     };
 
     // ⚠️ 顺序必须**新名优先**。
@@ -116,6 +111,36 @@ App({
     } else if (typeof wx.onNeedPrivacyAuthorize === 'function') {
       wx.onNeedPrivacyAuthorize(handler);
     }
+  },
+
+  /**
+   * 统一 resolve 所有待处理的隐私授权回调。
+   * 由页面「同意」按钮的 **bindagreeprivacyauthorization** 事件调用
+   *（平台只认 <button open-type="agreePrivacyAuthorization"> 这个同意凭证）。
+   * ⚠️ 必须带 buttonId —— 缺了平台会判 "buttonId is wrong" 而不认这次授权。
+   */
+  settlePrivacyAgree(buttonId) {
+    try {
+      const set = this._privacyResolves;
+      if (!set || !set.size) return;
+      const id = buttonId || 'privacy-agree-btn';
+      set.forEach((fn) => {
+        try { fn({ event: 'agree', buttonId: id }); } catch (e) { /* 单个失败不影响其它 */ }
+      });
+      set.clear(); // resolve 是一次性回调，清空避免重复触发
+    } catch (e) { /* 忽略 */ }
+  },
+
+  /** 用户点「暂不」：同样必须 resolve，否则原隐私接口永久 pending。 */
+  settlePrivacyDisagree() {
+    try {
+      const set = this._privacyResolves;
+      if (!set || !set.size) return;
+      set.forEach((fn) => {
+        try { fn({ event: 'disagree' }); } catch (e) { /* 忽略 */ }
+      });
+      set.clear();
+    } catch (e) { /* 忽略 */ }
   }
 
   /**

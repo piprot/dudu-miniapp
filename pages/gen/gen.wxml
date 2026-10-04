@@ -170,3 +170,6 @@
 
   <view class="err" wx:if="{{err}}">{{err}}</view>
 </view>
+
+  <!-- 隐私授权面板：同意按钮必须是 open-type="agreePrivacyAuthorization"，见组件注释 -->
+  <privacy-panel privacy-show="{{privacyShow}}" />
