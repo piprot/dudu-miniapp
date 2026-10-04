@@ -66,19 +66,34 @@ function surfaceLastError(ctx) {
   } catch (e) { /* 忽略 */ }
 }
 
+// 判断是否为「隐私信息类型未声明」类错误（后台《用户隐私保护指引》未勾选对应信息类型）。
+// 典型原文：fail api scope is not declared in the privacy agreement
+function isPrivacyScopeError(msg) {
+  return /scope is not declared|not declared|privacy|隐私|未声明|指引/i.test(msg || '');
+}
+
 // 隐私/权限类接口的统一失败处理：区分「用户主动取消」与「真实失败」。
 // cancel 不上报（用户就是不想给），其余一律上报真实 errMsg —— 避免真因被静默吞掉。
+// ⚠️ 若为「信息类型未声明」类错误，直接指路 MP 后台配置，不再给一堆 raw 英文 errMsg。
 function handlePrivacyApiFail(ctx, apiName, e) {
   const msg = (e && (e.errMsg || e.message)) || 'unknown';
   if (/cancel/i.test(msg)) return; // 用户主动取消，不打扰、不算错误
   const detail = apiName + ' 失败：' + msg;
   reportError(detail);
+  const privacy = isPrivacyScopeError(msg);
   try {
     if (currentEnvVersion() !== 'release') {
-      ctx.setData({ err: '⚠️ ' + detail });
+      ctx.setData({
+        err: privacy
+          ? '⚠️ 需到微信公众平台 → 设置 → 服务内容 → 用户隐私保护指引，勾选并发布对应「信息类型」（选图/存图/剪贴板等）后重试'
+          : '⚠️ ' + detail
+      });
     }
   } catch (e2) { /* 忽略 */ }
-  wx.showToast({ title: String(msg).slice(0, 40), icon: 'none', duration: 2600 });
+  wx.showToast({
+    title: privacy ? '需到公众平台配隐私指引' : String(msg).slice(0, 40),
+    icon: 'none', duration: 3000
+  });
 }
 
-module.exports = { surfaceLastError, currentEnvVersion, reportError, handlePrivacyApiFail, getFreshError, ERROR_TTL_MS, buildDebug };
+module.exports = { surfaceLastError, currentEnvVersion, reportError, handlePrivacyApiFail, isPrivacyScopeError, getFreshError, ERROR_TTL_MS, buildDebug };

@@ -17,7 +17,7 @@
 //      （写入 __lastAppError__，首页错误横幅可见，便于事后定位）。
 // ─────────────────────────────────────────────────────────────────────────
 
-const { reportError } = require('./diag.js');
+const { reportError, isPrivacyScopeError } = require('./diag.js');
 
 const ERR_KEY = '__lastAppError__';
 
@@ -35,6 +35,13 @@ function saveImageToAlbum(filePath) {
         success() { resolve({ ok: true }); },
         fail(e) {
           const msg = (e && e.errMsg) || '';
+          // 隐私信息类型未声明（后台《用户隐私保护指引》没勾选「相册（保存到相册）」）→ 直接指路后台，不进授权重试逻辑。
+          if (isPrivacyScopeError(msg)) {
+            const tip = '保存失败：后台《用户隐私保护指引》未声明「相册（保存到相册）」信息类型。请到 mp.weixin.qq.com → 设置 → 服务内容 → 用户隐私保护指引，勾选并发布后重试。';
+            reportErr(tip);
+            wx.showModal({ title: '需配置隐私指引', content: tip, showCancel: false });
+            reject(e); return;
+          }
           // 只处理「授权 / 拒绝 / 需要授权」类错误；其他（如导出失败）直接 reject。
           if (!/auth|deny|authorize|permission/i.test(msg)) { reject(e); return; }
           if (retried) { reportErr('保存到相册失败：' + msg); reject(e); return; }
