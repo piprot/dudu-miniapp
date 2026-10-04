@@ -67,7 +67,7 @@
   },
   "setting": {
     "es6": true,
-    "minified": false,
+    "minified": true,
     "postcss": true,
     "urlCheck": false,
     "compileWorklet": false,
