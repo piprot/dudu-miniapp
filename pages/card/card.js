@@ -129,7 +129,7 @@ const __pageCfg = {
         const p = r.tempFiles && r.tempFiles[0] && r.tempFiles[0].tempFilePath;
         if (p) {
           self.setData({ cover: p, form: Object.assign({}, self.data.form, { cover: p }), rendered: false });
-          wx.showToast({ title: '已选图，点生成', icon: 'none' });
+          wx.showToast({ title: '已选图，点制作', icon: 'none' });
         }
       },
       // ⚠️ 绝不能空 fail：隐私拦截/权限拒绝都会走这里，空实现会让「点了没反应」的真因被吞掉。
@@ -148,7 +148,7 @@ const __pageCfg = {
         const p = r.tempFiles && r.tempFiles[0] && r.tempFiles[0].tempFilePath;
         if (p) {
           self.setData({ bgImg: p, rendered: false });
-          wx.showToast({ title: '已选背景图，点生成', icon: 'none' });
+          wx.showToast({ title: '已选背景图，点制作', icon: 'none' });
         }
       },
       fail(e) { handlePrivacyApiFail(self, '选择背景图', e); }
@@ -188,19 +188,19 @@ const __pageCfg = {
     const hasText = (d.title || d.body || (d.items && d.items.length));
     const tpl = CARD_TYPES[this.data.type];
     if (!hasText && !(tpl.hasCover && d.cover)) {
-      this.setData({ err: '先填点内容，或选一张图再生成', rendered: false });
+      this.setData({ err: '先填点内容，或选一张图再制作', rendered: false });
       return;
     }
     const self = this;
     const cost = this.data.cardCost;
     this.setData({ err: '' });
     // 生成卡片要扣积分（复用 utils/charge 统一流程）；扣成功才渲染。
-    charge('cardGen', { label: '生成卡片' }).then(() => {
+    charge('cardGen', { label: '制作卡片' }).then(() => {
       self.renderCard(d);
-      wx.showToast({ title: '已生成卡片（-' + cost + '）', icon: 'none' });
+      wx.showToast({ title: '已制作卡片（-' + cost + '）', icon: 'none' });
     }).catch((e) => {
       // 余额不足 / 扣费失败 / 积分云服务不可用：把真因显式显示，避免「点生成毫无反应、画布空空」。
-      self.setData({ err: '生成失败：' + ((e && e.message) || '积分服务暂不可用，请稍后重试') });
+      self.setData({ err: '制作失败：' + ((e && e.message) || '积分服务暂不可用，请稍后重试') });
     });
   },
 
@@ -283,7 +283,7 @@ const __pageCfg = {
   onSaveImage() {
     const self = this;
     if (!self.canvasNode) {
-      wx.showToast({ title: '请先生成卡片', icon: 'none' });
+      wx.showToast({ title: '请先制作卡片', icon: 'none' });
       return;
     }
     // 导出 → 存相册 → 自动记入本地历史（utils/share 统一闭环：防重复提交 + 文件校验）

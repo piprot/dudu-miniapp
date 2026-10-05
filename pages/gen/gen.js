@@ -23,7 +23,7 @@ const KINDS = [
   { id: 'persona', icon: '🧭', label: '人设型', tagline: '让人信任你', desc: '用选择与代价，露出真实的你', ratio: '每周 1' },
   { id: 'deal', icon: '🤝', label: '成交型', tagline: '把信任变订单', desc: '给信号、证据与动作，不像广告', ratio: '每月 2-4' },
   { id: 'life', icon: '🌿', label: '生活型', tagline: '保持真实温度', desc: '分享日常片段，关系更有温度', ratio: '随时' },
-  { id: 'story', icon: '📖', label: '我的故事', tagline: '把故事变作品', desc: '往事 / 随笔，可做成画面感内容', ratio: '不定时' }
+  { id: 'story', icon: '📖', label: '我的故事', tagline: '把故事变作品', desc: '往事 / 随笔，可做成图文卡片', ratio: '不定时' }
 ];
 
 // 每个类型的「结构提示」：告诉用户这套模板会怎么组织（与 templates.js 一致）。

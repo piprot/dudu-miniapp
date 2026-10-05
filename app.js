@@ -2,7 +2,7 @@ const { BACKEND, VIRTUAL_PAY } = require('./utils/config.js');
 
 App({
   globalData: {
-    appName: 'dudu画面感内容工具'
+    appName: 'dudu 图文制作工具'
   },
   onLaunch() {
     this.setupPrivacyGuard();

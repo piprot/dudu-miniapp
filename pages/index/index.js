@@ -182,13 +182,13 @@ const __pageCfg = {
   // ── 分享能力（个人主体：复制链接 wxaurl.cn 受限，改用「转发给好友 + 朋友圈」传播）──
   onShareAppMessage() {
     return {
-      title: 'dudu 画面感｜把你的故事，变成打动人的文案与画面感内容',
+      title: 'dudu 画面感｜把你的故事，变成打动人的文案与图文卡片',
       path: '/pages/index/index'
     };
   },
   onShareTimeline() {
     return {
-      title: 'dudu 画面感｜把你的故事，变成打动人的文案与画面感内容',
+      title: 'dudu 画面感｜把你的故事，变成打动人的文案与图文卡片',
       query: ''
     };
   },
