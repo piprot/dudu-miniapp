@@ -144,7 +144,7 @@ function buildCardModel(type, themeId, data, opts) {
   if (hasQr) {
     children.push({ type: 'qrcode', left: W - PAD - QS, top: y, size: QS, asset: d.qrAsset });
   }
-  const foot = d.author || (hasQr ? '扫码做同款卡片' : '');
+  const foot = d.author || (hasQr ? '长按识别小程序码，进入小程序' : '');
   if (foot) {
     txt(foot, { left: PAD, top: y + Math.round((QS - 18) / 2), width: hasQr ? innerW - QS - 12 : innerW,
       color: sub, fontSize: 12, lineHeight: 18, lineClamp: 2,

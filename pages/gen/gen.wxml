@@ -54,8 +54,8 @@
       <view class="sel-banner">✓ 已选 <text class="sel-name">{{kindInfo.label}}</text> · {{kindInfo.desc}}</view>
       <view class="struct-hint">这套模板会这样组织：{{kindInfo.struct}}</view>
 
-      <!-- 我的素材库（本地保存，自动填入模板） -->
-      <view class="kb-toggle" bindtap="onToggleProfile">{{showProfile ? '收起素材库 ▲' : '📚 我的素材库（保存后自动填入 · 点此展开）'}}</view>
+      <!-- 我的素材（本地保存，自动填入模板） -->
+      <view class="kb-toggle" bindtap="onToggleProfile">{{showProfile ? '收起 ▲' : '📚 我的素材（保存后自动填入 · 点此展开）'}}</view>
       <view class="kb-card" wx:if="{{showProfile}}">
         <view class="kb-field"><text class="kb-label">身份 / 领域</text><input class="kb-input" placeholder="例如：做知识付费的独立创作者" value="{{pf.identity}}" data-key="identity" bindinput="onPfInput"/></view>
         <view class="kb-field"><text class="kb-label">我的产品 / 服务</text><input class="kb-input" placeholder="例如：21 天简历精修陪跑" value="{{pf.product}}" data-key="product" bindinput="onPfInput"/></view>
@@ -63,7 +63,7 @@
         <view class="kb-field"><text class="kb-label">常讲场景</text><input class="kb-input" placeholder="例如：很多人问我怎么开始" value="{{pf.scene}}" data-key="scene" bindinput="onPfInput"/></view>
         <view class="kb-field"><text class="kb-label">核心观点</text><input class="kb-input" placeholder="例如：开始比完美重要" value="{{pf.point}}" data-key="point" bindinput="onPfInput"/></view>
         <view class="kb-field col"><text class="kb-label">常用金句（每行一条）</text><textarea class="kb-area" placeholder="例如：开始比完美重要&#10;你不需要更努力，你需要更清晰" value="{{pf.quotes}}" data-key="quotes" bindinput="onPfInput" maxlength="800" auto-height></textarea></view>
-        <button class="kb-save" bindtap="onSaveProfile">💾 保存素材库（仅存本机）</button>
+        <button class="kb-save" bindtap="onSaveProfile">💾 保存素材（仅存本机）</button>
       </view>
 
       <view class="step-head">

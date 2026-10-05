@@ -25,7 +25,7 @@
   <view class="help" wx:if="{{showHelp}}">
     <view class="help-line">① 选上方模板（每日日签 / 金句 / 种草 / 公告 / 清单 / 图文）</view>
     <view class="help-line">② 在下方填文字；种草 / 图文可点「选择图片」取本地照片；日签自动带日期与小程序码</view>
-    <view class="help-line">③ 点「生成卡片」，再「保存到相册」即可（卡片右下角带小程序码，扫码回到小程序）</view>
+    <view class="help-line">③ 点「生成卡片」，再「保存到相册」即可（卡片右下角带小程序码，长按可进入小程序）</view>
     <view class="help-line">图片只存在你手机本地，不会上传任何服务器。</view>
   </view>
 

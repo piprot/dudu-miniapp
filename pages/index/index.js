@@ -7,7 +7,7 @@ const privacyPanel = require('../../utils/privacy_panel.js'); // 隐私授权面
 // 工具卡定义（key 稳定不变，顺序可被用户长按拖拽自定义，持久化到 storage）。
 const TOOL_ORDER_KEY = 'dudu_tool_order_v1';
 const TOOL_DEFS = [
-  { key: 'gen', cls: 'accent', title: '✍️ 文案工具箱', desc: '模板匹配 · 防折叠 · 知识库金句 · 我的素材库' },
+  { key: 'gen', cls: 'accent', title: '✍️ 文案工具箱', desc: '模板匹配 · 防折叠 · 知识库金句 · 我的素材' },
   { key: 'comic', cls: '', title: '🎞️ 画面感分镜编辑器', desc: '写文字脚本，一键出分镜图 · 全程本地' },
   { key: 'card', cls: 'card2', title: '🎴 卡片制作 / 日签生成器', desc: '选模板填文字，一键出卡片 · 可配本地图' },
   { key: 'poster', cls: 'poster', title: '🖼️ 海报长图生成器', desc: '一句话出长图 · 仅保存到本机相册' }

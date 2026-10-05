@@ -1,8 +1,8 @@
 // pages/gen/gen.js —— 文案工作台 · 工具箱（B1 合规版，零 AI 调用）
 // 三个模块：
-//   ① 模板匹配：选类型 → 填引导字段（或从「我的素材库」自动填入）→ 套人工模板出文案。
+//   ① 模板匹配：选类型 → 填引导字段（或从「我的素材」自动填入）→ 套人工模板出文案。
 //   ② 排版优化：对任意文本做防折叠 / 自动加 emoji / 自动分段 / 字数统计（纯本地算法）。
-//   ③ 知识库 + 素材库：内置静态金句/骨架库 + 用户本地素材库，给「指导」与「自动填入」体感。
+//   ③ 知识库 + 素材：内置静态金句/骨架库 + 用户本地素材，给「指导」与「自动填入」体感。
 // 本页不调用任何云端大模型，不构成深度合成，个人主体可正常过审。
 const points = require('../../utils/points');
 const templates = require('../../utils/templates/index.js');
@@ -99,9 +99,9 @@ const __pageCfg = {
     moments: [],               // 该类型下的模板成品（最多 3 条）
     selectedMoment: 0,
     err: '',
-    // ── 我的素材库（本地）──
-    profile: {},               // 已保存的素材库
-    pf: {},                    // 编辑中的素材库
+    // ── 我的素材（本地）──
+    profile: {},               // 已保存的素材
+    pf: {},                    // 编辑中的素材
     showProfile: false,
     // ── 知识库金句（当前类型）──
     kbQuotes: [],
@@ -168,7 +168,7 @@ const __pageCfg = {
     if (!id || id === this.data.kind) return;
     const k = KINDS.find(x => x.id === id) || {};
     const fields = withNo(FIELDS[id]);
-    // 切换类型时用素材库自动填入对应字段
+    // 切换类型时用素材自动填入对应字段
     const prefill = profile.applyProfileToForm(id, this.data.profile);
     this.setData({
       kind: id,
@@ -208,7 +208,7 @@ const __pageCfg = {
     const filled = countFilled(FIELDS[k] || [], form);
     if (filled === 0) {
       // 抖动提示：整个表单区左右轻晃（tick 奇偶交替保证连续失败也重放动画）
-      this.setData({ err: '先填一两项，或从「我的素材库」保存后自动填入', genShakeTick: (this.data.genShakeTick || 0) + 1 });
+      this.setData({ err: '先填一两项，或从「我的素材」保存后自动填入', genShakeTick: (this.data.genShakeTick || 0) + 1 });
       return;
     }
     const moments = templates.render(k, form);
@@ -297,7 +297,7 @@ const __pageCfg = {
     });
   },
 
-  // ── 我的素材库：编辑 / 保存（本地）──
+  // ── 我的素材：编辑 / 保存（本地）──
   onToggleProfile() {
     this.setData({ showProfile: !this.data.showProfile });
   },
@@ -321,7 +321,7 @@ const __pageCfg = {
       readyGen: countFilled(fields, prefill) > 0,
       showProfile: false
     });
-    wx.showToast({ title: '素材库已保存', icon: 'none' });
+    wx.showToast({ title: '素材已保存', icon: 'none' });
   },
 
   // ── ② 排版优化器：对任意文本做防折叠 / 加 emoji / 分段 ──
