@@ -1,4 +1,4 @@
-const { POINTS, COMMISSION } = require('../../utils/config.js');
+const { POINTS } = require('../../utils/config.js');
 const login = require('../../utils/login.js');
 const points = require('../../utils/points.js');
 const { getFreshError } = require('../../utils/diag.js');
