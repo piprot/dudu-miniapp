@@ -44,7 +44,7 @@ const __pageCfg = {
   data: {
     privacyShow: false,   // 隐私授权面板显隐（组件 privacy-panel 消费）
     types: TYPE_KEYS.map(k => ({ key: k, name: CARD_TYPES[k].name, hint: CARD_TYPES[k].scene })),
-    themes: THEME_LIST.map(t => ({ id: t.id, name: t.name })), // 主题选择器（6 套，数据驱动）
+    themes: THEME_LIST.map(t => ({ id: t.id, name: t.name, color: t.colors.primary })), // 主题选择器（6 套，数据驱动）+ 主色圆点配色
     theme: 'warm',
     type: 'dailysign',
     form: SEED.dailysign,
