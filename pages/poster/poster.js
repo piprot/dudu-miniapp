@@ -30,7 +30,7 @@ function getDpr() {
 const __pageCfg = {
   data: {
     privacyShow: false,   // 隐私授权面板显隐（组件 privacy-panel 消费）
-    themes: THEME_LIST.map(t => ({ id: t.id, name: t.name })),
+    themes: THEME_LIST.map(t => ({ id: t.id, name: t.name, color: t.colors.primary })),
     theme: 'warm',
     form: {
       title: '',

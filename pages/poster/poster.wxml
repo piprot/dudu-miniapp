@@ -8,7 +8,7 @@
   <view class="theme-row">
     <view wx:for="{{themes}}" wx:key="id"
       class="theme-chip {{theme === item.id ? 'on' : ''}}"
-      bindtap="onPickTheme" data-id="{{item.id}}">{{item.name}}</view>
+      bindtap="onPickTheme" data-id="{{item.id}}"><view class="dot" style="background:{{item.color}}"></view>{{item.name}}</view>
   </view>
 
   <view class="help-toggle" bindtap="onToggleHelp">{{showHelp ? '收起说明' : '怎么用'}}</view>
