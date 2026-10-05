@@ -99,26 +99,7 @@ console.log('=== 前端回归守卫 ===\n');
     '首页仍直接遍历 sampleChapters 内联 AI 内容');
 }
 
-// ── F8 commission 页不得内联 AI 样图（AI 成品示例已外迁 H5，包内零 AI 图）──
-{
-  const js = live('pages/commission/commission.js');
-  ok('F8a commission.js 已移除 samples 样图数组',
-    !/\bsamples\s*:\s*\[/.test(js),
-    'commission 仍在 data 里挂 /images/samples/*.jpg 缩略图 —— 与「包内零 AI 图」前提矛盾');
-  ok('F8b commission.js 不再含 /images/samples/ 路径引用',
-    !/\/images\/samples\//.test(js),
-    '仍有 AI 样图路径残留');
-  const wxml = live('pages/commission/commission.wxml');
-  ok('F8c commission.wxml 已移除 gallery 横滑 + image 渲染',
-    !/class="gallery"/.test(wxml) && !/wx:for="\{\{\s*samples\s*\}\}"/.test(wxml),
-    'wxml 仍遍历 samples 内联 AI 画面，会被审核判深度合成');
-  ok('F8d commission.wxml 已移除「AI 辅助生成」标注',
-    !/AI\s*辅助生成/.test(wxml),
-    '仍保留 AI 标注 = 仍承认页面内展示了 AI 生成内容');
-  ok('F8e commission 已无 goH5Sample / sample-link（H5 文字入口随桥接一并下线）',
-    !/goH5Sample/.test(js) && !/sample-link/.test(wxml),
-    'commission 又出现跳 H5 的入口 —— 端内已全面去 H5，别加回来');
-}
+// ── F8 已删除：pages/commission 页面已整体移除（去生成化重构，付费定制内容不再端内提供）──
 
 // ── F9 pages/h5 桥接页必须保持已删除（2026-09-29 端内去 H5）──
 {
@@ -274,15 +255,15 @@ console.log('=== 前端回归守卫 ===\n');
 
 // ── F11 合规红线：UGC 生成页不得有「转发/朋友圈分享」与「署名」入口（个人主体）──
 // 真踩过：v1.1.23 官方提审被拒 —— 「涉及用户自行生成内容（文字、图片）的记录、分享，
-// 属社交-笔记范畴，为个人主体小程序未开放类目」。根因正是 4 个 UGC 生成页
-// （gen/comic/card/poster）都带 onShareAppMessage/onShareTimeline + showShareMenu，
+// 属社交-笔记范畴，为个人主体小程序未开放类目」。根因正是 3 个 UGC 生成页
+// （gen/card/poster）都带 onShareAppMessage/onShareTimeline + showShareMenu，
 // 且 poster 还带落款/昵称/头像「署名」。整改后（1df92ba）全部移除。
 // 本守卫的作用：防止以后「顺手加个分享按钮」把类目又打回社交-笔记 —— 那种回退
 // 在提交前没有任何编译/单测会红，只有提审被拒才发现，代价极高。
-// 注意：这里刻意**只查 4 个 UGC 生成页**，不管 index/commission/points/order
+// 注意：这里刻意**只查 3 个 UGC 生成页**，不管 index/commission/points/order
 // （那几个是「转发小程序本体」，不涉及 UGC 分享，合法且需保留）。
 {
-  const UGC_PAGES = ['pages/gen/gen', 'pages/comic/comic', 'pages/card/card', 'pages/poster/poster'];
+  const UGC_PAGES = ['pages/gen/gen', 'pages/card/card', 'pages/poster/poster'];
 
   UGC_PAGES.forEach(p => {
     const js = live(p + '.js');
@@ -354,7 +335,7 @@ console.log('=== 前端回归守卫 ===\n');
     '拒绝分支不 resolve ⇒ 受保护 API 永久挂起，表现为「点了没反应」。');
 
   // 每个含隐私接口的页面都必须挂上组件，否则平台无同意凭证可认
-  ['index', 'gen', 'comic', 'card', 'poster'].forEach(p => {
+  ['index', 'gen', 'card', 'poster'].forEach(p => {
     const json = read('pages/' + p + '/' + p + '.json');
     const wxml = read('pages/' + p + '/' + p + '.wxml');
     const js = read('pages/' + p + '/' + p + '.js');

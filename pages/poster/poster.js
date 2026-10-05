@@ -1,7 +1,7 @@
-// pages/poster/poster.js —— 海报长图生成器（纯本地 canvas，零 AI）
+// pages/poster/poster.js —— 海报长图制作工具（纯本地 canvas，零生成式模型）
 // 竖版 375 宽长图，高度随内容流式增长（不裁切金句/正文）。
 // 合规（2026-10-04 提审被拒「社交-笔记」后整改）：已移除署名（落款/昵称/头像）与
-// 站内转发/朋友圈分享入口；生成内容仅保存到用户本机相册，不做发布与传播。
+// 站内转发/朋友圈分享入口；制作内容仅保存到用户本机相册，不做发布与传播。
 // 沿用 模板(templates/poster)×主题(themes)×引擎(render_engine) 三层解耦架构。
 const { buildPosterModel } = require('../../utils/templates/poster');
 const { computeLayout, draw } = require('../../utils/core/render_engine');
@@ -86,7 +86,7 @@ const __pageCfg = {
         const p = r.tempFiles && r.tempFiles[0] && r.tempFiles[0].tempFilePath;
         if (p) {
           self.setData({ bgImg: p, rendered: false });
-          wx.showToast({ title: '已选背景图，点生成', icon: 'none' });
+          wx.showToast({ title: '已选背景图，点制作', icon: 'none' });
         }
       },
       fail(e) { handlePrivacyApiFail(self, '选择背景图', e); }
@@ -116,12 +116,12 @@ const __pageCfg = {
     const self = this;
     const cost = this.data.posterCost;
     this.setData({ err: '' });
-    charge('posterGen', { label: '生成海报' }).then(() => {
+    charge('posterGen', { label: '制作海报' }).then(() => {
       self.renderPoster(d);
-      wx.showToast({ title: '已生成海报（-' + cost + '）', icon: 'none' });
+      wx.showToast({ title: '已制作海报（-' + cost + '）', icon: 'none' });
     }).catch((e) => {
-      // 余额不足 / 扣费失败 / 积分云服务不可用：把真因显式显示，避免「点生成毫无反应、画布空空」。
-      self.setData({ err: '生成失败：' + ((e && e.message) || '积分服务暂不可用，请稍后重试') });
+      // 余额不足 / 扣费失败 / 积分云服务不可用：把真因显式显示，避免「点制作毫无反应、画布空空」。
+      self.setData({ err: '制作失败：' + ((e && e.message) || '积分服务暂不可用，请稍后重试') });
     });
   },
 
@@ -197,7 +197,7 @@ const __pageCfg = {
   onSaveImage() {
     const self = this;
     if (!self.canvasNode) {
-      wx.showToast({ title: '请先生成海报', icon: 'none' });
+      wx.showToast({ title: '请先制作海报', icon: 'none' });
       return;
     }
     exportAndSave(self, self.canvasNode, {

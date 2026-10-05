@@ -2,11 +2,9 @@
   "__usePrivacyCheck__": true,
   "pages": [
     "pages/index/index",
-    "pages/commission/commission",
     "pages/points/points",
     "pages/order/order",
     "pages/gen/gen",
-    "pages/comic/comic",
     "pages/card/card",
     "pages/poster/poster"
   ],

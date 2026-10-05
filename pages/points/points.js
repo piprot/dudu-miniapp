@@ -40,8 +40,7 @@ Page({
     const spendOutlets = [
       '套模板出文案 −' + (c.momentsGen || 20),
       '排版优化 −' + (c.optFormat || 2) + '/次',
-      '生成分镜 −' + (c.comicGen || 20),
-      '生成卡片 −' + (c.cardGen || 20)
+      '制作卡片 −' + (c.cardGen || 20)
     ];
     this.setData({
       redeem: POINTS.redeem || [],
@@ -50,11 +49,10 @@ Page({
       dailyOn: d.enabled !== false,
       dailyRule: '每日 +' + (d.base || 20) + ' 起，连签每天递增 +1（最高 +' + maxPerDay + '）；每连签 ' + (d.milestoneEvery || 7) + ' 天额外 +' + (d.milestoneBonus || 0),
       // ⚠️ 只能写真实存在的增减项。赚分只剩「每日签到」（config.POINTS.earn 为空）；
-      //    花费 = 4 个产出型工具 + 兑换定制9折券。改价 / 下线功能时务必同步这行。
+      //    花费 = 3 个产出型工具（文案 / 排版 / 卡片）。改价 / 下线功能时务必同步这行。
       earnTip: '积分增减：' + giftNote
         + '每日签到 +' + (d.base || 20) + ' 起，连签每日 +1（最多 +' + ((d.base || 20) + (d.streakCap || 10)) + ' / 天）'
         + ' · 花费出口：' + spendOutlets.join(' · ')
-        + ' · 兑换定制9折券 −' + redeemCost
         + '（积分不足可先充值或每日签到赚取）'
     });
   },
@@ -120,26 +118,9 @@ Page({
   hasCoupon(type) {
     return !!type && (this.data.coupons || []).some(c => c && c.type === type);
   },
-  goCommission() {
-    wx.navigateTo({ url: '/pages/commission/commission' });
-  },
   // 我的订单（订单中心页，满足交易类小程序提审要求）
   goOrder() {
     wx.navigateTo({ url: '/pages/order/order' });
-  },
-  // 兑换成功后的「下文」：只说「兑换成功」而没有去处，用户会认为积分逻辑断了（2026-09-20 真机反馈）。
-  guideToUse(item) {
-    const t = item && item.grant && item.grant.type;
-    if (t !== 'comic_discount') return;
-    setTimeout(() => {
-      wx.showModal({
-        title: '🎫 9 折券已到账',
-        content: '在「画面感内容定制」下单时，这张 9 折券会随订单一起提交，客服按券减免相应差价。现在去下单看看？',
-        confirmText: '去下单',
-        cancelText: '稍后再说',
-        success: (res) => { if (res.confirm) this.goCommission(); }
-      });
-    }, 700);
   },
   // 回填**已保存**的头像/昵称。
   // 2026-09-20 真机反馈：「头像和昵称，用户可以点选自己微信的，但这里没有同步」。
@@ -305,7 +286,6 @@ Page({
       this.setData({ points: r.points });
       wx.showToast({ title: '兑换成功', icon: 'success' });
       this.refresh();          // 刷新优惠券
-      this.guideToUse(item);   // 兑换后给「去哪用」的下文，别让用户换完就没了
     } catch (err) {
       this.setData({ err: (err && err.message) ? err.message : '兑换失败' });
     } finally {

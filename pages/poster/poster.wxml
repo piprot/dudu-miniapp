@@ -1,6 +1,6 @@
 <view class="page">
   <view class="hd">
-    <view class="hd-title">🖼️ 海报长图生成器</view>
+    <view class="hd-title">🖼️ 海报长图制作</view>
     <view class="hd-sub">写一句话，自动排成一张精美长图 · 高度随内容自适应</view>
   </view>
 
@@ -15,8 +15,8 @@
   <view class="help" wx:if="{{showHelp}}">
     <view class="help-line">① 填标题 / 金句 / 正文（任填其一），金句默认带今日推荐，可点「换一套」</view>
     <view class="help-line">② 可选背景图：选后文字自动转白保证可读</view>
-    <view class="help-line">③ 点「生成海报」，再「保存到相册」，图片只存在你手机本地，不会上传任何服务器。</view>
-    <view class="help-line">本工具仅在本机生成与保存图片，不提供内容发布与传播功能。</view>
+    <view class="help-line">③ 点「制作海报」，再「保存到相册」，图片只存在你手机本地，不会上传任何服务器。</view>
+    <view class="help-line">本工具仅在本机制作与保存图片，不提供内容发布与传播功能。</view>
   </view>
 
   <!-- 表单 -->
@@ -47,16 +47,16 @@
     </view>
   </view>
 
-  <button class="btn primary gen" bindtap="onGenPoster">生成海报（{{posterCost}} 积分）</button>
+  <button class="btn primary gen" bindtap="onGenPoster">制作海报（{{posterCost}} 积分）</button>
   <view class="err" wx:if="{{err}}">{{err}}</view>
 
   <view class="canvas-wrap">
     <canvas type="2d" id="posterCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
-    <view wx:if="{{!rendered}}" class="canvas-ph">点「生成海报」后，长图会显示在这里</view>
+    <view wx:if="{{!rendered}}" class="canvas-ph">点「制作海报」后，长图会显示在这里</view>
     <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
   </view>
 
-  <view class="tip">生成内容仅保存在你手机本地；本小程序不提供内容发布与传播功能。</view>
+  <view class="tip">制作内容仅保存在你手机本地；本小程序不提供内容发布与传播功能。</view>
 </view>
 
   <!-- 隐私授权面板：同意按钮必须是 open-type="agreePrivacyAuthorization"，见组件注释 -->

@@ -1,7 +1,7 @@
 <view class="page">
   <view class="hd">
-    <view class="hd-title">🎴 画面感卡片制作 / 日签生成器</view>
-    <view class="hd-sub">选模板，填文字，一键出日签卡片 · 全程本地完成</view>
+    <view class="hd-title">🎴 画面感卡片制作 / 日签</view>
+    <view class="hd-sub">选模板，填文字，一键制作日签卡片 · 全程本地完成</view>
   </view>
 
   <!-- 模板选择 -->
@@ -25,7 +25,7 @@
   <view class="help" wx:if="{{showHelp}}">
     <view class="help-line">① 选上方模板（每日日签 / 金句 / 种草 / 公告 / 清单 / 图文）</view>
     <view class="help-line">② 在下方填文字；种草 / 图文可点「选择图片」取本地照片；日签自动带日期与小程序码</view>
-    <view class="help-line">③ 点「生成卡片」，再「保存到相册」即可（卡片右下角带小程序码，长按可进入小程序）</view>
+    <view class="help-line">③ 点「制作卡片」，再「保存到相册」即可（卡片右下角带小程序码，长按可进入小程序）</view>
     <view class="help-line">图片只存在你手机本地，不会上传任何服务器。</view>
   </view>
 
@@ -68,12 +68,12 @@
     </view>
   </view>
 
-  <button class="btn primary gen" bindtap="onGenCard">生成卡片（{{cardCost}} 积分）</button>
+  <button class="btn primary gen" bindtap="onGenCard">制作卡片（{{cardCost}} 积分）</button>
   <view class="err" wx:if="{{err}}">{{err}}</view>
 
   <view class="canvas-wrap">
     <canvas type="2d" id="cardCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
-    <view wx:if="{{!rendered}}" class="canvas-ph">点「生成卡片」后，卡片会显示在这里</view>
+    <view wx:if="{{!rendered}}" class="canvas-ph">点「制作卡片」后，卡片会显示在这里</view>
     <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
   </view>
 

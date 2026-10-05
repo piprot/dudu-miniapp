@@ -24,7 +24,7 @@
     </view>
   </view>
 
-  <!-- 创作工具：纯本地，无 AI（长按工具卡可拖动排序，顺序自动记住） -->
+  <!-- 创作工具：纯本地模板渲染，非生成式模型（长按工具卡可拖动排序，顺序自动记住） -->
   <view class="tool-section"
     catchtouchmove="{{dragIdx > -1 ? 'onToolDragMove' : ''}}"
     catchtouchend="{{dragIdx > -1 ? 'onToolDragEnd' : ''}}"

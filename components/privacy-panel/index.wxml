@@ -11,7 +11,7 @@
     <view class="pp-body">
       为使用「选择图片」「复制文案」「保存图片到相册」等功能，需要你同意
       <text class="pp-link" bindtap="onOpenPrivacyContract">《用户隐私保护指引》</text>。
-      你的图片与文案仅用于本机生成与保存，不会上传服务器，也不会提供给第三方。
+      你的图片与文案仅用于本机制作与保存，不会上传服务器，也不会提供给第三方。
     </view>
     <view class="pp-actions">
       <button class="pp-btn pp-btn-ghost" id="privacy-disagree-btn" bindtap="onDisagreePrivacy">暂不</button>

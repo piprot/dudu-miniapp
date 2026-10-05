@@ -167,7 +167,6 @@ const POINTS = {
   // 积分兑换(redeem) 目录：花 cost 积分，grant 权益写入 vp_users.coupons
   // 这是示例项，可增删；spend 时服务端会校验余额后再扣减并落地 grant。
   redeem: [
-    { id: 'comic_discount', cost: 200, name: '画面感内容 9 折券', desc: '付费定制画面感内容时抵扣 10%', grant: { type: 'comic_discount', value: 0.9 } } // 2026-09-23 由 100 升为 200
   ],
   // 积分充值（¥→积分）：走个人虚拟支付，每个 pack 对应 MP 后台一个虚拟支付道具（productId）
   // 注意：productId / priceFen 必须与 MP 后台道具**完全一致**（priceFen = 元 × 100）；

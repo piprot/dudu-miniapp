@@ -166,17 +166,13 @@ t('gen 页产出型动作全部经 charge() 扣费，且 action 与 config.POINT
     'gen.js 出现了 ai_gen 调用 —— gen 页零 AI 调用是个人主体过审红线，恢复前必须重新过合规评估');
 });
 
-// 8.1) 分镜编辑器 / 卡片制作 同为产出型工具，必须接 charge() 且其 action 在 config 中有真实单价
-t('分镜 / 卡片生成均经 charge() 扣费，action 与 config 对齐', () => {
+// 8.1) 卡片制作属产出型工具，必须接 charge() 且其 action 在 config 中有真实单价
+//      （原「分镜编辑器」因去生成化重构已整体移除，相关断言同步摘除）
+t('卡片制作经 charge() 扣费，action 与 config 对齐', () => {
   const cfgCost = (config.POINTS && config.POINTS.cost) || {};
-  const comicSrc = fs.readFileSync(path.join(ROOT, 'pages', 'comic', 'comic.js'), 'utf8');
   const cardSrc = fs.readFileSync(path.join(ROOT, 'pages', 'card', 'card.js'), 'utf8');
-  assert.ok(/charge\(\s*['"]comicGen['"]/.test(comicSrc),
-    'comic.js 未对「生成分镜」调用 charge(\'comicGen\') —— 该动作必须扣费');
   assert.ok(/charge\(\s*['"]cardGen['"]/.test(cardSrc),
-    'card.js 未对「生成卡片」调用 charge(\'cardGen\') —— 该动作必须扣费');
-  assert.ok(typeof cfgCost.comicGen === 'number' && cfgCost.comicGen > 0,
-    'config.POINTS.cost.comicGen 缺失或 <= 0');
+    'card.js 未对「制作卡片」调用 charge(\'cardGen\') —— 该动作必须扣费');
   assert.ok(typeof cfgCost.cardGen === 'number' && cfgCost.cardGen > 0,
     'config.POINTS.cost.cardGen 缺失或 <= 0');
 });
@@ -458,29 +454,17 @@ t('积分说明不得承诺已下线的赚分项（文案不得与 earn 目录�
     + '这句话方向反了，会误导用户。文案必须只写当前真实存在的增减项。');
 });
 
-// 22) 积分兑换成本：config.POINTS.redeem[].cost ↔ points 云函数 REDEEM（服务端权威）
-//     漏改的后果：界面按 config 显示「N 积分兑换」，服务端按 REDEEM 校验成本。
-//       · 若 REDEEM 没跟着改 → 用户按界面金额兑换会被服务端以「兑换成本不符」拒绝（兑换直接不可用）；
-//       · 若 REDEEM 低于 config → 界面写 200、服务端只认 100，用户困惑且可被低价兑换。
-//     两处必须同改。（2026-09-23 新增：服务端成本校验上线时同步加此守卫。）
-t('config.POINTS.redeem 成本与 points 云函数 REDEEM 一致', () => {
-  const fn = extractObject('cloudfunctions/points/index.js', 'REDEEM');
+// 22) 去生成化重构（2026-10-05）：付费定制画面感内容及其「9 折券」已全部移出小程序包
+//     （pages/commission 删除、points 页「画面感内容定制」入口与「去使用」链接下线），
+//     因此端内 config.POINTS.redeem 现在**刻意留空**——包内不再提供任何券的兑换入口。
+//     守卫改为：端内 redeem 必须为空（防有人把「定制券」又加回包内，重新露出「付费定制」门面，
+//     触发个人主体深度合成复审）。云函数 REDEEM 仍保留 comic_discount 等项，服务「H5 外迁」付费路径
+//     与历史已发券用户，不强制与端内目录对齐（那部分权益走外部履约，不在包内闭环，由 test_points_daily 覆盖）。
+t('去生成化后：端内 config.POINTS.redeem 刻意留空（不提供包内券兑换入口）', () => {
   const list = (config.POINTS && config.POINTS.redeem) || [];
-  assert.ok(list.length > 0, 'config.POINTS.redeem 为空');
-  list.forEach(item => {
-    assert.ok(item && item.id, 'redeem 项缺少 id');
-    assert.ok(Object.prototype.hasOwnProperty.call(fn, item.id),
-      '兑换项 "' + item.id + '" 在 points 云函数 REDEEM 中没有登记成本 —— 服务端会以「未知兑换项」'
-      + '拒绝，用户在界面点的兑换按钮必然失败。请两处同改。');
-    assert.strictEqual(fn[item.id], item.cost,
-      '兑换项 "' + item.id + '" 成本不一致: 云函数 REDEEM ' + fn[item.id] + ' vs config.cost ' + item.cost
-      + '（界面按 config 展示、服务端按 REDEEM 校验，不一致则兑换必被拒或可被低价兑换）');
-  });
-  // 反向：REDEEM 里的 id 也应当都能在前端兑换目录里找到（免得有"永远换不到"的死项）
-  Object.keys(fn).forEach(id => {
-    assert.ok(list.some(x => x && x.id === id),
-      'points 云函数 REDEEM 里的 "' + id + '" 在 config.POINTS.redeem 中没有对应项 —— 该权益永远无法被用户兑换');
-  });
+  assert.strictEqual(list.length, 0,
+    'config.POINTS.redeem 不为空 —— 去生成化重构后包内不应再提供任何券兑换入口（含「画面感内容 9 折券」），' +
+    '否则会重新露出「付费定制内容」门面，触发个人主体深度合成复审。若确要恢复某券，请先重新过合规评估。');
 });
 
 console.log('\n──────── 结果：' + pass + ' PASS / ' + fail + ' FAIL ────────');

@@ -10,15 +10,6 @@
     <view class="order-entry-arrow">›</view>
   </view>
 
-  <!-- 画面感内容定制（2026-09-23 从「朋友圈文案」页迁来：付费交付与积分/订单同域，文案页只留文案） -->
-  <view class="order-entry custom-entry" bindtap="goCommission">
-    <view class="order-entry-left">
-      <view class="order-entry-title">🎨 画面感内容定制</view>
-      <view class="order-entry-sub">画面感内容PDF ¥66 · 画面感内容HTML ¥88 · 8 小时内交付到邮箱</view>
-    </view>
-    <view class="order-entry-arrow">›</view>
-  </view>
-
   <!-- 隐私未授权时给一个**可点**的入口，别让用户面对「点了没反应」的加号 -->
   <view class="privacy-bar" wx:if="{{privacyNeed}}">
     <view class="privacy-txt">选头像 / 复制文案前，需先同意{{privacyName}}</view>
@@ -79,7 +70,6 @@
     <view class="section-title">我的权益</view>
     <view class="coupon" wx:for="{{coupons}}" wx:key="grantedAt">
       <text class="coupon-name">🎫 {{item.label}}</text>
-      <text class="coupon-use" wx:if="{{item.type === 'comic_discount'}}" catchtap="goCommission">去使用 ›</text>
     </view>
     <view class="tip">权益会在下单时随订单一起提交，客服按券为你减免对应差价。</view>
   </view>

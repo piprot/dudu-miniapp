@@ -106,7 +106,7 @@
 
     <!-- ========== ② 排版优化 / ③ 公众号文章（共用同一套本地排版工具）========== -->
     <block wx:if="{{mode === 'opt' || mode === 'art'}}">
-      <view class="opt-tip" wx:if="{{mode === 'art'}}">粘贴公众号文章 / 长文，一键排版成可直接发的朋友圈文案（纯本地处理，不上传服务器、不用 AI 改写）。</view>
+      <view class="opt-tip" wx:if="{{mode === 'art'}}">粘贴公众号文章 / 长文，一键排版成可直接发的朋友圈文案（纯本地处理，不上传服务器、非生成式模型改写）。</view>
       <view class="opt-tip" wx:else>粘贴一段你写好的文字，一键优化排版（纯本地处理，不上传服务器）。</view>
       <view class="opt-input-wrap">
         <textarea class="opt-input" placeholder="{{mode === 'art' ? '粘贴公众号文章 / 长文…' : '粘贴或输入要排版的文字…'}}" value="{{optRaw}}" bindinput="onOptInput" maxlength="2000" auto-height></textarea>
