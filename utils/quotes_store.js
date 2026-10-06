@@ -39,6 +39,29 @@ function genId() {
   return 'q_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
 }
 
+// ── 来源类型（kind）─────────────────────────────────────────────────
+// 2026-10-06：金句收藏馆与台词/书摘卡合并成一个库后，需要区分「这条是哪来的」。
+//
+// 为什么不用 tags 承担：tags 是自由标签（'生活' '勇气'…），而 kind 是**互斥枚举**
+//（一条只属于一种来源）。若把'台词'塞进 tags，会出现「这条既是台词又是书摘」的
+// 脏数据，筛选时无法做互斥过滤。两者语义正交：category=情绪、tags=自由标签、
+// kind=来源。故独立成字段。
+const KINDS = {
+  quote: '金句',    // 手选/种子金句收藏馆里的条目
+  line: '台词',     // 影视台词
+  book: '书摘',     // 书本摘录
+  famous: '名言',   // 名人名言
+  daily: '每日一句', // 来自「每日一句」页
+  solar: '节气',// 来自「节气·节日」页的节气文案
+  festival: '节日'  // 来自「节气·节日」页的节日文案
+};
+const KIND_KEYS = Object.keys(KINDS);
+/** 归一化来源类型：未登记的一律记为 quote（不丢数据，也不产生脏枚举） */
+function normKind(raw) {
+  const k = String(raw || '').trim();
+  return KIND_KEYS.indexOf(k) >= 0 ? k : 'quote';
+}
+
 // 新增一条金句；同一文本已存在则视为更新（幂等，不重复存）。
 function addQuote(input) {
   const text = String(input && input.text || '').trim();
@@ -46,10 +69,15 @@ function addQuote(input) {
   const list = readAll();
   const exist = list.find(q => q.text === text);
   if (exist) {
-    // 已存在：合并标签与出处，不重复插入
+    // 已存在：合并标签与出处，不重复插入（按文本幂等）
     const tags = normTags((exist.tags || []).concat(input.tags || []).join(','));
     if (input.source && !exist.source) exist.source = input.source;
     exist.tags = tags;
+    // kind 只在「原来没有」或「原来是默认 quote」时才升级，
+    // 避免用户手动改过类型后被再次保存覆盖回默认值
+    if (input.kind && normKind(exist.kind) === 'quote' && normKind(input.kind) !== 'quote') {
+      exist.kind = normKind(input.kind);
+    }
     writeAll(list);
     return exist;
   }
@@ -58,6 +86,7 @@ function addQuote(input) {
     text,
     tags: normTags(input.tags),
     source: String(input.source || '').trim(),
+    kind: normKind(input.kind),
     createdAt: Date.now()
   };
   list.unshift(item);
@@ -76,6 +105,8 @@ function updateQuote(id, patch) {
   if (patch.text != null) q.text = String(patch.text).trim();
   if (patch.tags != null) q.tags = normTags(patch.tags);
   if (patch.source != null) q.source = String(patch.source).trim();
+  // 来源类型可改（合并后用户能手动纠正「这条其实是台词」）
+  if (patch.kind != null) q.kind = normKind(patch.kind);
   writeAll(list);
   return q;
 }
@@ -94,10 +125,14 @@ function searchQuotes(opts) {
   opts = opts || {};
   const kw = String(opts.keyword || '').trim().toLowerCase();
   const tag = opts.tag || '';
+  // kind 为空=不按来源筛；否则按互斥枚举精确匹配
+  const kind = opts.kind ? normKind(opts.kind) : '';
   return readAll().filter(q => {
+    if (kind && normKind(q.kind) !== kind) return false;
     if (tag && !(q.tags || []).includes(tag)) return false;
     if (!kw) return true;
-    const hay = (q.text + ' ' + (q.source || '') + ' ' + (q.tags || []).join(' ')).toLowerCase();
+    const hay = (q.text + ' ' + (q.source || '') + ' ' + (q.tags || []).join(' ')
+      + ' ' + (KINDS[normKind(q.kind)] || '')).toLowerCase();
     return hay.indexOf(kw) > -1;
   });
 }
@@ -153,5 +188,7 @@ module.exports = {
   SEED_FLAG_KEY,
   addQuote, getQuote, updateQuote, removeQuote,
   listQuotes, searchQuotes, allTags, exportAll, normTags,
-  seedIfEmpty
+  seedIfEmpty,
+  // 来源类型（2026-10-06 金句馆与台词书摘卡合并时新增）
+  KINDS, KIND_KEYS, normKind
 };

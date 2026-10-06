@@ -4,6 +4,7 @@
 // 2026-10-06 起启用积分：每次成卡扣 5 分（charge('lineCard')，单价见 config.POINTS.cost）。
 // 数据仍全程本地，不上传服务器。
 const { renderCard, saveCanvas } = require('../../utils/quote_card_render');
+const { addQuote } = require('../../utils/quotes_store'); // 存金句馆（与金句馆同一个库）
 const { THEME_LIST } = require('../../utils/themes/index.js');
 const cardStyle = require('../../utils/card_style_mixin');  // 排版风格 + 背景图（四页共用）
 const privacyPanel = require('../../utils/privacy_panel.js');
@@ -76,8 +77,23 @@ const __pageCfg = {
     }
   },
 
-  flipSaved() {
-    const tick = (this.data.savedTick || 0) + 1;
+  // 存进统一收藏库（2026-10-06 与金句收藏馆合并）。
+  // kind 用当前选中的类型（line/book/famous），这样在金句馆里能按来源筛选。
+  // 存馆**不扣积分**：积分只对「成卡」这个产出动作收费（沿用全站口径）。
+  onSaveToVault() {
+    const text = (this.data.text || '').trim();
+    if (!text) { wx.showToast({ title: '先粘贴一段内容', icon: 'none' }); return; }
+    const source = (this.data.source || '').trim() || ('来自' + kindName(this.data.kind));
+    const item = addQuote({ text, source, kind: this.data.kind, tags: [kindName(this.data.kind)] });
+    if (!item) { wx.showToast({ title: '保存失败，请重试', icon: 'none' }); return; }
+    this.flipSaved();
+    wx.showToast({ title: '已存金句馆', icon: 'none' });
+  },
+
+  // 跳到金句收藏馆（合并后的统一管理页）
+  onGoQuotes() { wx.navigateTo({ url: '/pages/quotes/quotes' }); },
+
+  flipSaved() {    const tick = (this.data.savedTick || 0) + 1;
     if (this._saveTimer) clearTimeout(this._saveTimer);
     this.setData({ savedTick: tick, savedKey: tick % 2 ? 'a' : 'b' });
     this._saveTimer = setTimeout(() => { this.setData({ savedKey: '' }); }, 1600);

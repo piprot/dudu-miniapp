@@ -46,7 +46,11 @@ const __pageCfg = {
     activeCat: '',
     todayPick: null,     // 今日推荐一条（天天换）
     showEditor: false,
-    edit: { id: '', text: '', tags: '', source: '' },
+    edit: { id: '', text: '', tags: '', source: '', kind: 'quote' },
+    // 来源类型筛选（2026-06 与台词/书摘卡合并后新增；空 = 全部）
+    filterKind: '',
+    // 可选来源类型（由 store.KINDS 派生，wxml 循环渲染成筛选条+编辑器选择器）
+    kindOptions: Object.keys(store.KINDS).map(k => ({ key: k, name: store.KINDS[k] })),
     canvasH: 0,
     rendered: false,
     err: '',
@@ -89,10 +93,11 @@ const __pageCfg = {
 
   // 从本地库刷新列表 + 标签云 + 总数
   refresh() {
-    const list = store.searchQuotes({ keyword: this.data.keyword, tag: this.data.activeTag });
+    // ⚠️ 列表必须走 applyFilter（它带 filterKind），不能在这里另起一次 searchQuotes——
+    //    曾经两处各调一次导致「筛选后 onShow 刷新又变回全部」。单一出口。
+    this.applyFilter();
     const all = store.listQuotes();
     this.setData({
-      list,
       tags: store.allTags(),
       count: all.length,
       todayPick: this.pickToday(all)
@@ -115,9 +120,17 @@ const __pageCfg = {
 // 分类是「种子文案专属」字段（id 以 q_seed_ 开头），用户自建条目不参与分类筛选。
   applyFilter() {
     const cat = this.data.activeCat;
-    let list = store.searchQuotes({ keyword: this.data.keyword, tag: this.data.activeTag });
-    if (cat) list = list.filter(q => q.id && q.id.indexOf('q_seed_' + cat + '_') === 0);
-    this.setData({ list });
+    const list = store.searchQuotes({
+      keyword: this.data.keyword,
+      tag: this.data.activeTag,
+      kind: this.data.filterKind      // 空 = 不按来源筛
+    }).map(q => Object.assign({}, q, {
+      // 预置展示名，wxml 直接用，不必在模板里做三元运算
+      kindName: store.KINDS[store.normKind(q.kind)] || ''
+    }));
+    this.setData({
+      list: cat ? list.filter(q => q.id && q.id.indexOf('q_seed_' + cat + '_') === 0) : list
+    });
   },
 
   // 一键把今日推荐成卡
@@ -160,7 +173,9 @@ const __pageCfg = {
 
   // ── 编辑 / 新增 ──
   onAdd() {
-    this.setData({ showEditor: true, edit: { id: '', text: '', tags: '', source: '' } });
+    // 默认「金句」；若当前正按「台词/书摘」筛选，则沿用该类型，少点一次
+    const kind = this.data.filterKind || 'quote';
+    this.setData({ showEditor: true, edit: { id: '', text: '', tags: '', source: '', kind } });
   },
   onEdit(e) {
     const id = e.currentTarget.dataset.id;
@@ -168,8 +183,28 @@ const __pageCfg = {
     if (!q) return;
     this.setData({
       showEditor: true,
-      edit: { id: q.id, text: q.text, tags: (q.tags || []).join(','), source: q.source || '' }
+      edit: {
+        id: q.id,
+        text: q.text,
+        tags: (q.tags || []).join(','),
+        source: q.source || '',
+        // 旧数据没有 kind 字段，normKind 会归为 'quote'，编辑时可手动纠正
+        kind: store.normKind(q.kind)
+      }
     });
+  },
+
+  // 编辑器里选来源类型（互斥枚举，一次只能一种）
+  onPickKind(e) {
+    const key = e.currentTarget.dataset.key;
+    this.setData({ 'edit.kind': store.normKind(key) });
+  },
+
+  // 列表按来源筛选（空字符串 = 全部）
+  onFilterKind(e) {
+    const key = e.currentTarget.dataset.key;
+    this.setData({ filterKind: key ? store.normKind(key) : '' });
+    this.applyFilter();
   },
   onField(e) {
     const field = e.currentTarget.dataset.field;
@@ -180,11 +215,17 @@ const __pageCfg = {
 
   onSaveEdit() {
     const text = String(this.data.edit.text || '').trim();
-    if (!text) { wx.showToast({ title: '金句内容不能为空', icon: 'none' }); return; }
+    if (!text) { wx.showToast({ title: '内容不能为空', icon: 'none' }); return; }
+    const patch = {
+      text,
+      tags: this.data.edit.tags,
+      source: this.data.edit.source,
+      kind: store.normKind(this.data.edit.kind)
+    };
     if (this.data.edit.id) {
-      store.updateQuote(this.data.edit.id, { text, tags: this.data.edit.tags, source: this.data.edit.source });
+      store.updateQuote(this.data.edit.id, patch);
     } else {
-      store.addQuote({ text, tags: this.data.edit.tags, source: this.data.edit.source });
+      store.addQuote(patch);
     }
     this.setData({ showEditor: false });
     this.refresh();

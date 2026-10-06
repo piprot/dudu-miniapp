@@ -1,11 +1,20 @@
 <view class="page">
   <view class="hd">
     <view class="hd-title">📚 金句收藏馆</view>
-    <view class="hd-sub">本地语料库 · 标签分类 · 搜索 · 一键成卡（纯本地，零 AI）</view>
+    <view class="hd-sub">金句 · 台词 · 书摘统一收藏 · 标签分类 · 搜索 · 一键成卡（纯本地，零 AI）</view>
   </view>
 
   <view class="search">
-    <input class="input" value="{{keyword}}" bindinput="onSearch" placeholder="搜索金句 / 出处 / 标签" />
+    <input class="input" value="{{keyword}}" bindinput="onSearch" placeholder="搜索金句 / 台词 / 出处 / 标签" />
+  </view>
+
+  <!-- 来源筛选（2026-10-06 与台词/书摘卡合并后新增）。
+       合并后库里会混着金句/台词/书摘/每日一句/节气，不筛的话用户很难定位。 -->
+  <view class="kind-filter">
+    <view class="kind-chip {{!filterKind ? 'on' : ''}}" bindtap="onFilterKind" data-key="">全部</view>
+    <view wx:for="{{kindOptions}}" wx:key="key"
+      class="kind-chip {{filterKind === item.key ? 'on' : ''}}"
+      bindtap="onFilterKind" data-key="{{item.key}}">{{item.name}}</view>
   </view>
 
   <!-- 今日推荐：按日期稳定轮换，同一天不变、跨天必变（运营「天天换」诉求） -->
@@ -58,7 +67,9 @@
   <view class="list">
     <view wx:for="{{list}}" wx:key="id" class="qcard">
       <view class="qtext" bindtap="onEdit" data-id="{{item.id}}">{{item.text}}</view>
-      <view class="qmeta" wx:if="{{item.tags.length || item.source}}">
+      <view class="qmeta">
+        <!-- 来源类型徽标（合并后库里有金句/台词/书摘/每日一句/节气，一眼可辨） -->
+        <text wx:if="{{item.kindName}}" class="qkind">{{item.kindName}}</text>
         <text wx:for="{{item.tags}}" wx:for-item="t" wx:key="*this" class="qtag">#{{t}}</text>
         <text wx:if="{{item.source}}" class="qsrc">—— {{item.source}}</text>
       </view>
@@ -68,10 +79,10 @@
         <view class="mini danger" bindtap="onDelete" data-id="{{item.id}}">🗑️ 删</view>
       </view>
     </view>
-    <view wx:if="{{!list.length}}" class="empty">还没有收藏，点下方「＋ 收藏金句」开始吧</view>
+    <view wx:if="{{!list.length}}" class="empty">还没有收藏，点下方「＋ 收藏金句 / 台词」开始吧</view>
   </view>
 
-  <button class="btn primary add" bindtap="onAdd">＋ 收藏金句</button>
+  <button class="btn primary add" bindtap="onAdd">＋ 收藏金句 / 台词 / 书摘</button>
 
   <view class="canvas-wrap">
     <canvas type="2d" id="quotesCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
@@ -102,9 +113,21 @@
 <view wx:if="{{showEditor}}" class="mask" catchtouchmove="noop">
   <view class="sheet">
     <view class="sheet-title">{{edit.id ? '编辑金句' : '收藏金句'}}</view>
+
+    <!-- 来源类型（2026-10-06 金句馆与台词/书摘卡合并后新增）。
+         互斥枚举：一条只属于一种来源。默认「金句」；从台词页过来的会是台词/书摘。 -->
+    <view class="field">
+      <view class="label">来源类型</view>
+      <view class="kind-row">
+        <view wx:for="{{kindOptions}}" wx:key="key"
+          class="kind-chip {{edit.kind === item.key ? 'on' : ''}}"
+          bindtap="onPickKind" data-key="{{item.key}}">{{item.name}}</view>
+      </view>
+    </view>
+
     <view class="field">
       <view class="label">金句内容</view>
-      <textarea class="ta" value="{{edit.text}}" bindinput="onField" data-field="text" placeholder="写一句打动你的话" maxlength="-1" />
+      <textarea class="ta" value="{{edit.text}}" bindinput="onField" data-field="text" placeholder="写一句打动你的话，或粘贴一段台词 / 书摘" maxlength="-1" />
     </view>
     <view class="field">
       <view class="label">出处（可选）</view>

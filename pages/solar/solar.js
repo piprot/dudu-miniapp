@@ -185,7 +185,16 @@ const __pageCfg = {
   onSaveToVault() {
     const text = this.data.sel.text;
     if (!text) return;
-    addQuote({ text, tags: ['节气'], source: this.data.sel.name });
+    // kind 按来源区分：节气 or 节日（2026-10-06 统一收藏库后新增），
+    // 这样金句馆里能按「节气 / 节日」筛出不同来源的文案。
+    const name = this.data.sel.name || '';
+    const isTerm = /节气/.test(name) || this.data.today.type === 'term';
+    addQuote({
+      text,
+      tags: [isTerm ? '节气' : '节日'],
+      source: name,
+      kind: isTerm ? 'solar' : 'festival'
+    });
     wx.showToast({ title: '已存金句馆', icon: 'none' });
   },
 

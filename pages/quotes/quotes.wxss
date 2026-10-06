@@ -81,3 +81,13 @@
 .label { font-size: 25rpx; font-weight: 600; color: var(--text-title); margin-bottom: 10rpx; }
 .sheet-acts { display: flex; gap: 20rpx; margin-top: 12rpx; }
 .sheet-acts .btn { flex: 1; }
+
+/* ── 来源类型（2026-10-06 与台词/书摘卡合并后新增）────────────────────
+   层级：来源徽标比标签更「重」（实心底），因为它是互斥枚举、是筛选的主维度；
+   标签是自由标签、粒度更细，故用浅底避免抢戏。 */
+.kind-filter { display: flex; flex-wrap: wrap; gap: 12rpx; margin: 16rpx 0 4rpx; }
+.kind-chip { font-size: 23rpx; color: var(--text-body); background: var(--bg-card); border: 1rpx solid var(--border); border-radius: var(--r-pill); padding: 8rpx 22rpx; }
+.kind-chip.on { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 600; }
+
+.kind-row { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.qkind { font-size: 22rpx; color: #fff; background: var(--accent-blue); border-radius: var(--r-pill); padding: 4rpx 16rpx; }

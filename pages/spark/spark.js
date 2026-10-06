@@ -79,7 +79,8 @@ const __pageCfg = {
   onSaveToVault() {
     const text = this.data.quote.text;
     if (!text) return;
-    addQuote({ text, tags: ['每日一句'], source: '每日一句' });
+    // kind='daily' 让金句馆能按来源筛选（2026-10-06 统一收藏库后新增）
+    addQuote({ text, tags: ['每日一句'], source: '每日一句', kind: 'daily' });
     wx.showToast({ title: '已存金句馆', icon: 'none' });
   },
 

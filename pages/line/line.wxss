@@ -62,3 +62,10 @@
 .btn.save { flex: none; margin-top: 22rpx; padding: 18rpx 64rpx; }
 .err { margin-top: 16rpx; font-size: 24rpx; color: var(--danger); line-height: 1.6; }
 .tip { margin-top: 22rpx; font-size: 22rpx; color: var(--text-tertiary); line-height: 1.6; text-align: center; }
+
+/* ── 合并说明条 + 双按钮（2026-10-06 金句馆合并后新增）────────────── */
+.merge-tip { display: flex; align-items: center; justify-content: space-between; background: var(--bg-soft); border: 1rpx solid var(--border-soft); border-radius: 14rpx; padding: 16rpx 20rpx; margin-bottom: 20rpx; }
+.merge-txt { font-size: 22rpx; color: var(--text-sub); flex: 1; }
+.merge-go { font-size: 22rpx; color: var(--primary-deep); font-weight: 600; flex: none; }
+.gen-acts { display: flex; gap: 14rpx; }
+.gen-acts .half { flex: 1; }
