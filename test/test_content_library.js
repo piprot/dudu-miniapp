@@ -375,6 +375,41 @@ t('守卫：内置兜底图随包存在、无 webp、且在包体预算内', () 
     + 'KB，超出 1000KB 预算（基础包体 864KB，加起来会顶爆主包 2MB）');
 });
 
+t('守卫：内置兜底图必须是深色调（这是背景图，上方要压白字）', () => {
+  // 用户 2026-10-06 明确指出：「需要深色色调才行，因为是做背景图的」。
+  // 压暗前实测42/60 张偏亮（>120），最亮 3 张有 90%+ 像素落在亮区，
+  // 白字压上去基本不可读 —— 这类缺陷肉眼可见，必须由测试锁住，不能靠人记。
+  //
+  // 亮度值（lum）由入库前的色调映射写入 bg_pack清单：
+  //   target = 52 + 36 * ((m0 - 50) / 160)，factor = clamp(target/m0, 0.24, 0.85)
+  // 换图 / 重新压缩后若本守卫失败，必须重跑色调映射，而不是放宽区间。
+  const bgPack = require('../utils/bg_pack');
+  const s = bgPack.stats();
+
+  assert.strictEqual(s.lumMissing, 0,
+    '有 ' + s.lumMissing + ' 张内置图缺lum 字段（换图后需重新导出亮度并写入清单）');
+  assert.strictEqual(s.lumOutliers, 0,
+    '内置背景图亮度必须在 ' + bgPack.LUM_MIN + '~' + bgPack.LUM_MAX
+    + ' 区间内（过亮→ 白字不可读，过黑 → 失去层次）。越界: '
+    + bgPack.BUILTIN.filter(b => b.lum < bgPack.LUM_MIN || b.lum > bgPack.LUM_MAX)
+      .map(b => b.id + '=' + b.lum).join(', '));
+
+  // 逐条再断言一次，防止 stats() 实现本身出错时守卫失效（双保险）
+  bgPack.BUILTIN.forEach(b => {
+    assert.strictEqual(typeof b.lum, 'number', b.id + ' 缺 lum');
+    assert.ok(b.lum >= bgPack.LUM_MIN && b.lum <= bgPack.LUM_MAX,
+      b.id + ' 亮度 ' + b.lum + ' 越界');
+  });
+
+  // 区间收敛还不够：60 张若全挤在同一亮度会看起来像同一张图，
+  // 所以要求既有足够跨度（层次），又不能出现极端离群（视觉突兀）。
+  assert.ok(s.lumMax - s.lumMin >= 20,
+    '亮度跨度仅 ' + (s.lumMax - s.lumMin).toFixed(1)
+    + '，60 张会显得像同一张图（色调映射应映射到区间而非固定值）');
+  assert.ok(s.lumAvg >= 55 && s.lumAvg <= 88,
+    '平均亮度 ' + s.lumAvg + ' 偏离深色区（应在 55~88）');
+});
+
 t('接线：风格/背景偏好持久化，但相册临时路径必须不落盘', () => {
   // tempFilePath 会被系统回收，存进 storage 下次启动就是坏图；
   // 这条锁住「只持久化 styleKey / bgPhotoId / photoMode」的取舍。
