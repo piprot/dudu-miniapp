@@ -13,7 +13,10 @@
 // ─────────────────────────────────────────────────────────────────────────
 'use strict';
 
+const { SEED_QUOTES } = require('./content_quotes');
+
 const KEY = 'dudu_quotes_v1';
+const SEED_FLAG_KEY = 'dudu_quotes_seeded_v1';
 
 function readAll() {
   try { return wx.getStorageSync(KEY) || []; } catch (e) { return []; }
@@ -118,8 +121,37 @@ function exportAll() {
   }).join('\n');
 }
 
+// 首次使用时注入种子金句（运营可用的「开箱即看」内容库）。
+// ⚠️ 幂等三道闸：
+//   ① flag 已置位 → 直接返回（老用户不会重复灌）
+//   ② 库非空 → 只置 flag，不覆盖用户自己收藏的内容
+//   ③ addQuote 内部按 text 去重 → 即便前两道失效也不会产生重复条目
+// 返回 { seeded: Boolean, count: Number }
+function seedIfEmpty() {
+  try {
+    if (wx.getStorageSync(SEED_FLAG_KEY)) return { seeded: false, count: 0 };
+    const list = readAll();
+    if (list.length) {
+      wx.setStorageSync(SEED_FLAG_KEY, 1);
+      return { seeded: false, count: 0 };
+    }
+    let n = 0;
+    SEED_QUOTES.forEach(q => {
+      // 用固定 id 前缀标记为种子条目，便于日后区分/清理
+      const item = addQuote({ text: q.text, tags: q.tags, source: '' });
+      if (item) { n++; }
+    });
+    wx.setStorageSync(SEED_FLAG_KEY, 1);
+    return { seeded: true, count: n };
+  } catch (e) {
+    return { seeded: false, count: 0 };
+  }
+}
+
 module.exports = {
   KEY,
+  SEED_FLAG_KEY,
   addQuote, getQuote, updateQuote, removeQuote,
-  listQuotes, searchQuotes, allTags, exportAll, normTags
+  listQuotes, searchQuotes, allTags, exportAll, normTags,
+  seedIfEmpty
 };

@@ -5,10 +5,13 @@
 const store = require('../../utils/quotes_store');
 const { renderCard, saveCanvas } = require('../../utils/quote_card_render');
 const { THEME_LIST } = require('../../utils/themes/index.js');
+const { pickDaily } = require('../../utils/daily_rotate');
+const { CATEGORY_NAMES } = require('../../utils/content_quotes');
+const cardStyle = require('../../utils/card_style_mixin');  // 排版风格 + 背景图（四页共用）
 const privacyPanel = require('../../utils/privacy_panel.js'); // 隐私授权面板：同意按钮须用 open-type=agreePrivacyAuthorization
 
 const __pageCfg = {
-  data: {
+  data: Object.assign({
     privacyShow: false,
     themes: THEME_LIST.map(t => ({ id: t.id, name: t.name, color: t.colors.primary })),
     theme: 'warm',
@@ -17,6 +20,9 @@ const __pageCfg = {
     count: 0,            // 收藏总数
     keyword: '',
     activeTag: '',
+    cats: Object.keys(CATEGORY_NAMES).map(k => ({ key: k, name: CATEGORY_NAMES[k] })),
+    activeCat: '',
+    todayPick: null,     // 今日推荐一条（天天换）
     showEditor: false,
     edit: { id: '', text: '', tags: '', source: '' },
     canvasH: 0,
@@ -24,30 +30,79 @@ const __pageCfg = {
     err: '',
     savedTick: 0,
     savedKey: ''
-  },
+  }, cardStyle.defaults('literary')),   // 金句卡默认文艺风
 
-  onLoad() { this.refresh(); },
+  onLoad() { this.initCardStyle('literary'); store.seedIfEmpty(); this.refresh(); },
   onShow() { this.refresh(); },
 
   // 从本地库刷新列表 + 标签云 + 总数
   refresh() {
     const list = store.searchQuotes({ keyword: this.data.keyword, tag: this.data.activeTag });
+    const all = store.listQuotes();
     this.setData({
       list,
       tags: store.allTags(),
-      count: store.listQuotes().length
+      count: all.length,
+      todayPick: this.pickToday(all)
+    });
+  },
+
+  // 「今日推荐」：按日期从全库里稳定轮换一条，同一天不变、跨天必变。
+  pickToday(all) {
+    const pool = (all && all.length) ? all : [];
+    if (!pool.length) return null;
+    const q = pickDaily(pool, new Date(), 'quotes:today');
+    return q ? { id: q.id, text: q.text, source: q.source || '' } : null;
+  },
+
+  // 分类筛选（life/love/work/time/growth/calm）：按 category 字段前缀过滤
+  onPickCat(e) {
+    const cat = e.currentTarget.dataset.cat;
+    this.setData({ activeCat: (this.data.activeCat === cat ? '' : cat) });
+    this.applyFilter();
+  },
+
+  // 分类是「种子文案专属」字段（id 以 q_seed_ 开头），用户自建条目不参与分类筛选
+  applyFilter() {
+    const cat = this.data.activeCat;
+    let list = store.searchQuotes({ keyword: this.data.keyword, tag: this.data.activeTag });
+    if (cat) list = list.filter(q => q.id && q.id.indexOf('q_seed_' + cat + '_') === 0);
+    this.setData({ list });
+  },
+
+  // 一键把今日推荐成卡
+  onMakeTodayCard() {
+    const t = this.data.todayPick;
+    if (!t) return;
+    this.renderQuote({ body: t.text, author: t.source || '金句收藏馆' });
+  },
+
+  // 金句卡统一渲染出口：注入风格 + 背景，并记录 _cardOpts 供切主题/改风格时原样重绘。
+  renderQuote(base) {
+    this._lastQuote = base;
+    const data = cardStyle.applyCardStyle(this, base);
+    this._cardOpts = { canvasId: '#quotesCanvas', type: 'quote', theme: this.data.theme, data };
+    const self = this;
+    this.setData({ err: '' });
+    return renderCard(this, {
+      canvasId: '#quotesCanvas',
+      type: 'quote',
+      theme: this.data.theme,
+      data
+    }).catch(err => {
+      self.setData({ err: (err && err.message) || '生成失败' });
     });
   },
 
   onSearch(e) {
     this.setData({ keyword: e.detail.value });
-    this.refresh();
+    this.applyFilter();
   },
 
   onPickTag(e) {
     const tag = e.currentTarget.dataset.tag;
     this.setData({ activeTag: (this.data.activeTag === tag ? '' : tag) });
-    this.refresh();
+    this.applyFilter();
   },
 
   // ── 编辑 / 新增 ──
@@ -110,16 +165,7 @@ const __pageCfg = {
     const id = e.currentTarget.dataset.id;
     const q = store.getQuote(id);
     if (!q) return;
-    const self = this;
-    this.setData({ err: '' });
-    renderCard(this, {
-      canvasId: '#quotesCanvas',
-      type: 'quote',
-      theme: this.data.theme,
-      data: { body: q.text, author: q.source || '金句收藏馆' }
-    }).catch(err => {
-      self.setData({ err: (err && err.message) || '生成失败' });
-    });
+    return this.renderQuote({ body: q.text, author: q.source || '金句收藏馆' });
   },
 
   onPickTheme(e) {
@@ -128,8 +174,8 @@ const __pageCfg = {
     this.setData({ theme: id });
     // 若已渲染，按新主题重绘当前内容（保留最近一次成卡文案）
     if (this._lastQuote) {
-      const self = this;
-      renderCard(this, { canvasId: '#quotesCanvas', type: 'quote', theme: id, data: this._lastQuote }).catch(() => {});
+      this._cardOpts = Object.assign({}, this._cardOpts, { theme: id });
+      renderCard(this, { canvasId: '#quotesCanvas', type: 'quote', theme: id, data: this._cardOpts.data }).catch(() => {});
     }
   },
 
@@ -160,14 +206,7 @@ const __pageCfg = {
   }
 };
 
-// 记住最近一次成卡文案，供切主题时重绘
-const _origMake = __pageCfg.onMakeCard;
-__pageCfg.onMakeCard = function (e) {
-  const id = e.currentTarget.dataset.id;
-  const q = store.getQuote(id);
-  if (q) this._lastQuote = { body: q.text, author: q.source || '金句收藏馆' };
-  return _origMake.call(this, e);
-};
-
+// 注入风格/背景交互（与天气/节气/台词书摘同一套）
+Object.assign(__pageCfg, cardStyle.cardStyleMethods);
 Object.assign(__pageCfg, privacyPanel.privacyPanelMethods);
 Page(__pageCfg);

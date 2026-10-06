@@ -19,6 +19,38 @@
     <input class="input" value="{{source}}" bindinput="onField" data-field="source" placeholder="如：《肖申克的救赎》/ 某某说" />
   </view>
 
+  <view class="block">
+    <view class="block-title">排版风格</view>
+    <view class="style-row">
+      <view wx:for="{{styleList}}" wx:key="id"
+        class="style-chip {{styleKey === item.id ? 'on' : ''}}"
+        bindtap="onPickStyle" data-key="{{item.id}}">{{item.name}}</view>
+    </view>
+    <view class="bg-hint">风格决定字体族（衬线/黑体/圆体/楷体）、字号、字距、对齐与装饰符号。全部使用系统字体，无需下载、不会闪烁。</view>
+  </view>
+
+  <view class="block">
+    <view class="block-title">背景图（可选）</view>
+    <view class="bg-row">
+      <view class="bg-ops">
+        <view class="bg-op" bindtap="onPickAlbumBg">🖼️ 从相册选</view>
+        <view wx:if="{{bgPhotoId || localBg}}" class="bg-op" bindtap="onClearPhoto">✕ 取消背景</view>
+      </view>
+      <view wx:if="{{bgPhotoId}}" class="bg-mode" bindtap="onShufflePhoto">🎲 换一张</view>
+    </view>
+    <scroll-view wx:if="{{!localBg}}" class="bg-scroll" scroll-x="true" show-scrollbar="{{false}}">
+      <view wx:for="{{photos}}" wx:key="id"
+        class="bg-item {{bgPhotoId === item.id ? 'on' : ''}}"
+        bindtap="onPickPhoto" data-id="{{item.id}}">
+        <image class="bg-thumb" src="{{item.url}}" mode="aspectFill" />
+      </view>
+    </scroll-view>
+    <view wx:if="{{localBg}}" class="bg-picked">已用相册图✓（你选的那张）</view>
+    <view wx:if="{{bgPhotoId}}" class="bg-mode" bindtap="onCyclePhotoMode">处理方式：{{photoModeLabel}} ▸ 点击切换</view>
+    <view wx:if="{{bgPhotoId}}" class="bg-credit">背景：{{bgAuthor}} · 来源 picsum（Unsplash）</view>
+    <view class="bg-hint">图库照片默认灰度衬底让文字更易读；加载失败会自动回退主题渐变，不影响出卡。</view>
+  </view>
+
   <button class="btn primary gen" bindtap="onGen">生成卡片</button>
 
   <view class="theme-row">

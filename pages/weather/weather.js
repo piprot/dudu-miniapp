@@ -1,10 +1,24 @@
 // pages/weather/weather.js —— 天气心情卡（2026-10-06 新增 · 免费本地工具，零 AI）
 // 参照「天气星语」剥离星座/占卜风险后的纯本地版本：天气 + 心情 → 图文卡。
-//   ① 选天气 ② 选心情 ③ 写一句（可选）④ 选本地图（可选）⑤ 一键成卡。
+//   ① 选天气 ② 选心情 ③ 选城市（可选）④ 写一句（可选）⑤ 选本地图（可选）⑥ 一键成卡。
 // 全程本地；不调用 utils/charge（个人主体合规）。
+//
+// 城市方案（2026-10-06 定案）：省市级联 picker 选到「市」+ 最近使用快捷区。
+//   不使用 wx.getLocation —— 它只回经纬度，拿不到城市名；变城市名必须走逆地理编码
+//   （联网 → 域名白名单+备案；或离线坐标库 → 包体爆炸），且属隐私敏感信息需声明。
+//   详见 utils/region_data.js 顶部说明。个人主体审核下这是合规最优解。
+//
+// 「天天换」实现：文案不写死，取自 utils/content_weather.js 的
+//   8 天气 × 8 心情 = 64 组合 × 4 变体 = 256 条静态文案，
+//   配合 utils/daily_rotate 按「日期 + 变体计数」轮换 → 同一天稳定、跨天必变、点「换一条」也变。
 const { renderCard, saveCanvas } = require('../../utils/quote_card_render');
 const { THEME_LIST } = require('../../utils/themes/index.js');
 const { handlePrivacyApiFail } = require('../../utils/diag.js');
+const { textFor, variantCount } = require('../../utils/content_weather');
+const { seedOf } = require('../../utils/daily_rotate');
+const region = require('../../utils/region_data');
+const regionStore = require('../../utils/region_store');
+const cardStyle = require('../../utils/card_style_mixin');  // 排版风格 + 背景图（四页共用）
 const privacyPanel = require('../../utils/privacy_panel.js');
 
 const WEATHER = [
@@ -31,7 +45,11 @@ const MOODS = [
 function nameOf(list, key) { const it = list.find(x => x.key === key); return it ? it.name : ''; }
 
 const __pageCfg = {
-  data: {
+  // 排版风格与背景图的字段由 card_style_mixin.defaults() 注入
+  // （与节气/金句/台词书摘四页共用同一份定义，改一处全站生效）。
+  // 用 Object.assign 而非对象展开：保持与本仓库其余代码一致，也避开
+  // 「开发者工具转 ES5 时对象展开降级」的不确定性。
+  data: Object.assign({
     privacyShow: false,
     themes: THEME_LIST.map(t => ({ id: t.id, name: t.name, color: t.colors.primary })),
     theme: 'warm',
@@ -41,17 +59,103 @@ const __pageCfg = {
     mood: 'happy',
     note: '',
     cover: '',
+    // 城市（纯本地静态列表选中，零网络零隐私接口）。
+    // provinceIdx/cityIdx 是 picker 的 range 索引；cityNames 是该省的市级列表。
+    provinceIdx: 0,
+    cityIdx: 0,
+    provinceNames: region.PROVINCE_NAMES,
+    cityNames: region.citiesOf(region.PROVINCE_NAMES[0]),
+    province: region.PROVINCE_NAMES[0],
+    city: '',
+    cityLabel: '',        // 成卡用的地点文案，如「江苏苏州」
+    recent: [],           // 最近使用过的城市（最多 6 个，点一下即选中）
+    // 「换一条」计数器：驱动同一天内的文案轮换（跨天由日期种子自动换）
+    variantTap: 0,
+    autoText: '',        // 当前自动文案（预览给用户看「这句是库里的」）
     canvasH: 0,
     rendered: false,
     err: '',
     savedTick: 0,
     savedKey: ''
+  }, cardStyle.defaults('literary')),
+
+  onLoad() {
+    this.initCardStyle('literary');
+    // 图库只取前 24 张（mixin 内已做）：横向滚动足够，占用也小
+    this.setData({ recent: regionStore.getRecent() });
+    this.restoreCity();
+  },
+
+  // 恢复上次选中的城市；没有或已失效（数据改名）则保持未选状态。
+  restoreCity() {
+    const saved = regionStore.getCity();
+    if (!saved) return;
+    const provinceIdx = region.PROVINCE_NAMES.indexOf(saved.province);
+    if (provinceIdx < 0) return;
+    const cityNames = region.citiesOf(saved.province);
+    const cityIdx = cityNames.indexOf(saved.city);
+    if (cityIdx < 0) return;
+    this.setData({
+      provinceIdx, cityIdx, cityNames,
+      province: saved.province,
+      city: saved.city,
+      cityLabel: region.shortName(saved.province, saved.city)
+    });
   },
 
   onPickWeather(e) { this.setData({ weather: e.currentTarget.dataset.key }); },
   onPickMood(e) { this.setData({ mood: e.currentTarget.dataset.key }); },
 
   onNote(e) { this.setData({ note: e.detail.value }); },
+
+  // 换省：重置市级列表并默认选中第一个市。
+  onProvinceChange(e) {
+    const provinceIdx = Number(e.detail.value) || 0;
+    const province = region.PROVINCE_NAMES[provinceIdx];
+    if (!province) return;
+    const cityNames = region.citiesOf(province);
+    this.setData({ provinceIdx, province, cityNames, cityIdx: 0, city: '' });
+  },
+
+  // 换市：立即落盘并记入「最近使用」。
+  onCityChange(e) {
+    const cityIdx = Number(e.detail.value) || 0;
+    const city = this.data.cityNames[cityIdx];
+    if (!city) return;
+    const province = this.data.province;
+    regionStore.setCity(province, city);
+    this.setData({
+      cityIdx,
+      city,
+      cityLabel: region.shortName(province, city),
+      recent: regionStore.getRecent()
+    });
+  },
+
+  // 点「最近使用」快捷条：直接跳到该城市并落盘。
+  onPickRecent(e) {
+    const province = e.currentTarget.dataset.province;
+    const city = e.currentTarget.dataset.city;
+    if (!region.isValid(province, city)) return;
+    const provinceIdx = region.PROVINCE_NAMES.indexOf(province);
+    const cityNames = region.citiesOf(province);
+    const cityIdx = cityNames.indexOf(city);
+    if (provinceIdx < 0 || cityIdx < 0) return;
+    regionStore.setCity(province, city);
+    this.setData({
+      provinceIdx, cityIdx, cityNames,
+      province, city,
+      cityLabel: region.shortName(province, city),
+      recent: regionStore.getRecent()
+    });
+  },
+
+  // 清空已选城市（回到「不标地点」状态）。
+  onClearCity() {
+    regionStore.clearCity();
+    this.setData({ city: '', cityLabel: '' });
+    wx.showToast({ title: '已取消地点标注', icon: 'none' });
+  },
 
   onChooseImage() {
     const self = this;
@@ -68,23 +172,61 @@ const __pageCfg = {
     });
   },
 
+  // ── 排版风格 / 背景图 的交互方法来自 cardStyle.cardStyleMethods ──
+  //   onPickStyle · onPickAlbumBg · onPickPhoto · onShufflePhoto
+  //   onCyclePhotoMode · onClearPhoto（页面底部统一 Object.assign 注入）
+  // 原因：节气 / 金句 / 台词书摘三页需要完全相同的一套，复制四份必然漂移。
+
+  // 从静态库取当前该显示的文案。
+  // 变体下标 = (日期种子 + 换一条点击次数) % 该组合条数
+  //   → 同一天进来是同一句（稳定，不会每次 onLoad 乱跳）
+  //   → 跨天自动换；点「换一条」在同一天内也能立刻换一句
+  currentAutoText() {
+    const { weather, mood, variantTap } = this.data;
+    const total = variantCount(weather, mood) || 0;
+    if (!total) return '';
+    const base = seedOf(new Date(), 'weather:' + weather + '|' + mood) % total;
+    const idx = (base + (Number(variantTap) || 0)) % total;
+    return textFor(weather, mood, idx) || '';
+  },
+
   onGen() {
     const wn = nameOf(WEATHER, this.data.weather);
     const mn = nameOf(MOODS, this.data.mood);
     const note = (this.data.note || '').trim();
-    const body = note || ('今天天气' + wn + '，心情' + mn + '。记录此刻，留下一点画面感。');
-    const title = wn + ' · ' + mn;
+    const locLabel = (this.data.cityLabel || '').trim();
+
+    // 优先级：用户手写 > 静态库自动文案（256 条轮换）> 兜底句
+    const auto = this.currentAutoText();
+    const body = note || auto || ('今天' + (locLabel ? '在' + locLabel + '，' : '') + '天气' + wn + '，心情' + mn + '。记录此刻，留下一点画面感。');
+    const title = (locLabel ? locLabel + ' · ' : '') + wn + ' · ' + mn;
     const hasCover = !!this.data.cover;
     const type = hasCover ? 'imagetext' : 'quote';
-    const data = hasCover
-      ? { cover: this.data.cover, title, body }
+    // 风格 + 背景由 card_style_mixin 组装（相册图优先于图库，都空则走主题渐变）。
+    const base = hasCover
+      ? Object.assign({ cover: this.data.cover }, { title, body })
       : { title, body };
+    const data = cardStyle.applyCardStyle(this, base);
     this._lastData = { type, theme: this.data.theme, data };
+    // 供 mixin.repaint 在风格/背景变化后原样重绘
+    this._cardOpts = { canvasId: '#weatherCanvas', type, theme: this.data.theme, data };
     const self = this;
-    this.setData({ err: '' });
+    this.setData({ err: '', autoText: note ? '' : auto });
     renderCard(this, { canvasId: '#weatherCanvas', type, theme: this.data.theme, data }).catch(err => {
       self.setData({ err: (err && err.message) || '生成失败' });
     });
+  },
+
+  // 「换一条」：在当前天气×心情组合内轮换下一句，并立即重绘预览。
+  onShuffle() {
+    const total = variantCount(this.data.weather, this.data.mood) || 0;
+    if (total <= 1) { wx.showToast({ title: '这个组合只有一条文案', icon: 'none' }); return; }
+    // 用户手写文案优先时不轮换（避免覆盖用户内容），先提示
+    if ((this.data.note || '').trim()) {
+      wx.showToast({ title: '你写了自定义文案，清空后才会换', icon: 'none', duration: 2200 });
+      return;
+    }
+    this.setData({ variantTap: (this.data.variantTap || 0) + 1 }, () => this.onGen());
   },
 
   onPickTheme(e) {
@@ -92,6 +234,7 @@ const __pageCfg = {
     if (!id || id === this.data.theme) return;
     this.setData({ theme: id });
     if (this._lastData) {
+      this._cardOpts = Object.assign({}, this._cardOpts, { theme: id });
       renderCard(this, { canvasId: '#weatherCanvas', type: this._lastData.type, theme: id, data: this._lastData.data }).catch(() => {});
     }
   },
@@ -122,5 +265,8 @@ const __pageCfg = {
   }
 };
 
+// 注入风格/背景交互（onPickStyle / onPickAlbumBg / onPickPhoto /
+//   onShufflePhoto / onCyclePhotoMode / onClearPhoto）
+Object.assign(__pageCfg, cardStyle.cardStyleMethods);
 Object.assign(__pageCfg, privacyPanel.privacyPanelMethods);
 Page(__pageCfg);

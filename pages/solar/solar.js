@@ -4,14 +4,16 @@
 //   ② 浏览 24 节气 / 常用节日，点任一条即预览成卡
 //   ③ 一键存金句馆
 // 纯静态本地数据（utils/solar_terms.js），零 AI、零网络（个人主体合规）。
-const { SOLAR_TERMS, FESTIVALS, pickForToday } = require('../../utils/solar_terms');
+const { SOLAR_TERMS, FESTIVALS, pickForToday, pickAnotherNormal } = require('../../utils/solar_terms');
 const { renderCard, saveCanvas } = require('../../utils/quote_card_render');
 const { addQuote } = require('../../utils/quotes_store');
 const { THEME_LIST } = require('../../utils/themes/index.js');
+const { dateLabelOf } = require('../../utils/daily_rotate');
+const cardStyle = require('../../utils/card_style_mixin');  // 排版风格 + 背景图（四页共用）
 const privacyPanel = require('../../utils/privacy_panel.js');
 
 const __pageCfg = {
-  data: {
+  data: Object.assign({
     privacyShow: false,
     themes: THEME_LIST.map(t => ({ id: t.id, name: t.name, color: t.colors.primary })),
     theme: 'warm',
@@ -20,14 +22,16 @@ const __pageCfg = {
     festivalList: FESTIVALS.map(t => ({ name: t.name, text: t.text, date: t.month + '/' + t.day })),
     tab: 'term',          // 'term' | 'festival'
     sel: { name: '', text: '' },
+    todayTap: 0,          // 「换一条」点击次数
     canvasH: 0,
     rendered: false,
     err: '',
     savedTick: 0,
     savedKey: ''
-  },
+  }, cardStyle.defaults('literary')),   // 日签气质默认文艺风
 
   onLoad() {
+    this.initCardStyle('literary');
     const t = pickForToday();
     this.setData({ today: t, sel: { name: t.name, text: t.text } });
   },
@@ -44,13 +48,29 @@ const __pageCfg = {
     this.preview(t.name, t.text);
   },
 
+  // 「换一条」：仅普通日可换（节气/节日是固定文案，换了就不应景了）。
+  // 每次点击 tap+1，并按新种子重新取一条，立即重绘预览。
+  onShuffleToday() {
+    if (this.data.today.type !== 'normal') {
+      wx.showToast({ title: '节气/节日文案固定，不可换', icon: 'none', duration: 2000 });
+      return;
+    }
+    const tap = (this.data.todayTap || 0) + 1;
+    const text = pickAnotherNormal(new Date(), tap);
+    this.setData({ todayTap: tap, today: Object.assign({}, this.data.today, { text }) }, () => {
+      this.preview(dateLabelOf(), text);
+    });
+  },
+
   preview(name, text) {
     if (!text) return;
     this.setData({ sel: { name, text } });
-    this._lastData = { type: 'dailysign', theme: this.data.theme, data: { title: name, body: text, author: 'dudu 画面感' } };
+    const data = cardStyle.applyCardStyle(this, { title: name, body: text, author: 'dudu 画面感' });
+    this._lastData = { type: 'dailysign', theme: this.data.theme, data };
+    this._cardOpts = { canvasId: '#solarCanvas', type: 'dailysign', theme: this.data.theme, data };
     const self = this;
     this.setData({ err: '' });
-    renderCard(this, { canvasId: '#solarCanvas', type: 'dailysign', theme: this.data.theme, data: this._lastData.data }).catch(err => {
+    renderCard(this, { canvasId: '#solarCanvas', type: 'dailysign', theme: this.data.theme, data }).catch(err => {
       self.setData({ err: (err && err.message) || '生成失败' });
     });
   },
@@ -74,6 +94,7 @@ const __pageCfg = {
     this.setData({ theme: id });
     if (this._lastData) {
       this._lastData.theme = id;
+      this._cardOpts = Object.assign({}, this._cardOpts, { theme: id });
       renderCard(this, { canvasId: '#solarCanvas', type: this._lastData.type, theme: id, data: this._lastData.data }).catch(() => {});
     }
   },
@@ -104,5 +125,7 @@ const __pageCfg = {
   }
 };
 
+// 注入风格/背景交互（与天气/金句/台词书摘同一套）
+Object.assign(__pageCfg, cardStyle.cardStyleMethods);
 Object.assign(__pageCfg, privacyPanel.privacyPanelMethods);
 Page(__pageCfg);

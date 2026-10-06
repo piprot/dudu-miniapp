@@ -25,10 +25,86 @@
   </view>
 
   <view class="block">
+    <view class="block-title">所在城市（可选）</view>
+
+    <view wx:if="{{recent.length}}" class="recent">
+      <view class="recent-label">最近用过</view>
+      <view class="recent-row">
+        <view wx:for="{{recent}}" wx:key="key"
+          class="chip {{city === item.city ? 'on' : ''}}"
+          bindtap="onPickRecent" data-province="{{item.province}}" data-city="{{item.city}}">{{item.city}}</view>
+      </view>
+    </view>
+
+    <view class="pick-row">
+      <picker class="pick-cell" mode="selector" range="{{provinceNames}}" value="{{provinceIdx}}" bindchange="onProvinceChange">
+        <view class="pick-face">
+          <text class="pick-cap">省 / 直辖市</text>
+          <text class="pick-val">{{province}}</text>
+        </view>
+      </picker>
+      <picker class="pick-cell" mode="selector" range="{{cityNames}}" value="{{cityIdx}}" bindchange="onCityChange">
+        <view class="pick-face">
+          <text class="pick-cap">市 / 区</text>
+          <text class="pick-val">{{cityNames[cityIdx]}}</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="loc-row">
+      <view class="loc-text">{{cityLabel ? '卡片将标注：' + cityLabel : '未选择城市，卡片不标地点'}}</view>
+      <button wx:if="{{cityLabel}}" class="btn ghost loc" bindtap="onClearCity">清除</button>
+    </view>
+    <view class="loc-hint">城市选择来自随包的省市静态表，只在本机使用，不联网、不采集你的位置信息；天气由你手动选择。</view>
+  </view>
+
+  <view class="block">
     <view class="block-title">写一句（可选）</view>
     <textarea class="ta" value="{{note}}" bindinput="onNote" placeholder="如：雨声里，把烦心事都冲走了" maxlength="-1" />
-    <button class="btn ghost pick" bindtap="onChooseImage">{{cover ? '重新选择图片' : '选择一张本地图（可选）'}}</button>
+    <view wx:if="{{!note && autoText}}" class="auto-preview">
+      <view class="auto-label">库里的今日文案</view>
+      <view class="auto-text">{{autoText}}</view>
+    </view>
+    <view class="btn-row">
+      <button class="btn ghost pick" bindtap="onChooseImage">{{cover ? '重新选择图片' : '选择一张本地图（可选）'}}</button>
+      <button class="btn ghost pick" bindtap="onShuffle">🔄 换一条</button>
+    </view>
     <view wx:if="{{cover}}" class="cover-mini">已选本地图片 ✓（不上传服务器）</view>
+  </view>
+
+  <!-- 排版风格 + 背景图：与节气/金句/台词书摘三页完全同一块（改一处全站生效） -->
+  <view class="block">
+    <view class="block-title">排版风格</view>
+    <view class="style-row">
+      <view wx:for="{{styleList}}" wx:key="id"
+        class="style-chip {{styleKey === item.id ? 'on' : ''}}"
+        bindtap="onPickStyle" data-key="{{item.id}}">{{item.name}}</view>
+    </view>
+    <view class="loc-hint">风格决定字体族（衬线/黑体/圆体/楷体）、字号、字距、对齐与装饰符号。全部使用系统字体，无需下载、不会闪烁。</view>
+  </view>
+
+  <view class="block">
+    <view class="block-title">背景图（可选）</view>
+    <view class="bg-row">
+      <view class="bg-ops">
+        <view class="bg-op" bindtap="onPickAlbumBg">🖼️ 从相册选</view>
+        <view wx:if="{{bgPhotoId || localBg}}" class="bg-op" bindtap="onClearPhoto">✕ 取消背景</view>
+      </view>
+      <view wx:if="{{bgPhotoId}}" class="bg-mode" bindtap="onShufflePhoto">🎲 换一张</view>
+    </view>
+    <scroll-view wx:if="{{!localBg}}" class="bg-scroll" scroll-x="true" show-scrollbar="{{false}}">
+      <view wx:for="{{photos}}" wx:key="id"
+        class="bg-item {{bgPhotoId === item.id ? 'on' : ''}}"
+        bindtap="onPickPhoto" data-id="{{item.id}}">
+        <image class="bg-thumb" src="{{item.url}}" mode="aspectFill" />
+      </view>
+    </scroll-view>
+    <view wx:if="{{localBg}}" class="bg-picked">已用相册图✓（你选的那张）</view>
+    <view wx:if="{{bgPhotoId}}" class="bg-mode" bindtap="onCyclePhotoMode">
+      处理方式：{{photoModeLabel}} ▸ 点击切换
+    </view>
+    <view wx:if="{{bgPhotoId}}" class="bg-credit">背景：{{bgAuthor}} · 来源 picsum（Unsplash）</view>
+    <view class="loc-hint">图库照片默认灰度衬底让文字更易读；加载失败会自动回退主题渐变，不影响出卡。</view>
   </view>
 
   <button class="btn primary gen" bindtap="onGen">生成卡片</button>

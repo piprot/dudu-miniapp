@@ -83,3 +83,39 @@ page {
   z-index: 5;
 }
 .tool-hint-drag { font-size: 22rpx; color: #b3a890; text-align: center; margin-top: 4rpx; }
+
+/* ── 卡片「排版风格 + 背景图」控件（2026-10-06 全局化）──
+   天气 / 节气 / 金句 / 台词书摘四页共用同一块 UI 与同一套状态
+   （utils/card_style_mixin.js）。放全局而非各自 wxss：四页 wxss 复制
+   必然漂移，且这组控件的属性名互不通用，不会误伤别的页面。 */
+.style-row { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.style-chip {
+  padding: 12rpx 28rpx; border-radius: 999rpx;
+  background: #f7f1e6; border: 1rpx solid var(--border);
+  font-size: 25rpx; color: var(--primary-deep);
+}
+.style-chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+.bg-row { display: flex; align-items: center; gap: 16rpx; margin-bottom: 14rpx; }
+.bg-mode { flex: 1; font-size: 23rpx; color: var(--primary-deep); }
+.bg-ops { display: flex; gap: 14rpx; flex: none; }
+.bg-op {
+  padding: 8rpx 18rpx; border-radius: 999rpx;
+  background: #f7f1e6; border: 1rpx solid var(--border);
+  font-size: 22rpx; color: var(--primary-deep);
+}
+.bg-scroll { white-space: nowrap; width: 100%; }
+.bg-item {
+  display: inline-block; width: 130rpx; height: 176rpx;
+  margin-right: 14rpx; border-radius: 12rpx; overflow: hidden;
+  border: 3rpx solid transparent; box-sizing: border-box; vertical-align: top;
+}
+.bg-item.on { border-color: var(--primary); }
+.bg-thumb { width: 100%; height: 100%; display: block; }
+.bg-credit { margin-top: 12rpx; font-size: 21rpx; color: var(--text-tertiary); line-height: 1.6; }
+.bg-picked { margin-top: 12rpx; font-size: 24rpx; color: var(--success); }
+.bg-hint { margin-top: 10rpx; font-size: 22rpx; color: var(--text-tertiary); line-height: 1.6; }
+
+/* 分组卡片容器：天气 / 节气 / 金句 / 台词书摘四页的「风格」「背景」等区块共用 */
+.block { background: var(--bg-card); border: 1rpx solid var(--border-soft); border-radius: var(--r-md); padding: 22rpx; margin-bottom: 20rpx; }
+.block-title { font-size: 26rpx; font-weight: 600; color: var(--text-title); margin-bottom: 16rpx; }

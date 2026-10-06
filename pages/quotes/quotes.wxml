@@ -8,6 +8,21 @@
     <input class="input" value="{{keyword}}" bindinput="onSearch" placeholder="搜索金句 / 出处 / 标签" />
   </view>
 
+  <!-- 今日推荐：按日期稳定轮换，同一天不变、跨天必变（运营「天天换」诉求） -->
+  <view class="today" wx:if="{{todayPick}}">
+    <view class="today-hd">
+      <view class="today-label">✨ 今日推荐</view>
+      <view class="mini gold" bindtap="onMakeTodayCard">🖼️ 成卡</view>
+    </view>
+    <view class="today-text">{{todayPick.text}}</view>
+  </view>
+
+  <view class="cats">
+    <view wx:for="{{cats}}" wx:key="key"
+      class="cat {{activeCat === item.key ? 'on' : ''}}"
+      bindtap="onPickCat" data-cat="{{item.key}}">{{item.name}}</view>
+  </view>
+
   <view class="tags" wx:if="{{tags.length}}">
     <view wx:for="{{tags}}" wx:key="tag"
       class="tag {{activeTag === item.tag ? 'on' : ''}}"
@@ -34,6 +49,38 @@
   </view>
 
   <button class="btn primary add" bindtap="onAdd">＋ 收藏金句</button>
+
+  <view class="block">
+    <view class="block-title">排版风格</view>
+    <view class="style-row">
+      <view wx:for="{{styleList}}" wx:key="id"
+        class="style-chip {{styleKey === item.id ? 'on' : ''}}"
+        bindtap="onPickStyle" data-key="{{item.id}}">{{item.name}}</view>
+    </view>
+    <view class="bg-hint">风格决定字体族（衬线/黑体/圆体/楷体）、字号、字距、对齐与装饰符号。全部使用系统字体，无需下载、不会闪烁。</view>
+  </view>
+
+  <view class="block">
+    <view class="block-title">背景图（可选）</view>
+    <view class="bg-row">
+      <view class="bg-ops">
+        <view class="bg-op" bindtap="onPickAlbumBg">🖼️ 从相册选</view>
+        <view wx:if="{{bgPhotoId || localBg}}" class="bg-op" bindtap="onClearPhoto">✕ 取消背景</view>
+      </view>
+      <view wx:if="{{bgPhotoId}}" class="bg-mode" bindtap="onShufflePhoto">🎲 换一张</view>
+    </view>
+    <scroll-view wx:if="{{!localBg}}" class="bg-scroll" scroll-x="true" show-scrollbar="{{false}}">
+      <view wx:for="{{photos}}" wx:key="id"
+        class="bg-item {{bgPhotoId === item.id ? 'on' : ''}}"
+        bindtap="onPickPhoto" data-id="{{item.id}}">
+        <image class="bg-thumb" src="{{item.url}}" mode="aspectFill" />
+      </view>
+    </scroll-view>
+    <view wx:if="{{localBg}}" class="bg-picked">已用相册图✓（你选的那张）</view>
+    <view wx:if="{{bgPhotoId}}" class="bg-mode" bindtap="onCyclePhotoMode">处理方式：{{photoModeLabel}} ▸ 点击切换</view>
+    <view wx:if="{{bgPhotoId}}" class="bg-credit">背景：{{bgAuthor}} · 来源 picsum（Unsplash）</view>
+    <view class="bg-hint">图库照片默认灰度衬底让文字更易读；加载失败会自动回退主题渐变，不影响出卡。</view>
+  </view>
 
   <!-- 主题选择（6 套数据化主题，渲染引擎自动读取配色） -->
   <view class="theme-row">

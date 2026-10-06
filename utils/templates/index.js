@@ -22,6 +22,7 @@
 'use strict';
 const { getTheme, palette } = require('../themes/index.js');
 const { wrapText, defaultMeasure } = require('../core/render_engine');
+const fontKit = require('../font_kit.js');
 
 const CARD_TYPES = {
   dailysign: { id: 'dailysign', name: '每日日签', scene: '早安/晚安心语', hasCover: false },
@@ -53,6 +54,29 @@ function buildCardModel(type, themeId, data, opts) {
   const children = [];
   let y = 0;
 
+  // ── 排版风格（2026-10-06）：字体族 × 字重 × 字距 × 对齐 × 装饰符号 ──
+  // data.styleKey 可传 'literary' | 'modern' | 'warm' | 'poster'。
+  // 不传则按type 取默认风格：日签/金句走文艺（居中+引号，承袭原日签气质），
+  // 其余保持原样（现代左对齐），确保向后兼容既有单测的排版断言。
+  const DEFAULT_STYLE = {
+    dailysign: 'literary',
+    quote: 'literary',
+    notice: 'modern',
+    recommend: 'modern',
+    checklist: 'modern',
+    imagetext: 'modern'
+  };
+  const styleId = d.styleKey || DEFAULT_STYLE[type] || 'literary';
+  const S = fontKit.styleOf(styleId);
+  // dailysign 的居中排版是它的识别特征，故只有它无条件走风格对齐；
+  // 其他类型仅当显式传了 styleKey 才应用风格（避免改变历史卡片观感）。
+  const styleOn = !!d.styleKey || type === 'dailysign';
+  const titleFont = styleOn ? fontKit.familyOf(S.titleFont) : font;
+  const bodyFont = styleOn ? fontKit.familyOf(S.bodyFont) : font;
+  const decoFont = styleOn ? fontKit.familyForRole('deco') : font;
+  const titleAlign = styleOn ? S.titleAlign : (type === 'dailysign' ? 'center' : 'left');
+  const bodyAlign = styleOn ? S.bodyAlign : 'left';
+
   const txt = (content, o) => children.push(Object.assign(
     { type: 'text', content: String(content == null ? '' : content), fontFamily: font }, o));
   const rect = (o) => children.push(Object.assign({ type: 'rect' }, o));
@@ -74,15 +98,21 @@ function buildCardModel(type, themeId, data, opts) {
   // ── 标题（公告卡带主色左竖条）──
   if (d.title) {
     const tw = type === 'notice' ? innerW - 14 : innerW;
-    const tLines = countLines(d.title, tw, 20, measure, 2);
-    if (type === 'notice') {
-      rect({ left: PAD, top: y + 3, width: 4, height: Math.min(tLines * 28 - 6, 50), background: p.primary });
-      txt(d.title, { left: PAD + 14, top: y, width: tw, color: ink, fontSize: 20, fontWeight: 'bold', lineHeight: 28, lineClamp: 2 });
+    const tFs = styleOn ? S.titleSize : 20;
+    const tLh = styleOn ? Math.round(tFs * 1.4) : 28;
+    const tLines = countLines(d.title, tw, tFs, measure, 2);
+    if (type === 'notice' || (styleOn && S.showBar)) {
+      rect({ left: PAD, top: y + 3, width: 4, height: Math.min(tLines * tLh - 6, 50), background: p.primary });
+      txt(d.title, { left: PAD + 14, top: y, width: tw, color: ink, fontSize: tFs, fontWeight: 'bold',
+        lineHeight: tLh, lineClamp: 2, fontFamily: titleFont,
+        letterSpacing: styleOn ? S.titleSpacing : 0, textAlign: 'left' });
     } else {
-      txt(d.title, { left: PAD, top: y, width: tw, color: ink, fontSize: 20, fontWeight: 'bold', lineHeight: 28, lineClamp: 2,
-        textAlign: type === 'dailysign' ? 'center' : 'left' });
+      txt(d.title, { left: PAD, top: y, width: tw, color: ink, fontSize: tFs, fontWeight: 'bold',
+        lineHeight: tLh, lineClamp: 2, fontFamily: titleFont,
+        letterSpacing: styleOn ? S.titleSpacing : 0,
+        textAlign: type === 'dailysign' && !styleOn ? 'center' : titleAlign });
     }
-    y += tLines * 28 + 10;
+    y += tLines * tLh + 10;
   }
 
   // ── 配图（统一 16:10 比例、圆角 12、底部渐晕、1px 内描边）──
@@ -96,20 +126,28 @@ function buildCardModel(type, themeId, data, opts) {
   }
 
   // ── 金句引导符（quote / dailysign 专属装饰）──
+  // 注意：风格声明 showDeco:false 时**不生成装饰节点**（否则会留一个 0px 的空块白占纵向空间）。
   const isQuote = (type === 'quote' || type === 'dailysign');
-  if (isQuote && d.body) {
-    txt('❝', { left: PAD, top: y, width: type === 'dailysign' ? innerW : 40, color: p.primary,
-      fontSize: 26, fontWeight: 'bold', lineHeight: 30, textAlign: type === 'dailysign' ? 'center' : 'left' });
-    y += 26;
+  const wantDeco = isQuote && !!d.body && !(styleOn && !S.showDeco);
+  if (wantDeco) {
+    const mark = styleOn ? S.deco : '❝';
+    const dSize = styleOn ? S.decoSize : 26;
+    const dLh = styleOn ? Math.round(dSize * 1.2) : 30;
+    txt(mark, { left: PAD, top: y, width: type === 'dailysign' ? innerW : 40, color: p.primary,
+      fontSize: dSize, fontWeight: 'bold', lineHeight: dLh,
+      fontFamily: decoFont,
+      textAlign: type === 'dailysign' ? 'center' : 'left' });
+    y += dLh;
   }
 
   // ── 正文（行距 1.7+）──
   if (d.body) {
-    const fs = isQuote ? 17 : (type === 'recommend' ? 15 : 14);
-    const lh = isQuote ? 30 : (type === 'recommend' ? 26 : 24);
+    const fs = styleOn ? S.bodySize : (isQuote ? 17 : (type === 'recommend' ? 15 : 14));
+    const lh = styleOn ? S.bodyLineHeight : (isQuote ? 30 : (type === 'recommend' ? 26 : 24));
     const clamp = isQuote ? 6 : 8;
     txt(d.body, { left: PAD, top: y, width: innerW, color: ink, fontSize: fs, lineHeight: lh, lineClamp: clamp,
-      textAlign: type === 'dailysign' ? 'center' : 'left' });
+      fontFamily: bodyFont, letterSpacing: styleOn ? S.bodySpacing : 0,
+      textAlign: type === 'dailysign' && !styleOn ? 'center' : bodyAlign });
     y += countLines(d.body, innerW, fs, measure, clamp) * lh + 12;
   }
 

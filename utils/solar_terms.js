@@ -5,8 +5,13 @@
 // 纯静态本地数据，零 AI、零网络（个人主体合规）。供「节气·今日文案」模块使用：
 //   pickForToday(date) 返回今日应景文案（优先命中节气，其次节日，再次普通日兜底）。
 //   节气按公历近似日期匹配（每年 ±1 天浮动，文案卡用途不需要天文级精度）。
+//
+// ⚠️ 2026-10-06：普通日兜底改为「每日轮换静态库」（见 content_daily），
+//    解决「天天打开是同一句话」的问题。
 // ─────────────────────────────────────────────────────────────────────────
 'use strict';
+
+const { pickDailyLine, pickSeasonLine, DAILY_LINES, pickDaily } = require('./content_daily');
 
 // 二十四节气（month/day 为公历近似日期）
 const SOLAR_TERMS = [
@@ -59,8 +64,13 @@ function dateLabelOf(d) {
   return (dt.getMonth() + 1) + '月' + dt.getDate() + '日 · 星期' + wk;
 }
 
-// 返回今日应景文案：节气 > 节日 > 普通日兜底。
-// 返回 { type:'term'|'festival'|'normal', name, text }
+// 返回今日应景文案：节气 > 节日 > 季节/时段 > 通用日常（全部静态库轮换）。
+// 返回 { type:'term'|'festival'|'season'|'normal', name, text }
+//
+// ⚠️ 2026-10-06 改造：原「普通日兜底」是一句写死的话 → 连续 300 多天看到同一句，
+//    运营明确要求「一定要天天换」。现改为：
+//      普通日 → content_daily.pickDailyLine()（时段 > 季节 > 通用三层，共 132 条静态文案）
+//      并额外返回一条「今日日常文案」供页面做「换一条」轮换。
 function pickForToday(date) {
   const d = date || new Date();
   const m = d.getMonth() + 1;
@@ -69,7 +79,18 @@ function pickForToday(date) {
   if (term) return { type: 'term', name: term.name + ' · 节气', text: term.text };
   const f = FESTIVALS.find(t => t.month === m && t.day === day);
   if (f) return { type: 'festival', name: f.name, text: f.text };
-  return { type: 'normal', name: dateLabelOf(d), text: '今天也是值得记录的一天。把此刻的心情，写成一张小卡，留给往后的自己。' };
+  // 普通日：走每日轮换库（时段 > 季节 > 通用）
+  const dl = pickDailyLine(d);
+  return { type: 'normal', name: dateLabelOf(d), text: dl.text, slot: dl.slot, season: dl.season };
 }
 
-module.exports = { SOLAR_TERMS, FESTIVALS, pickForToday, solarTerms: () => SOLAR_TERMS, festivals: () => FESTIVALS, dateLabelOf };
+// 「换一条」：在通用日常库里取另一句（供页面按钮调用）。
+// ⚠️ 不要用「日期 + N 天」的方式换句——那会随 tap 增长跨入别的月份/季节，
+//    导致 tap=1 和 tap=2 取到不同池子里的同一条（用户看到「没换」）。
+//    正确做法：固定同一天的池子，只让 tap 参与种子偏移。
+function pickAnotherNormal(date, tap) {
+  const d = date || new Date();
+  return pickDaily(DAILY_LINES, d, 'solar:normal:' + (Number(tap) || 0));
+}
+
+module.exports = { SOLAR_TERMS, FESTIVALS, pickForToday, pickAnotherNormal, solarTerms: () => SOLAR_TERMS, festivals: () => FESTIVALS, dateLabelOf };

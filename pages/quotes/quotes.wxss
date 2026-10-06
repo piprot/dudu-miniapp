@@ -24,6 +24,25 @@
 .tag.on { background: var(--primary); color: #fff; border-color: var(--primary); }
 .tag.clear { background: #f3ecdf; color: var(--text-tertiary); }
 
+/* 今日推荐：金色渐变突出「天天换」的入口 */
+.today {
+  background: linear-gradient(135deg, #fff8e8 0%, #ffeec9 100%);
+  border: 1rpx solid #f0dcb0; border-radius: var(--r-md);
+  padding: 22rpx; margin-bottom: 18rpx;
+}
+.today-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx; }
+.today-label { font-size: 25rpx; font-weight: 700; color: #8a6a2f; letter-spacing: 1rpx; }
+.today-text { font-size: 28rpx; color: var(--ink); line-height: 1.7; }
+.mini.gold { background: #8a6a2f; color: #fff; border-color: #8a6a2f; padding: 10rpx 22rpx; font-size: 23rpx; }
+
+/* 分类胶囊（种子文案专属：人生/情感/职场/时间/成长/心境） */
+.cats { display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 16rpx; }
+.cat {
+  font-size: 24rpx; color: var(--primary-deep); background: #fdf6ec;
+  border: 1rpx solid #f0e2c8; border-radius: var(--r-pill); padding: 9rpx 24rpx;
+}
+.cat.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+
 .stat { font-size: 23rpx; color: var(--text-tertiary); margin-bottom: 16rpx; }
 
 .list { display: flex; flex-direction: column; gap: 16rpx; margin-bottom: 22rpx; }

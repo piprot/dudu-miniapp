@@ -4,6 +4,7 @@
 // 全程本地；不调用 utils/charge（个人主体合规）。
 const { renderCard, saveCanvas } = require('../../utils/quote_card_render');
 const { THEME_LIST } = require('../../utils/themes/index.js');
+const cardStyle = require('../../utils/card_style_mixin');  // 排版风格 + 背景图（四页共用）
 const privacyPanel = require('../../utils/privacy_panel.js');
 
 const KINDS = [
@@ -14,7 +15,7 @@ const KINDS = [
 function kindName(k) { const it = KINDS.find(x => x.key === k); return it ? it.name : ''; }
 
 const __pageCfg = {
-  data: {
+  data: Object.assign({
     privacyShow: false,
     themes: THEME_LIST.map(t => ({ id: t.id, name: t.name, color: t.colors.primary })),
     theme: 'warm',
@@ -28,7 +29,9 @@ const __pageCfg = {
     err: '',
     savedTick: 0,
     savedKey: ''
-  },
+  }, cardStyle.defaults('literary')),   // 台词/书摘默认文艺风
+
+  onLoad() { this.initCardStyle('literary'); },
 
   onPickKind(e) { this.setData({ kind: e.currentTarget.dataset.key, kindLabel: kindName(e.currentTarget.dataset.key) }); },
 
@@ -41,8 +44,9 @@ const __pageCfg = {
     const text = (this.data.text || '').trim();
     if (!text) { wx.showToast({ title: '先粘贴一段台词或书摘', icon: 'none' }); return; }
     const author = (this.data.source || '').trim() || ('来自' + kindName(this.data.kind));
-    const data = { body: text, author };
+    const data = cardStyle.applyCardStyle(this, { body: text, author });
     this._lastData = { type: 'quote', theme: this.data.theme, data };
+    this._cardOpts = { canvasId: '#lineCanvas', type: 'quote', theme: this.data.theme, data };
     const self = this;
     this.setData({ err: '' });
     renderCard(this, { canvasId: '#lineCanvas', type: 'quote', theme: this.data.theme, data }).catch(err => {
@@ -56,6 +60,7 @@ const __pageCfg = {
     this.setData({ theme: id });
     if (this._lastData) {
       this._lastData.theme = id;
+      this._cardOpts = Object.assign({}, this._cardOpts, { theme: id });
       renderCard(this, { canvasId: '#lineCanvas', type: this._lastData.type, theme: id, data: this._lastData.data }).catch(() => {});
     }
   },
@@ -86,5 +91,7 @@ const __pageCfg = {
   }
 };
 
+// 注入风格/背景交互（与天气/节气/金句同一套）
+Object.assign(__pageCfg, cardStyle.cardStyleMethods);
 Object.assign(__pageCfg, privacyPanel.privacyPanelMethods);
 Page(__pageCfg);
