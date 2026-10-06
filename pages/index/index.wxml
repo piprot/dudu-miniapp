@@ -39,6 +39,11 @@
     </view>
     <view class="tool-hint-drag">长按工具卡可拖动排序 · 顺序自动记住</view>
   </view>
+
+  <!-- 「添加到我的小程序」入口：点一下弹引导，箭头指向右上角胶囊。
+       ⚠️ 微信小程序没有「一键添加」的 API（wx.addToFavorites 是小游戏 API，不适用），
+           只能引导用户点右上角 ··· → 收藏。详见 components/add-mine/index.js 注释。 -->
+  <add-mine id="cmpAddMine" show="{{addMineShow}}" text="收藏后可在「我的小程序」快速打开，下次不用再找" />
 </view>
 
   <!-- 隐私授权面板：同意按钮必须是 open-type="agreePrivacyAuthorization"，见组件注释 -->

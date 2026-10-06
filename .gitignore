@@ -13,6 +13,9 @@ _backup/
 *.log
 *.pyc
 
+# 本机私有路径配置（含绝对路径，绝不提交）
+test/local-paths.json
+
 # 系统 / 编辑器
 .DS_Store
 Thumbs.db

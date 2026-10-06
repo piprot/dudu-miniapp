@@ -1,0 +1,130 @@
+<view class="page">
+  <view class="hd">
+    <view class="hd-title">🌤️ 天气心情卡</view>
+    <view class="hd-sub">天气 + 心情 → 图文卡（纯本地，零 AI · 已去除星座占卜风险）</view>
+  </view>
+
+  <!-- 分层选择：大类（天气/心情）→ 小类（具体项），常用前置。
+     旧版是 8 天气格子 + 8 心情格子一次性铺开（16 个选项墙），已改为下钻式。 -->
+  <view class="picker">
+    <view wx:if="{{pgHot.length}}" class="pg-row">
+      <view class="pg-cap">常用</view>
+      <view class="pg-hot">
+        <view wx:for="{{pgHot}}" wx:key="groupKey"
+          class="pg-hot-chip {{pgGroup === item.groupKey && pgItem === item.key ? 'on' : ''}}"
+          bindtap="onPickHot" data-group="{{item.groupKey}}" data-item="{{item.key}}">
+          <text wx:if="{{item.icon}}" class="pg-ico">{{item.icon}}</text>{{item.name}}
+        </view>
+      </view>
+    </view>
+
+    <view class="pg-row">
+      <view class="pg-cap">{{groupLabel}}</view>
+      <scroll-view class="pg-scroll" scroll-x="true" show-scrollbar="{{false}}">
+        <view wx:for="{{pgGroups}}" wx:key="key"
+          class="pg-chip {{pgGroup === item.key ? 'on' : ''}}"
+          bindtap="onPickGroup" data-group="{{item.key}}">
+          <text wx:if="{{item.hot}}" class="pg-dot"></text>{{item.name}}
+        </view>
+      </scroll-view>
+    </view>
+
+    <view class="pg-row" wx:if="{{pgGroupOpen && pgItems.length}}">
+      <view class="pg-cap">{{itemLabel}}<text class="pg-cap-sub">· {{pgGroupName}}</text></view>
+      <view class="pg-items">
+        <view wx:for="{{pgItems}}" wx:key="key"
+          class="pg-item pg-item-ico {{pgItem === item.key ? 'on' : ''}}"
+          bindtap="onPickGroupItem" data-group="{{pgGroup}}" data-item="{{item.key}}">
+          <text wx:if="{{item.icon}}" class="pg-ico">{{item.icon}}</text>{{item.name}}
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 当前组合回显：让用户一眼看到「现在是 晴 + 开心」，不必在小类里逐个确认 -->
+  <view class="combo">
+    <text class="combo-ico">{{pgGroup === 'm' ? moodEmoji : weatherEmoji}}</text>
+    <text class="combo-txt">{{pgGroup === 'm' ? moodName : weatherName}}</text>
+    <text class="combo-sep">·</text>
+    <text class="combo-txt">{{pgGroup === 'm' ? weatherName : moodName}}</text>
+  </view>
+
+  <view class="block">
+    <view class="block-title">所在城市（可选）</view>
+
+    <view wx:if="{{recent.length}}" class="recent">
+      <view class="recent-label">最近用过</view>
+      <view class="recent-row">
+        <view wx:for="{{recent}}" wx:key="key"
+          class="chip {{city === item.city ? 'on' : ''}}"
+          bindtap="onPickRecent" data-province="{{item.province}}" data-city="{{item.city}}">{{item.city}}</view>
+      </view>
+    </view>
+
+    <view class="pick-row">
+      <picker class="pick-cell" mode="selector" range="{{provinceNames}}" value="{{provinceIdx}}" bindchange="onProvinceChange">
+        <view class="pick-face">
+          <text class="pick-cap">省 / 直辖市</text>
+          <text class="pick-val">{{province}}</text>
+        </view>
+      </picker>
+      <picker class="pick-cell" mode="selector" range="{{cityNames}}" value="{{cityIdx}}" bindchange="onCityChange">
+        <view class="pick-face">
+          <text class="pick-cap">市 / 区</text>
+          <text class="pick-val">{{cityNames[cityIdx]}}</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="loc-row">
+      <view class="loc-text">{{cityLabel ? '卡片将标注：' + cityLabel : '未选择城市，卡片不标地点'}}</view>
+      <button wx:if="{{cityLabel}}" class="btn ghost loc" bindtap="onClearCity">清除</button>
+    </view>
+    <view class="loc-hint">城市选择来自随包的省市静态表，只在本机使用，不联网、不采集你的位置信息；天气由你手动选择。</view>
+  </view>
+
+  <!-- 写一句（可选） -->
+  <view class="block">
+    <view class="block-title">写一句（可选）</view>
+    <textarea class="ta" value="{{note}}" bindinput="onNote" placeholder="如：雨声里，把烦心事都冲走了" maxlength="-1" />
+    <view wx:if="{{!note && autoText}}" class="auto-preview">
+      <view class="auto-label">库里的今日文案</view>
+      <view class="auto-text">{{autoText}}</view>
+    </view>
+    <view class="btn-row">
+      <button class="btn ghost pick" bindtap="onChooseImage">{{cover ? '重新选择图片' : '选择一张本地图（可选）'}}</button>
+      <button class="btn ghost pick" bindtap="onShuffle">🔄 换一条</button>
+    </view>
+    <view wx:if="{{cover}}" class="cover-mini">已选本地图片 ✓（不上传服务器）</view>
+  </view>
+
+  <!-- 主行动按钮：紧跟内容区。
+       旧序把「生成卡片」夹在 4 个配置 block 之后，用户改完要往上翻才找得到提交键
+       —— 这是 2026-10-06 用户反馈「排版太有问题」里最实质的一条。 -->
+  <button class="btn primary gen" bindtap="onGen">生成卡片</button>
+
+  <view class="canvas-wrap">
+    <canvas type="2d" id="weatherCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
+    <view wx:if="{{!rendered}}" class="canvas-ph">点「生成卡片」后，预览显示在这里</view>
+    <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
+  </view>
+
+  <!-- 出图设置：默认收起的折叠区（排版风格 / 背景图 / 主题配色）。
+       四页共用 components/card-config，结构只此一份；默认收起是刻意的
+       渐进披露——出图是主任务，调字号配色是次要动作，不该占首屏。 -->
+  <card-config
+    style-list="{{styleList}}" style-key="{{styleKey}}"
+    style-hint="风格决定字体族、字号、字距、对齐与装饰符号。全部用系统字体，不下载、不闪烁。"
+    builtin-photos="{{builtinPhotos}}" bg-source="{{bgSource}}" bg-photo-id="{{bgPhotoId}}"
+    local-bg="{{localBg}}" photo-mode-label="{{photoModeLabel}}" bg-author="{{bgAuthor}}"
+    bg-hint="内置 60 张随包压缩，不走网络、不需服务器域名白名单，永远可用。"
+    themes="{{themes}}" theme="{{theme}}"
+    bind:style="onPickStyle" bind:builtin="onPickBuiltinBg" bind:album="onPickAlbumBg"
+    bind:clearphoto="onClearPhoto" bind:shufflephoto="onShufflePhoto"
+    bind:cyclemode="onCyclePhotoMode" bind:theme="onPickTheme" />
+
+  <view class="err" wx:if="{{err}}">{{err}}</view>
+  <view class="tip">图片只存在你手机本地，不会上传任何服务器。</view>
+</view>
+
+<privacy-panel privacy-show="{{privacyShow}}" />

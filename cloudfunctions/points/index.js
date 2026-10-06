@@ -60,7 +60,14 @@ const GEN_COST = {
   optFormat: 2,      // 排版优化（防折叠/加 emoji/分段，每次应用）
   comicGen: 20,      // 分镜编辑器·生成分镜
   cardGen: 20,       // 卡片制作·生成卡片
-  posterGen: 20      // 海报长图·生成海报
+  posterGen: 20,     // 海报长图·生成海报
+  // 5 个合规模块（2026-10-06 用户拍板启用积分，此前为纯本地免费）
+  // ⚠️ 必须与 utils/config.js POINTS.cost 的同名档位**同值**，否则 spend 拒单。
+  quoteCard: 5,      // 金句收藏馆·成卡
+  sparkCard: 5,      // 每日一句·成卡
+  weatherCard: 5,    // 天气心情卡·成卡
+  solarCard: 5,      // 节气文案·成卡
+  lineCard: 5        // 台词书摘卡·成卡
 };
 
 const DAY_MS = 86400000;

@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "dudu画面感内容工具",
   "usingComponents": {
-    "privacy-panel": "../../components/privacy-panel/index"
+    "privacy-panel": "../../components/privacy-panel/index",
+    "add-mine": "../../components/add-mine/index"
   }
 }

@@ -1,0 +1,71 @@
+/* pages/line/line.wxss —— 台词 / 书摘卡
+   ⚠️ 本文件是 2026-10-06 补建的：check_audit_redlines 的 R6 规则要求每个页面
+      都必须有 .wxss（否则提审会被拦），此前本页漏建导致闸门红。
+      样式全部复用 app.wxss 的设计令牌，不新增硬编码色值。 */
+.page {
+  min-height: 100vh;
+  background: var(--bg-page);
+  padding: 28rpx 30rpx 64rpx;
+  box-sizing: border-box;
+}
+.hd { padding-bottom: 18rpx; margin-bottom: 22rpx; border-bottom: 3rpx solid var(--primary); }
+.hd-title { font-size: 40rpx; font-weight: 700; color: var(--ink); letter-spacing: 1rpx; }
+.hd-sub { font-size: 24rpx; color: var(--text-sub); margin-top: 10rpx; line-height: 1.5; }
+
+/* 类型切换：台词 / 书摘 / 名言 */
+.kinds { display: flex; gap: 14rpx; margin-bottom: 22rpx; }
+.kind {
+  flex: 1; text-align: center;
+  font-size: 26rpx; color: var(--text-body); background: var(--bg-soft);
+  border: 2rpx solid var(--border); border-radius: var(--r-md); padding: 16rpx 0;
+}
+.kind.on { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 600; }
+
+.field { margin-bottom: 20rpx; }
+.label { font-size: 25rpx; font-weight: 600; color: var(--text-title); margin-bottom: 10rpx; }
+.input, .ta {
+  width: 100%; box-sizing: border-box; background: var(--bg-card);
+  border: 1rpx solid var(--border); border-radius: 14rpx; padding: 18rpx 20rpx;
+  font-size: 27rpx; line-height: 1.6; color: var(--ink);
+}
+.ta { min-height: 150rpx; }
+
+.btn { font-size: 28rpx; color: var(--text-body); background: var(--bg-surface-4); border-radius: 14rpx; padding: 18rpx 0; line-height: 1.4; margin: 0; }
+.btn.ghost { flex: none; padding: 14rpx 30rpx; font-size: 25rpx; background: var(--bg-surface-1); color: var(--primary-deep); border: 1rpx solid var(--border); }
+.btn.primary { background: var(--primary); color: #fff; font-weight: 600; }
+.btn.gen { width: 100%; margin-top: 4rpx; }
+
+/* 今日台词：库内轮换一条（同一天稳定、跨天必变） */
+.today {
+  background: var(--bg-card); border: 1rpx solid var(--border-soft);
+  border-radius: var(--r-md); padding: 22rpx; margin-bottom: 20rpx;
+}
+.today-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx; }
+.today-label { font-size: 25rpx; font-weight: 600; color: var(--text-title); }
+.today-text { font-size: 28rpx; color: var(--ink); line-height: 1.7; }
+.btn-row { display: flex; gap: 14rpx; margin-top: 16rpx; }
+.btn-row .btn { flex: 1; }
+
+.theme-row { display: flex; flex-wrap: wrap; gap: 14rpx; margin: 22rpx 0 6rpx; }
+.theme-chip {
+  display: flex; align-items: center; gap: 8rpx;
+  font-size: 24rpx; color: #6b5636; background: var(--bg-surface-1);
+  border: 2rpx solid var(--bg-surface-5); border-radius: 24rpx; padding: 10rpx 22rpx;
+}
+.theme-chip .dot { width: 16rpx; height: 16rpx; border-radius: 50%; }
+.theme-chip.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+.theme-chip.on .dot { box-shadow: 0 0 0 2rpx rgba(255, 255, 255, 0.65); }
+
+.canvas-wrap { margin-top: 22rpx; background: var(--bg-card); border: 1rpx solid var(--border-soft); border-radius: 20rpx; padding: 16rpx; }
+.canvas { width: 100%; background: var(--bg-page); border-radius: 14rpx; display: block; }
+.canvas-ph { font-size: 24rpx; color: var(--text-tertiary); text-align: center; padding: 48rpx 0; }
+.btn.save { flex: none; margin-top: 22rpx; padding: 18rpx 64rpx; }
+.err { margin-top: 16rpx; font-size: 24rpx; color: var(--danger); line-height: 1.6; }
+.tip { margin-top: 22rpx; font-size: 22rpx; color: var(--text-tertiary); line-height: 1.6; text-align: center; }
+
+/* ── 合并说明条 + 双按钮（2026-10-06 金句馆合并后新增）────────────── */
+.merge-tip { display: flex; align-items: center; justify-content: space-between; background: var(--bg-soft); border: 1rpx solid var(--border-soft); border-radius: 14rpx; padding: 16rpx 20rpx; margin-bottom: 20rpx; }
+.merge-txt { font-size: 22rpx; color: var(--text-sub); flex: 1; }
+.merge-go { font-size: 22rpx; color: var(--primary-deep); font-weight: 600; flex: none; }
+.gen-acts { display: flex; gap: 14rpx; }
+.gen-acts .half { flex: 1; }

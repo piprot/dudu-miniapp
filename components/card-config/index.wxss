@@ -1,0 +1,49 @@
+/* components/card-config/index.wxss */
+/* 折叠头 */
+.cc {
+  background: var(--bg-card);
+  border: 1rpx solid var(--border-soft);
+  border-radius: var(--r-md);
+  margin-bottom: 20rpx;
+  overflow: hidden;
+}
+.cc-head {
+  display: flex; align-items: center;
+  padding: 22rpx;
+}
+.cc-head-t {
+  font-size: 26rpx; font-weight: 500; color: var(--text-title);
+  flex: none; margin-right: 14rpx;
+}
+.cc-head-s {
+  font-size: 21rpx; color: var(--text-tertiary);
+  flex: 1; line-height: 1.4;
+}
+/* 箭头：纯 CSS 三角 + 旋转，不依赖图片资源 */
+.cc-caret {
+  flex: none;
+  width: 12rpx; height: 12rpx;
+  margin-left: 12rpx;
+  border-right: 3rpx solid var(--text-tertiary);
+  border-bottom: 3rpx solid var(--text-tertiary);
+  transform: rotate(45deg);
+  transition: transform 0.2s ease;
+}
+.cc-caret.up { transform: rotate(-135deg); }
+
+/* 展开体：用 padding 动画而非 max-height —— max-height 过渡需要猜高度，
+   会得到「先快后慢」的假动画（流体交互库铁律同源：能量要交出去，不是演出来） */
+.cc-body {
+  padding: 0 22rpx 22rpx;
+  border-top: 1rpx solid var(--border-soft);
+}
+.cc-sec { padding-top: 20rpx; }
+.cc-sec + .cc-sec { margin-top: 4rpx; }
+.cc-sec-t {
+  font-size: 24rpx; color: var(--text-body);
+  font-weight: 500; margin-bottom: 14rpx;
+}
+.cc-hint {
+  font-size: 21rpx; color: var(--text-tertiary);
+  line-height: 1.6; margin-top: 12rpx;
+}

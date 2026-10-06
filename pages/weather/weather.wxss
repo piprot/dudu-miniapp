@@ -1,0 +1,85 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg-page);
+  padding: 28rpx 30rpx 64rpx;
+  box-sizing: border-box;
+}
+.hd { padding-bottom: 18rpx; margin-bottom: 22rpx; border-bottom: 3rpx solid var(--primary); }
+.hd-title { font-size: 40rpx; font-weight: 700; color: var(--ink); letter-spacing: 1rpx; }
+.hd-sub { font-size: 24rpx; color: var(--text-sub); margin-top: 10rpx; line-height: 1.5; }
+
+/* .block / .block-title 已全局化到 app.wxss（四页共用），本页不再重复定义 */
+
+.grid { display: flex; flex-wrap: wrap; gap: 14rpx; }
+.cell {
+  width: calc((100% - 70rpx) / 4);
+  box-sizing: border-box;
+  background: var(--bg-soft); border: 2rpx solid var(--border); border-radius: 14rpx;
+  padding: 16rpx 0; text-align: center;
+}
+.cell.on { background: linear-gradient(135deg, var(--bg-surface-3) 0%, var(--bg-surface-3) 100%); border-color: var(--primary); }
+.cell-ico { font-size: 40rpx; line-height: 1.1; }
+.cell-name { font-size: 23rpx; color: var(--text-body); margin-top: 6rpx; }
+
+.ta { width: 100%; box-sizing: border-box; background: var(--bg-card); border: 1rpx solid var(--border); border-radius: 14rpx; padding: 18rpx 20rpx; font-size: 27rpx; line-height: 1.6; color: var(--ink); min-height: 120rpx; }
+.btn { font-size: 28rpx; color: var(--text-body); background: var(--bg-surface-4); border-radius: 14rpx; padding: 18rpx 0; line-height: 1.4; margin: 0; }
+.btn.ghost { flex: none; padding: 14rpx 30rpx; font-size: 25rpx; background: var(--bg-surface-1); color: var(--primary-deep); border: 1rpx solid var(--border); }
+.btn.pick { margin-top: 14rpx; }
+.btn-row { display: flex; gap: 16rpx; margin-top: 14rpx; }
+.btn-row .pick { margin-top: 0; flex: 1; }
+/* 静态库自动文案预览：让用户知道「不写也有内容」，且可一键换 */
+.auto-preview {
+  margin-top: 14rpx; padding: 18rpx 20rpx;
+  background: #fdf8ef; border: 1rpx dashed #e8d9bd; border-radius: 14rpx;
+}
+.auto-label { font-size: 21rpx; color: #a08a5f; margin-bottom: 8rpx; }
+.auto-text { font-size: 25rpx; color: var(--text-body); line-height: 1.65; }
+.btn.primary { background: var(--primary); color: #fff; font-weight: 600; }
+.btn.gen { width: 100%; margin-top: 4rpx; }
+.cover-mini { font-size: 22rpx; color: var(--success); margin-top: 10rpx; }
+
+/* 城市：最近使用快捷条 + 省/市级联 picker + 已选说明 */
+.recent { margin-bottom: 18rpx; }
+.recent-label { font-size: 22rpx; color: var(--text-tertiary); margin-bottom: 12rpx; }
+.recent-row { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.chip {
+  padding: 10rpx 22rpx; border-radius: 999rpx;
+  background: var(--bg-surface-1); border: 1rpx solid var(--border);
+  font-size: 24rpx; color: var(--primary-deep);
+}
+.chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+.pick-row { display: flex; gap: 16rpx; }
+.pick-cell { flex: 1; min-width: 0; }
+.pick-face {
+  display: flex; flex-direction: column; gap: 6rpx;
+  background: var(--bg-card); border: 1rpx solid var(--border); border-radius: 14rpx;
+  padding: 14rpx 20rpx;
+}
+.pick-cap { font-size: 21rpx; color: var(--text-tertiary); }
+.pick-val { font-size: 27rpx; color: var(--ink); }
+
+.loc-row { display: flex; align-items: center; gap: 16rpx; margin-top: 16rpx; }
+.btn.loc { flex: none; padding: 10rpx 24rpx; font-size: 23rpx; }
+.loc-text { flex: 1; font-size: 25rpx; color: var(--text-body); line-height: 1.4; word-break: break-all; }
+.loc-hint { margin-top: 10rpx; font-size: 22rpx; color: var(--text-tertiary); line-height: 1.6; }
+
+/* 排版风格胶囊 .style-* 与背景图库 .bg-* 已全局化到 app.wxss（四页共用），
+   本页不再重复定义，避免与全局版本漂移。 */
+
+.theme-row { display: flex; flex-wrap: wrap; gap: 14rpx; margin: 22rpx 0 6rpx; }
+.theme-chip {
+  display: flex; align-items: center; gap: 8rpx;
+  font-size: 24rpx; color: #6b5636; background: var(--bg-surface-1);
+  border: 2rpx solid var(--bg-surface-5); border-radius: 24rpx; padding: 10rpx 22rpx;
+}
+.theme-chip .dot { width: 16rpx; height: 16rpx; border-radius: 50%; }
+.theme-chip.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+.theme-chip.on .dot { box-shadow: 0 0 0 2rpx rgba(255, 255, 255, 0.65); }
+
+.canvas-wrap { margin-top: 22rpx; background: var(--bg-card); border: 1rpx solid var(--border-soft); border-radius: 20rpx; padding: 16rpx; }
+.canvas { width: 100%; background: var(--bg-page); border-radius: 14rpx; display: block; }
+.canvas-ph { font-size: 24rpx; color: #b3a890; text-align: center; padding: 48rpx 0; }
+.btn.save { flex: none; margin-top: 22rpx; padding: 18rpx 64rpx; }
+.err { margin-top: 16rpx; font-size: 24rpx; color: var(--danger); line-height: 1.6; }
+.tip { margin-top: 22rpx; font-size: 22rpx; color: var(--text-tertiary); line-height: 1.6; text-align: center; }

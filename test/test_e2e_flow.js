@@ -246,7 +246,11 @@ process.env.LLM_MODEL = 'ep-e2e-test';
 process.env.LLM_BASE_URL = ARK_BASE;
 
 const CF = (n) => require(path.join(__dirname, '..', 'cloudfunctions', n, 'index.js'));
-const aiGen = require(path.join(__dirname, '..', '..', 'h5_backend', 'ai_gen', 'index.js')); // 2026-09-30：ai_gen 已移出 cloudfunctions/（H5 专用后端）
+// 2026-09-30：ai_gen 已移出 cloudfunctions/（H5 专用后端）。
+// 2026-10-06：改用 test/h5_backend_path.js 统一探测，缺依赖时显式 SKIP 而非 MODULE_NOT_FOUND 假红。
+const { requireAiGen, warnIfMissing } = require('./h5_backend_path');
+const SKIP = warnIfMissing('test_e2e_flow');
+const aiGen = SKIP ? null : requireAiGen();
 const pointsFn = CF('points');
 const createOrder = CF('vp_create_order');
 const deliver = CF('vp_deliver');
@@ -526,6 +530,14 @@ const errCode = (r) => (/<ErrCode>(\d+)<\/ErrCode>/.exec((r && r.body) || '') ||
     const bad = UNIVERSE.orders.filter(o => o.status !== 'delivered' && o.productId !== 'points_800');
     assert.strictEqual(bad.length, 0, '不应有遗留 pending 订单: ' + JSON.stringify(bad.map(o => o.outTradeNo)));
   });
+
+  // 2026-10-06：h5_backend 缺失时显式 SKIP（exitCode=0 + SKIP 字样），
+  //   避免 run_all 把「执行异常」误标成 ✓。
+  if (SKIP) {
+    console.log('\n════════ 结果：SKIP（未找到 h5_backend/ai_gen/index.js）════════');
+    process.exitCode = 0;
+    return;
+  }
 
   console.log('\n════════ 结果：' + pass + ' PASS / ' + fail + ' FAIL ════════');
   process.exitCode = fail ? 1 : 0;

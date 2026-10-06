@@ -1,0 +1,84 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg-page);
+  padding: 28rpx 30rpx 64rpx;
+  box-sizing: border-box;
+}
+.hd { padding-bottom: 18rpx; margin-bottom: 22rpx; border-bottom: 3rpx solid var(--primary); }
+.hd-title { font-size: 40rpx; font-weight: 700; color: var(--ink); letter-spacing: 1rpx; }
+.hd-sub { font-size: 24rpx; color: var(--text-sub); margin-top: 10rpx; line-height: 1.5; }
+
+.today-card { background: var(--bg-card); border: 1rpx solid var(--border-soft); border-radius: var(--r-lg); padding: 28rpx; margin-bottom: 22rpx; }
+.today-badge { display: inline-block; font-size: 24rpx; font-weight: 600; color: #fff; background: var(--primary); border-radius: var(--r-pill); padding: 8rpx 22rpx; margin-bottom: 16rpx; }
+.today-text { font-size: 30rpx; color: var(--ink); line-height: 1.7; }
+.today-acts { display: flex; gap: 14rpx; margin-top: 20rpx; }
+.today-acts .btn { flex: 1; }
+
+.tabs { display: flex; gap: 14rpx; margin-bottom: 18rpx; }
+.tab { flex: 1; text-align: center; font-size: 26rpx; color: var(--text-body); background: var(--bg-card); border: 2rpx solid var(--border); border-radius: 14rpx; padding: 16rpx 0; }
+.tab.on { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 600; }
+
+.list { display: flex; flex-direction: column; gap: 14rpx; margin-bottom: 22rpx; }
+.item { background: var(--bg-card); border: 1rpx solid var(--border-soft); border-radius: var(--r-md); padding: 20rpx 22rpx; }
+.item-name { font-size: 28rpx; font-weight: 700; color: var(--text-title); }
+.item-date { font-size: 21rpx; color: var(--text-tertiary); margin: 4rpx 0 10rpx; }
+.item-text { font-size: 25rpx; color: var(--text-body); line-height: 1.6; }
+
+.btn { font-size: 26rpx; color: var(--text-body); background: var(--bg-surface-4); border-radius: 14rpx; padding: 18rpx 0; line-height: 1.4; margin: 0; }
+.btn.ghost { font-size: 25rpx; background: var(--bg-surface-1); color: var(--primary-deep); border: 1rpx solid var(--border); }
+.btn.primary { background: var(--primary); color: #fff; font-weight: 600; }
+
+.theme-row { display: flex; flex-wrap: wrap; gap: 14rpx; margin: 18rpx 0 6rpx; }
+.theme-chip {
+  display: flex; align-items: center; gap: 8rpx;
+  font-size: 24rpx; color: #6b5636; background: var(--bg-surface-1);
+  border: 2rpx solid var(--bg-surface-5); border-radius: 24rpx; padding: 10rpx 22rpx;
+}
+.theme-chip .dot { width: 16rpx; height: 16rpx; border-radius: 50%; }
+.theme-chip.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+.theme-chip.on .dot { box-shadow: 0 0 0 2rpx rgba(255, 255, 255, 0.65); }
+
+.canvas-wrap { margin-top: 22rpx; background: var(--bg-card); border: 1rpx solid var(--border-soft); border-radius: 20rpx; padding: 16rpx; }
+.canvas { width: 100%; background: var(--bg-page); border-radius: 14rpx; display: block; }
+.canvas-ph { font-size: 24rpx; color: #b3a890; text-align: center; padding: 48rpx 0; }
+.btn.save { flex: none; margin-top: 22rpx; padding: 18rpx 64rpx; }
+.err { margin-top: 16rpx; font-size: 24rpx; color: var(--danger); line-height: 1.6; }
+.tip { margin-top: 22rpx; font-size: 22rpx; color: var(--text-tertiary); line-height: 1.6; text-align: center; }
+
+/* ── 今日概览：公历/农历/干支生肖（黄历式三行）─────────────────────
+   层级刻意分明：label 灰小字、value 深色正常字，让「今天是哪天」一眼可读，
+   又不抢下面今日文案的戏（文案才是主体）。 */
+.almanac { background: var(--bg-soft); border: 1rpx solid var(--border-soft); border-radius: 16rpx; padding: 16rpx 20rpx; margin-bottom: 18rpx; }
+.almanac-row { display: flex; align-items: baseline; padding: 5rpx 0; }
+.almanac-label { width: 130rpx; font-size: 22rpx; color: var(--text-tertiary); flex: none; }
+.almanac-val { font-size: 25rpx; color: var(--text-title); font-weight: 600; }
+
+/* ── 分层浏览：分组头 → 条目 → 文案，两级收起 ─────────────────────
+   为什么两级：24 节气 + 11 农历节日 + 15 西方节日 = 50 条平铺的话，
+   用户要滚很久才找到要的那条（认知负荷里的「渐进披露」不通过）。
+   第一层只露3 个分组头（含条目数），第二层才是条目，且各自独立收起。 */
+.groups { margin-top: 26rpx; }
+.browse-tip { font-size: 22rpx; color: var(--text-tertiary); margin-bottom: 14rpx; }
+
+.group { background: var(--bg-card); border: 1rpx solid var(--border-soft); border-radius: var(--r-md); margin-bottom: 14rpx; overflow: hidden; }
+.group-head { display: flex; align-items: center; padding: 22rpx; }
+.group-icon { font-size: 34rpx; margin-right: 16rpx; flex: none; }
+.group-meta { flex: 1; }
+.group-name { font-size: 28rpx; font-weight: 700; color: var(--text-title); }
+.group-desc { font-size: 21rpx; color: var(--text-tertiary); margin-top: 4rpx; }
+.group-caret { font-size: 26rpx; color: var(--text-tertiary); transition: transform 0.2s ease; flex: none; }
+.group-caret.open { transform: rotate(90deg); }
+
+.group-body { border-top: 1rpx solid var(--border-soft); padding: 6rpx 0; }
+.item { border-bottom: 1rpx solid var(--border-soft); }
+.item:last-child { border-bottom: none; }
+.item-head { display: flex; align-items: center; padding: 20rpx 22rpx; }
+.item-main { flex: 1; }
+.item-name { font-size: 27rpx; font-weight: 600; color: var(--text-title); }
+.item-date { font-size: 21rpx; color: var(--text-tertiary); margin-top: 4rpx; }
+.item-caret { font-size: 24rpx; color: var(--text-tertiary); transition: transform 0.2s ease; flex: none; }
+.item-caret.open { transform: rotate(90deg); }
+
+.item-detail { padding: 0 22rpx 22rpx; }
+.item-text { font-size: 25rpx; color: var(--text-body); line-height: 1.7; background: var(--bg-soft); border-radius: 14rpx; padding: 18rpx; }
+.item-cta { margin-top: 16rpx; }

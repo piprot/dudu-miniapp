@@ -47,6 +47,13 @@ function defaultMeasure(text, fontPx) {
 }
 
 // 按 maxWidth 折行，返回行数组
+// 中文行首禁则：这些字符不能出现在行首。
+// 起因（2026-10-06）：逐字塞的折行会把句末标点挤到下一行独占一行——
+//「今天风很轻，连时间都放慢了脚步\n。」，标点孤零零挂在第二行，看着像排版事故。
+// 处理方式：若新行首字符是禁则字符，把上一行末字挪下来与标点同行（宁可上一行少一个字，也不让标点孤立）。
+const NO_LINE_START = '，。、；：！？）」』】〉》”’%·…～,.;:!?)]}>"\'';
+const NO_LINE_END   = '（「『【〈《“‘([{<';   // 这些不能留在行尾（开引号/开括号）
+
 function wrapText(text, maxWidth, measure, fontPx) {
   const out = [];
   let line = '';
@@ -55,12 +62,41 @@ function wrapText(text, maxWidth, measure, fontPx) {
     if (measure(test, fontPx) > maxWidth && line) {
       out.push(line);
       line = ch;
-    } else {
-      line = test;
+      continue;
     }
+    line = test;
   }
   if (line) out.push(line);
-  return out;
+
+  // ── 禁则处理：合并「标点独占行」 ──
+  const merged = [];
+  for (let i = 0; i < out.length; i++) {
+    let cur = out[i];
+    // 当前行首是禁则字符 → 从上一行借一个字符下来（借字本身也可能是标点，继续借）
+    while (cur && NO_LINE_START.indexOf(cur[0]) >= 0) {
+      if (merged.length === 0) break;           // 首行没得借，只能留着
+      const prev = merged.pop();
+      if (!prev) break;
+      cur = prev.slice(-1) + cur;
+      // 被借走一个字后上一行空了，丢弃；若只是变短则放回
+      if (prev.length > 1) merged.push(prev.slice(0, -1));
+    }
+    merged.push(cur);
+  }
+  // 行尾禁则：把行尾的开括号推到下一行
+  const out2 = [];
+  for (let i = 0; i < merged.length; i++) {
+    let cur = merged[i];
+    const nxt = merged[i + 1];
+    if (nxt && cur && NO_LINE_END.indexOf(cur[cur.length - 1]) >= 0) {
+      out2.push(cur.slice(0, -1));
+      out2.push(cur[cur.length - 1] + nxt);
+      i++;                                        // 下一行已被合并消费
+    } else {
+      out2.push(cur);
+    }
+  }
+  return out2.filter(Boolean);
 }
 
 // 把一行按最大字数硬截断（兜底，防止单字超宽）
@@ -94,7 +130,8 @@ function layoutText(el, x, y, w, h, blocks, measure) {
     fontWeight: el.fontWeight || 'normal',
     fontFamily: el.fontFamily || 'sans-serif',
     align: el.textAlign || 'left',
-    letterSpacing: el.letterSpacing || 0
+    letterSpacing: el.letterSpacing || 0,
+    shadow: el.shadow || null   // 文字投影（照片背景用，替代「压暗整卡」的旧做法）
   });
 }
 
@@ -150,9 +187,15 @@ function computeLayout(model, opts, measure) {
   //   background      —— 纯色；
   //   gradient        —— 两色线性渐变。
   // backgroundImageAsset 由调用方加载图片后注入（computeLayout 保持纯函数）。
+  //
+  // bgVeil：蒙版强度覆盖 [上不透明度, 下不透明度]，缺省 [0.32, 0.52]。
+  //   网络图的灰度/虚化由 picsum 服务端做（?grayscale / ?blur=6），
+  //   但**内置包内图没有服务端**（见 utils/bg_pack.js 注释），
+  //   只能靠加厚/减薄暗色蒙版来近似三档，核心目的是保证白字可读。
   if (m.backgroundImage) {
+    const v = (m.bgVeil && m.bgVeil.length === 2) ? m.bgVeil : [0.32, 0.52];
     blocks.push({ type: 'image', x: 0, y: 0, w: m.width, h: m.height, radius: 0, objectFit: 'cover', asset: m.backgroundImageAsset });
-    blocks.push({ type: 'gradient', x: 0, y: 0, w: m.width, h: m.height, radius: 0, colors: ['rgba(15,14,22,0.32)', 'rgba(15,14,22,0.52)'], direction: 'v' });
+    blocks.push({ type: 'gradient', x: 0, y: 0, w: m.width, h: m.height, radius: 0, colors: ['rgba(15,14,22,' + v[0] + ')', 'rgba(15,14,22,' + v[1] + ')'], direction: 'v' });
   } else if (m.background) {
     blocks.push({ type: 'rect', x: 0, y: 0, w: m.width, h: m.height, radius: m.radius || 0, background: m.background });
   } else if (m.gradient) {
@@ -215,11 +258,21 @@ function draw(ctx, layout, assets) {
       ctx.textBaseline = 'top';
       ctx.textAlign = b.align;
       const anchorX = b.align === 'center' ? b.x + b.w / 2 : (b.align === 'right' ? b.x + b.w : b.x);
+      // 文字投影：照片背景下靠它保证可读，从而**不必把整卡蒙版压得很暗**。
+      // 旧版只靠全卡暗色渐变（最深 0.68），整张图发闷、看着郁闷；
+      // 现在改成「浅蒙版 + 局部文字投影」——图能看清，文字也读得清。
+      if (b.shadow) {
+        ctx.shadowColor = b.shadow.color || 'rgba(0,0,0,0.55)';
+        ctx.shadowBlur = b.shadow.blur || 6;
+        ctx.shadowOffsetX = b.shadow.x || 0;
+        ctx.shadowOffsetY = b.shadow.y || 1;
+      }
       for (let i = 0; i < b.lines.length; i++) {
         const ty = b.y + i * b.lh;
         ctx.font = (b.fontWeight !== 'normal' ? b.fontWeight + ' ' : '') + b.fontPx + 'px ' + b.fontFamily;
         ctx.fillText(b.lines[i], anchorX, ty);
       }
+      if (b.shadow) { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; }
     } else if (b.type === 'image') {
       if (b.asset && b.asset.width && b.asset.height) drawCover(ctx, b, b.asset);
       else drawPlaceholder(ctx, b, '图');

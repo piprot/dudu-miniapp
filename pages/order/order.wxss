@@ -1,6 +1,6 @@
 .order-page {
   min-height: 100vh;
-  background: #f5f0e8;
+  background: var(--bg-page);
   padding: 24rpx 24rpx 60rpx;
   box-sizing: border-box;
 }
@@ -40,7 +40,7 @@
 .retry-btn,
 .go-btn {
   margin-top: 32rpx;
-  background: #f5793b;
+  background: var(--primary);
   color: #fff;
   font-size: 28rpx;
   border-radius: 40rpx;
@@ -81,7 +81,7 @@
 .amount {
   font-size: 30rpx;
   font-weight: 700;
-  color: #f5793b;
+  color: var(--primary);
 }
 .meta {
   margin-bottom: 12rpx;

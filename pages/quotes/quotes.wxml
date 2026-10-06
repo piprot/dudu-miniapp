@@ -1,0 +1,147 @@
+<view class="page">
+  <view class="hd">
+    <view class="hd-title">📚 金句收藏馆</view>
+    <view class="hd-sub">金句 · 台词 · 书摘统一收藏 · 标签分类 · 搜索 · 一键成卡（纯本地，零 AI）</view>
+  </view>
+
+  <view class="search">
+    <input class="input" value="{{keyword}}" bindinput="onSearch" placeholder="搜索金句 / 台词 / 出处 / 标签" />
+  </view>
+
+  <!-- 来源筛选（2026-10-06 与台词/书摘卡合并后新增）。
+       合并后库里会混着金句/台词/书摘/每日一句/节气，不筛的话用户很难定位。 -->
+  <view class="kind-filter">
+    <view class="kind-chip {{!filterKind ? 'on' : ''}}" bindtap="onFilterKind" data-key="">全部</view>
+    <view wx:for="{{kindOptions}}" wx:key="key"
+      class="kind-chip {{filterKind === item.key ? 'on' : ''}}"
+      bindtap="onFilterKind" data-key="{{item.key}}">{{item.name}}</view>
+  </view>
+
+  <!-- 今日推荐：按日期稳定轮换，同一天不变、跨天必变（运营「天天换」诉求） -->
+  <view class="today" wx:if="{{todayPick}}">
+    <view class="today-hd">
+      <view class="today-label">✨ 今日推荐</view>
+      <view class="mini gold" bindtap="onMakeTodayCard">🖼️ 成卡</view>
+    </view>
+    <view class="today-text">{{todayPick.text}}</view>
+  </view>
+
+  <!-- 分层选择：大类 → 小类下钻，常用前置（替换旧的「6 大类 + 标签云一次性全铺开」）
+     旧观感问题：标签随收藏无限增长，一次性铺满屏，用户找不到起点 -->
+<view class="picker">
+  <!-- ① 常用：一步到位，不用展开 -->
+  <view wx:if="{{pgHot.length}}" class="pg-row">
+    <view class="pg-cap">常用</view>
+    <view class="pg-hot">
+      <view wx:for="{{pgHot}}" wx:key="groupKey"
+        class="pg-hot-chip {{pgGroup === item.groupKey && pgItem === item.key ? 'on' : ''}}"
+        bindtap="onPickHot" data-group="{{item.groupKey}}" data-item="{{item.key}}">{{item.name}}</view>
+    </view>
+  </view>
+
+  <!-- ② 大类：单行可滚，选中后展开该类小类 -->
+  <view class="pg-row">
+    <view class="pg-cap">{{groupLabel}}</view>
+    <scroll-view class="pg-scroll" scroll-x="true" show-scrollbar="{{false}}">
+      <view wx:for="{{pgGroups}}" wx:key="key"
+        class="pg-chip {{pgGroup === item.key ? 'on' : ''}}"
+        bindtap="onPickGroup" data-group="{{item.key}}">
+        <text wx:if="{{item.hot}}" class="pg-dot"></text>{{item.name}}
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- ③ 小类：只展示当前大类下的，从属关系清晰 -->
+  <view class="pg-row" wx:if="{{pgGroupOpen && pgItems.length}}">
+    <view class="pg-cap">{{itemLabel}}<text class="pg-cap-sub">· {{pgGroupName}}</text></view>
+    <view class="pg-items">
+      <view wx:for="{{pgItems}}" wx:key="key"
+        class="pg-item {{pgItem === item.key ? 'on' : ''}}"
+        bindtap="onPickGroupItem" data-group="{{pgGroup}}" data-item="{{item.key}}">{{item.name}}</view>
+    </view>
+  </view>
+</view>
+
+  <view class="stat">已收藏 {{count}} 条<text wx:if="{{activeTag}}" class="stat-filter"> · #{{activeTag}}</text></view>
+
+  <view class="list">
+    <view wx:for="{{list}}" wx:key="id" class="qcard">
+      <view class="qtext" bindtap="onEdit" data-id="{{item.id}}">{{item.text}}</view>
+      <view class="qmeta">
+        <!-- 来源类型徽标（合并后库里有金句/台词/书摘/每日一句/节气，一眼可辨） -->
+        <text wx:if="{{item.kindName}}" class="qkind">{{item.kindName}}</text>
+        <text wx:for="{{item.tags}}" wx:for-item="t" wx:key="*this" class="qtag">#{{t}}</text>
+        <text wx:if="{{item.source}}" class="qsrc">—— {{item.source}}</text>
+      </view>
+      <view class="qacts">
+        <view class="mini" bindtap="onMakeCard" data-id="{{item.id}}">🖼️ 成卡</view>
+        <view class="mini" bindtap="onCopy" data-text="{{item.text}}">📋 复制</view>
+        <view class="mini danger" bindtap="onDelete" data-id="{{item.id}}">🗑️ 删</view>
+      </view>
+    </view>
+    <view wx:if="{{!list.length}}" class="empty">还没有收藏，点下方「＋ 收藏金句 / 台词」开始吧</view>
+  </view>
+
+  <button class="btn primary add" bindtap="onAdd">＋ 收藏金句 / 台词 / 书摘</button>
+
+  <view class="canvas-wrap">
+    <canvas type="2d" id="quotesCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
+    <view wx:if="{{!rendered}}" class="canvas-ph">点某条金句的「🖼️ 成卡」，预览显示在这里</view>
+    <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
+  </view>
+
+  <!-- 出图设置：默认收起（渐进披露）。
+       ⚠️ 旧序把「排版风格」「背景图」两块插在列表与「＋收藏金句」中间，
+          把「挑一句→ 成卡」这条主流程从中间切断了，用户要上下反复滚。
+          现在统一挪到预览之后、页面末尾，且默认折叠。 -->
+  <card-config
+    style-list="{{styleList}}" style-key="{{styleKey}}"
+    style-hint="风格决定字体族、字号、字距、对齐与装饰符号。全部用系统字体，不下载、不闪烁。"
+    builtin-photos="{{builtinPhotos}}" bg-source="{{bgSource}}" bg-photo-id="{{bgPhotoId}}"
+    local-bg="{{localBg}}" photo-mode-label="{{photoModeLabel}}" bg-author="{{bgAuthor}}"
+    bg-hint="内置 60 张随包压缩，不走网络、不需服务器域名白名单，永远可用。"
+    themes="{{themes}}" theme="{{theme}}"
+    bind:style="onPickStyle" bind:builtin="onPickBuiltinBg" bind:album="onPickAlbumBg"
+    bind:clearphoto="onClearPhoto" bind:shufflephoto="onShufflePhoto"
+    bind:cyclemode="onCyclePhotoMode" bind:theme="onPickTheme" />
+
+  <view class="err" wx:if="{{err}}">{{err}}</view>
+  <view class="tip">收藏与卡片均保存在你手机本地，不会上传任何服务器。</view>
+</view>
+
+<!-- 编辑弹层 -->
+<view wx:if="{{showEditor}}" class="mask" catchtouchmove="noop">
+  <view class="sheet">
+    <view class="sheet-title">{{edit.id ? '编辑金句' : '收藏金句'}}</view>
+
+    <!-- 来源类型（2026-10-06 金句馆与台词/书摘卡合并后新增）。
+         互斥枚举：一条只属于一种来源。默认「金句」；从台词页过来的会是台词/书摘。 -->
+    <view class="field">
+      <view class="label">来源类型</view>
+      <view class="kind-row">
+        <view wx:for="{{kindOptions}}" wx:key="key"
+          class="kind-chip {{edit.kind === item.key ? 'on' : ''}}"
+          bindtap="onPickKind" data-key="{{item.key}}">{{item.name}}</view>
+      </view>
+    </view>
+
+    <view class="field">
+      <view class="label">金句内容</view>
+      <textarea class="ta" value="{{edit.text}}" bindinput="onField" data-field="text" placeholder="写一句打动你的话，或粘贴一段台词 / 书摘" maxlength="-1" />
+    </view>
+    <view class="field">
+      <view class="label">出处（可选）</view>
+      <input class="input" value="{{edit.source}}" bindinput="onField" data-field="source" placeholder="如：出自《xxx》/ 谁说的" />
+    </view>
+    <view class="field">
+      <view class="label">标签（逗号分隔，可选）</view>
+      <input class="input" value="{{edit.tags}}" bindinput="onField" data-field="tags" placeholder="如：成长, 生活" />
+    </view>
+    <view class="sheet-acts">
+      <button class="btn ghost" bindtap="onCloseEditor">取消</button>
+      <button class="btn primary" bindtap="onSaveEdit">保存</button>
+    </view>
+  </view>
+</view>
+
+<privacy-panel privacy-show="{{privacyShow}}" />

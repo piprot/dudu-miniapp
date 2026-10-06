@@ -1,0 +1,59 @@
+<view class="page">
+  <view class="hd">
+    <view class="hd-title">🎬 台词 / 书摘卡</view>
+    <view class="hd-sub">影视台词 · 书本摘录 · 名言 → 金句卡（纯本地，零 AI）</view>
+  </view>
+
+  <!-- 合并说明（2026-10-06）：本页的收藏已并入「金句收藏馆」，两边同一个库。
+       保留本页是因为「粘贴即成卡」比「先收藏再挑」少一步，适合临时取用。 -->
+  <view class="merge-tip" bindtap="onGoQuotes">
+    <text class="merge-txt">收藏已并入金句收藏馆 · 台词/书摘/金句统一管理</text>
+    <text class="merge-go">去收藏馆 ›</text>
+  </view>
+
+  <view class="kinds">
+    <view wx:for="{{kinds}}" wx:key="key"
+      class="kind {{kind === item.key ? 'on' : ''}}" bindtap="onPickKind" data-key="{{item.key}}">{{item.name}}</view>
+  </view>
+
+  <view class="field">
+    <view class="label"> {{kindLabel}} 内容</view>
+    <textarea class="ta" value="{{text}}" bindinput="onField" data-field="text" placeholder="粘贴一句打动你的台词 / 书摘 / 名言" maxlength="-1" />
+  </view>
+
+  <view class="field">
+    <view class="label">出处（可选）</view>
+    <input class="input" value="{{source}}" bindinput="onField" data-field="source" placeholder="如：《肖申克的救赎》/ 某某说" />
+  </view>
+
+  <view class="gen-acts">
+    <button class="btn ghost half" bindtap="onSaveToVault">💾 存金句馆</button>
+    <button class="btn primary half" bindtap="onGen">生成卡片</button>
+  </view>
+
+  <view class="canvas-wrap">
+    <canvas type="2d" id="lineCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
+    <view wx:if="{{!rendered}}" class="canvas-ph">点「生成卡片」后，预览显示在这里</view>
+    <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
+  </view>
+
+  <!-- 出图设置：默认收起的折叠区（排版风格 / 背景图 / 主题配色）。
+       四页共用 components/card-config，结构只此一份。
+       ⚠️ 旧序把「生成卡片」夹在背景图 block 与 theme-row 之间，
+          改完设置要往上翻才找得到提交键。 -->
+  <card-config
+    style-list="{{styleList}}" style-key="{{styleKey}}"
+    style-hint="风格决定字体族、字号、字距、对齐与装饰符号。全部用系统字体，不下载、不闪烁。"
+    builtin-photos="{{builtinPhotos}}" bg-source="{{bgSource}}" bg-photo-id="{{bgPhotoId}}"
+    local-bg="{{localBg}}" photo-mode-label="{{photoModeLabel}}" bg-author="{{bgAuthor}}"
+    bg-hint="内置 60 张随包压缩，不走网络、不需服务器域名白名单，永远可用。"
+    themes="{{themes}}" theme="{{theme}}"
+    bind:style="onPickStyle" bind:builtin="onPickBuiltinBg" bind:album="onPickAlbumBg"
+    bind:clearphoto="onClearPhoto" bind:shufflephoto="onShufflePhoto"
+    bind:cyclemode="onCyclePhotoMode" bind:theme="onPickTheme" />
+
+  <view class="err" wx:if="{{err}}">{{err}}</view>
+  <view class="tip">文案保存在你手机本地，不会上传任何服务器。</view>
+</view>
+
+<privacy-panel privacy-show="{{privacyShow}}" />

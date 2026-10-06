@@ -148,8 +148,12 @@ process.env.LLM_API_KEY = 'test-key';
 process.env.LLM_MODEL = 'ep-test';
 process.env.LLM_BASE_URL = 'https://ark.example.com/api/v3';
 
-const aiGen = require(path.join(__dirname, '..', '..', 'h5_backend', 'ai_gen', 'index.js'));
-// 2026-09-30：ai_gen 源码已移出小程序仓库 → ../../h5_backend/ai_gen（H5 专用后端），测试仍从新址加载守护。
+// 2026-09-30：ai_gen 源码已移出小程序仓库 → h5_backend/ai_gen（H5 专用后端）。
+// 2026-10-06：不再硬编码 ../../h5_backend（clone 位置一变就 MODULE_NOT_FOUND 假红），
+//   改用 test/h5_backend_path.js 统一探测（支持 H5_BACKEND_DIR 环境变量 + 多候选目录）。
+const { requireAiGen, warnIfMissing } = require('./h5_backend_path');
+const SKIP = warnIfMissing('test_ai_gen_units');
+const aiGen = SKIP ? null : requireAiGen();
 
 // ───────────────────────── 4. 用例 ─────────────────────────
 let pass = 0, fail = 0;
@@ -738,6 +742,14 @@ function reset(openid, points) {
     assert.ok(/openid/.test(out.err), '应明确提示未获取到身份，实际: ' + out.err);
     assert.strictEqual(Object.keys(store).length, 0, '被拒时不该消耗额度');
   });
+
+  // 2026-10-06：h5_backend 缺失时显式 SKIP 并给出 exitCode=0（视作"环境未就绪"，
+  //   而非"测试通过"）；run_all 会读到 SKIP 字样，不再误标成 ✓。
+  if (SKIP) {
+    console.log('\n──────── 结果：SKIP（未找到 h5_backend/ai_gen/index.js）────────');
+    process.exitCode = 0;
+    return;
+  }
 
   console.log('\n──────── 结果：' + pass + ' PASS / ' + fail + ' FAIL ────────');
   // 用 exitCode 而非 process.exit()，避免异步 stdout 未 flush 被截断

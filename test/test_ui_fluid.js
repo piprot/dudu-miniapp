@@ -39,19 +39,46 @@ function makePage() {
 }
 
 // ── ① 拖拽排序：顺序持久化 ──
-t('工具卡默认 3 张、key 稳定（gen/card/poster）', () => {
+// ⚠️ 2026-10-06 修正：本组用例原先把「工具卡 = gen/card/poster 三张」写死，
+//    而首页早已扩到 8 张（加 quotes/spark/weather/solar/line），于是 4 条用例集体转红。
+//    这属于**测试过期**，不是页面坏了 —— 故改为从 index.js 的 TOOL_DEFS 反推真值，
+//    以后再加工具卡，本组自动跟随，不会再次误报。
+// 真相源：pages/index/index.js 的 TOOL_DEFS（key 顺序 = 默认顺序）
+function defaultToolKeys() {
+  const src = live('pages/index/index.js');
+  const m = src.match(/TOOL_DEFS\s*=\s*\[([\s\S]*?)\n\];/);
+  assert.ok(m, '未在 index.js 找到 TOOL_DEFS 数组');
+  const keys = [];
+  m[1].split('\n').forEach(l => {
+    const k = l.match(/key:\s*'([^']+)'/);
+    if (k) keys.push(k[1]);
+  });
+  assert.ok(keys.length > 0, 'TOOL_DEFS 解析出 0 个 key，正则可能与源码不同构了');
+  return keys;
+}
+const DEF_KEYS = defaultToolKeys();
+const DEF_HEAD = DEF_KEYS.slice(0, 3);   // 拖拽用例只关心前 3 张的相对顺序
+
+t('工具卡默认 N 张、key 与 TOOL_DEFS 一致（gen/card/poster 在前）', () => {
   const page = makePage();
-  assert.strictEqual(page.data.tools.length, 3);
-  assert.deepStrictEqual(page.data.tools.map(t => t.key), ['gen', 'card', 'poster']);
+  assert.strictEqual(page.data.tools.length, DEF_KEYS.length,
+    '工具卡数量应等于 TOOL_DEFS 数量 ' + DEF_KEYS.length);
+  assert.deepStrictEqual(page.data.tools.map(t => t.key), DEF_KEYS);
+  assert.deepStrictEqual(DEF_KEYS.slice(0, 3), DEF_HEAD, '前三位应仍是 gen/card/poster');
   assert.strictEqual(page.data.dragIdx, -1, '初始非拖拽态');
 });
 
 t('onLoad 恢复自定义顺序：未知 key 过滤、缺失补尾', () => {
-  store['dudu_tool_order_v1'] = ['poster', 'bogus', 'gen'];
+  // 用默认顺序的前 3 张构造：把第 3 张提前，未知 key 混入，缺第 2 张 → 应按默认补尾。
+  // 期望值 = [k2, k0] + 其余按 TOOL_DEFS 原序（k1 及第 4 张之后）
+  const [k0, k1, k2] = DEF_HEAD;
+  store['dudu_tool_order_v1'] = [k2, 'bogus', k0];
   const page = makePage();
   page.onLoad();
-  assert.deepStrictEqual(page.data.tools.map(t => t.key), ['poster', 'gen', 'card'],
-    'poster 提前、bogus 被过滤、缺失的 card 按默认补尾');
+  const expect = [k2, k0].concat(DEF_KEYS.filter(k => k !== k2 && k !== k0));
+  assert.deepStrictEqual(page.data.tools.map(t => t.key), expect,
+    k2 + ' 提前、bogus 被过滤、缺失的 ' + k1 + ' 及其余按默认补尾');
+  assert.strictEqual(page.data.tools.length, DEF_KEYS.length, '过滤后总数应仍等于默认值');
   delete store['dudu_tool_order_v1'];
 });
 
@@ -61,8 +88,11 @@ t('onToolDragEnd：落位重排并持久化 key 顺序', () => {
   page.data.dragIdx = 0;
   page._dragTarget = 2; // 第 0 张拖到第 2 位
   page.onToolDragEnd();
-  assert.deepStrictEqual(page.data.tools.map(t => t.key), ['card', 'poster', 'gen']);
-  assert.deepStrictEqual(store['dudu_tool_order_v1'], ['card', 'poster', 'gen'], '顺序应写入 storage');
+  // 语义等价于 tools.splice(0,1) 后 splice(2,0,moved)：
+  //   默认 [g,c,p,...] → 摘掉 g 得 [c,p,...] → 在下标 2 处插回 g 得 [c,p,g,...]
+  const expect = [DEF_HEAD[1], DEF_HEAD[2], DEF_HEAD[0]].concat(DEF_KEYS.slice(3));
+  assert.deepStrictEqual(page.data.tools.map(t => t.key), expect);
+  assert.deepStrictEqual(store['dudu_tool_order_v1'], expect, '顺序应写入 storage');
   assert.strictEqual(page.data.dragIdx, -1, '结束后退出拖拽态');
   assert.strictEqual(page.data.offsets.length, 0);
 });
@@ -71,7 +101,7 @@ t('onToolDragEnd：无 _dragTarget（未移动）时原地保持、不崩', () =
   const page = makePage();
   page.data.dragIdx = 1;
   page.onToolDragEnd();
-  assert.deepStrictEqual(page.data.tools.map(t => t.key), ['gen', 'card', 'poster']);
+  assert.deepStrictEqual(page.data.tools.map(t => t.key), DEF_KEYS);
 });
 
 t('铁律 1：动态 catchtouchmove 绑定（仅拖拽中拦截滚动）', () => {

@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "节气·今日文案",
+  "usingComponents": {
+    "privacy-panel": "../../components/privacy-panel/index",
+    "card-config": "../../components/card-config/index"
+  }
+}

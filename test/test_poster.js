@@ -46,11 +46,13 @@ t('6 套主题全部被引擎消费不抛错，竖版 375 宽', () => {
   assert.ok(true);
 });
 
-t('落款三件套：品牌名/昵称 + 长按提示 + 专属二维码', () => {
+t('落款三件套：品牌名/昵称 + 专属二维码（不再写「长按识别」引导语）', () => {
   const model = buildPosterModel('warm', SAMPLE);
   assert.ok(model.children.find(c => c.type === 'qrcode'), '应有小程序码');
   assert.ok(model.children.find(c => c.type === 'text' && c.content === SAMPLE.nickname), '昵称作为落款品牌名');
-  assert.ok(model.children.find(c => c.type === 'text' && c.content === '长按识别小程序码'), '应有长按提示');
+  // 卡面不写引导文案——海报是分享到站外的成品，写「长按识别」像广告
+  assert.ok(!model.children.find(c => c.type === 'text' && /长按识别/.test(String(c.content))),
+    '落款不应出现「长按识别小程序码」引导文案');
 });
 
 t('落款钉底：内容短时落款贴住底边，不留死白', () => {
@@ -68,11 +70,22 @@ t('单一信息源：品牌与日期全图各只出现一次（旧版顶部/底�
   assert.strictEqual(dates.length, 1, '日期只出现一次（顶部信息行）');
 });
 
-t('长按提示不折行：提示宽度足够一行放下（旧版挤在码宽里折两行）', () => {
-  const model = buildPosterModel('warm', { quote: '短句。' });
-  const hint = model.children.find(c => c.type === 'text' && c.content === '长按识别小程序码');
-  assert.ok(hint, '应有长按提示');
-  assert.ok(hint.width >= 90, '提示宽度应≥一行文字宽（8字×10px≈80px）');
+t('落款不重复画署名：中段已有 `—— 作者`，落款不得再画一遍', () => {
+  const m = buildPosterModel('warm', { quote: '短句。', author: '鲁迅' });
+  // 同一条署名只能出现一次（旧版落款重复渲染，且中段叠成 `—— —— 鲁迅`）
+  const named = m.children.filter(c => c.type === 'text' && /鲁迅/.test(String(c.content)));
+  assert.strictEqual(named.length, 1, `署名应只出现一次，实际${named.length}次`);
+  assert.ok(/^—— /.test(named[0].content), '署名格式应为 `—— 作者`，不能出现双破折号');
+  assert.ok(!/—— —— /.test(named[0].content), '破折号不得叠加');
+
+  // 只有 source、没有 author 时，落款才用 source 兜底
+  const m2 = buildPosterModel('warm', { quote: '短句。', source: '《朝花夕拾》' });
+  assert.ok(m2.children.find(c => c.type === 'text' && /朝花夕拾/.test(String(c.content))), '无 author 时落款应用 source 兜底');
+
+  // 两者都没有 → 不留空文本占位
+  const m3 = buildPosterModel('warm', { quote: '短句。' });
+  assert.strictEqual(m3.children.filter(c => c.type === 'text' && !String(c.content || '').trim()).length, 0,
+    '无来源时不应渲染空文本占位');
 });
 
 t('合规：不渲染头像/首字圆形占位（署名已随整改移除，旧版圆占位与文字叠加出橙点 bug）', () => {
