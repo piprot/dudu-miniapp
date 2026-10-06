@@ -54,9 +54,9 @@
 .almanac-val { font-size: 25rpx; color: var(--text-title); font-weight: 600; }
 
 /* ── 分层浏览：分组头 → 条目 → 文案，两级收起 ─────────────────────
-   为什么两级：24 节气 + 11 农历节日 + 15 西方节日 = 50 条平铺的话，
-   用户要滚很久才找到要的那条（认知负荷里的「渐进披露」不通过）。
-   第一层只露3 个分组头（含条目数），第二层才是条目，且各自独立收起。 */
+   为什么两级：每组 100+ 条文案平铺的话，用户要滚很久才找到要的那条
+   （认知负荷里的「渐进披露」不通过）。第一层只露 3 个分组头（含条目数），
+   第二层才是条目，且各自独立收起；每条目再展开看全文 + 成卡。 */
 .groups { margin-top: 26rpx; }
 .browse-tip { font-size: 22rpx; color: var(--text-tertiary); margin-bottom: 14rpx; }
 
@@ -78,6 +78,7 @@
 .item-date { font-size: 21rpx; color: var(--text-tertiary); margin-top: 4rpx; }
 .item-caret { font-size: 24rpx; color: var(--text-tertiary); transition: transform 0.2s ease; flex: none; }
 .item-caret.open { transform: rotate(90deg); }
+.item-preview { font-size: 24rpx; color: var(--text-body); line-height: 1.6; margin-top: 8rpx; }
 
 .item-detail { padding: 0 22rpx 22rpx; }
 .item-text { font-size: 25rpx; color: var(--text-body); line-height: 1.7; background: var(--bg-soft); border-radius: 14rpx; padding: 18rpx; }

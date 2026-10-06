@@ -1,13 +1,17 @@
 // test/test_solar_layers.js
-// 节气页分层收起 + 每日一句并入应景文案（2026-10-06 新增）
+// 节气页分层收起 + 每日一句并入应景文案（2026-10-06 新增 / 2026-10-06 修订）
 //
 // 用户需求：
 //   ① 「把每个节气的文案，按层次收起来」→ 两级折叠：分组头 → 条目 → 文案
 //   ② 「把东西方的节气都放进去」→ 24 节气 + 农历传统节日 + 西方节日
 //   ③ 「阳历阴历都需要自动识别」→ 页头显示公历 + 农历 + 干支生肖
 //   ④ 「今日文案优化到每日一句板块里去」→ 节气/节日应景并入 spark 页
+//   ⑤ 「每个内置库至少 100 条」→ 节气×5=120 / 农历×5=105 / 西方×5=130 条文案
 //
-// 本守卫锁四件事：分层默认收起、三组齐全、历法字段真的接上、应景已并入 spark。
+// 守卫重点（修订后）：
+//   - buildGroups 委托纯函数 utils/solar_browse，每组 ≥100 条文案、uid 唯一、纯中文
+//   - calendar_mix 必须导出 lunarMonthName/lunarDayName（否则 solar.js 调用抛错 → 整页 0 条）
+//   - 农历/西方节日表已扩充到可支撑 100+ 条的规模
 'use strict';
 const assert = require('assert');
 const path = require('path');
@@ -22,9 +26,6 @@ function strip(src) {
   return src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1');
 }
 // 提取函数**定义**的函数体（花括号配对）。
-// ⚠️ 必须排除调用处：`indexOf(name + '(')` 会先命中 `this.refreshToday()`，
-//    导致提取到别的函数体（实测踩过：拿到的是 buildGroups 的内容）。
-//    判据：形如 `name(args) {`（右括号后紧跟 {，允许换行）。
 function funcBody(src, name) {
   const re = new RegExp('(?:^|[\\s,;{])' + name + '\\s*\\([^)]*\\)\\s*\\{', 'm');
   const m = re.exec(src);
@@ -46,15 +47,12 @@ function t(name, fn) {
 
 t('节气页数据里三组齐全（节气 / 农历节日 / 西方节日），且默认全部收起', () => {
   const js = rd(ROOT, 'pages', 'solar', 'solar.js');
-  // data 块以「}, cardStyle.defaults」收尾，缩进随文件而定，这里用宽松匹配
   const data = (js.match(/data:\s*Object\.assign\(\{([\s\S]*?)\n\s*\}, cardStyle\.defaults/) || ['', ''])[1];
   assert.ok(data.length > 0, '未能定位 solar.js 的 data 块（格式变了？）');
   assert.ok(/groups:\s*\[/.test(data), 'data 里没有 groups 字段');
-  // 三个分组 key 必须都在 data 的初始值里声明（而不是只在 buildGroups 里）
   ['term', 'lunar', 'western'].forEach(k => {
     assert.ok(new RegExp("key:\\s*'" + k + "'").test(data), 'data.groups 缺分组 ' + k);
   });
-  // 默认收起：初始值里每个 open 都得是 false
   const initOpen = (data.match(/key:\s*'\w+',\s*name:[^\n]*open:\s*(\w+)/g) || []);
   assert.ok(initOpen.length === 3, 'data 里应恰好 3 个分组，实际 ' + initOpen.length);
   initOpen.forEach(s => {
@@ -62,22 +60,31 @@ t('节气页数据里三组齐全（节气 / 农历节日 / 西方节日），�
   });
 });
 
-t('buildGroups 真实产出三组，且条目都带 kind 与日期标签', () => {
+t('buildGroups 委托 solar_browse，每组 ≥100 条文案（纯中文、uid 唯一）', () => {
   const js = rd(ROOT, 'pages', 'solar', 'solar.js');
-  const body = funcBody(js, 'buildGroups');
-  assert.ok(body, '找不到 buildGroups');
-  const code = strip(body);
-  ['term', 'lunar', 'western'].forEach(k => {
-    assert.ok(new RegExp("key:\\s*'" + k + "'").test(code), 'buildGroups 缺分组 ' + k);
-  });
-  // 每组都必须 map 出 items，且条目带 kind（成卡与样式都依赖它）
-  assert.ok(/items:\s*L\.LUNAR_FESTIVALS\.map/.test(code), '农历组未用 LUNAR_FESTIVALS');
-  assert.ok(/items:\s*L\.WESTERN_FESTIVALS\.map/.test(code), '西方组未用 WESTERN_FESTIVALS');
-  assert.ok(/items:\s*SOLAR_TERMS\.map/.test(code), '节气组未用 SOLAR_TERMS');
-  // 农历组要显示真实农历日期（不是公历 month/day）
-  assert.ok(/农历/.test(code), '农历组未标注「农历」字样，用户分不清阴阳历');
-  // 除夕没有固定日期，必须显式补一条（它靠「腊月最后一天」判定，不在表里）
-  assert.ok(/name:\s*'除夕'/.test(code), '农历组漏了除夕（腊月最后一天，非固定日期）');
+  // solar.js 必须委托给纯函数模块，避免守卫测试重复实现扁平化逻辑
+  assert.ok(/utils\/solar_browse'/.test(js), 'buildGroups 未委托 utils/solar_browse（扁平化逻辑应抽到纯函数）');
+  assert.ok(/buildGroups\(\)/.test(js), 'solar.js 未调用 solar_browse.buildGroups()');
+
+  // 运行时直接验证产物（不重复实现扁平化）
+  const { buildGroups } = require(path.join(ROOT, 'utils', 'solar_browse.js'));
+  const groups = buildGroups();
+  assert.strictEqual(groups.length, 3, '应恰好 3 个分组');
+  const need = { term: 100, lunar: 100, western: 100 };
+  const seenUid = new Set();
+  for (const g of groups) {
+    assert.ok(g.items.length >= need[g.key],
+      `分组 ${g.key} 仅 ${g.items.length} 条，未达 100+（需求：每个内置至少 100 条）`);
+    for (const it of g.items) {
+      assert.ok(it.uid && it.name && it.text && it.preview && it.tag && it.kind,
+        '条目缺字段: ' + JSON.stringify(it));
+      assert.ok(!seenUid.has(it.uid), 'uid 重复: ' + it.uid);
+      seenUid.add(it.uid);
+      assert.ok(it.text.length >= 18 && it.text.length <= 48, `文案长度越界(${it.text.length}): ${it.text}`);
+      assert.ok(/[一-鿿]/.test(it.text), '文案非中文: ' + it.text);
+      assert.ok(!/[A-Za-z0-9]/.test(it.text), '文案含英文/数字: ' + it.text);
+    }
+  }
 });
 
 t('今日概览接上真实历法：公历 + 农历 + 干支生肖 + 今日节日', () => {
@@ -88,40 +95,40 @@ t('今日概览接上真实历法：公历 + 农历 + 干支生肖 + 今日节�
   assert.ok(/L\.lunarFull\(/.test(code), '未调用 lunarFull 取农历');
   assert.ok(/L\.pickFestival\(/.test(code), '未调用 pickFestival 识别今日节日');
   assert.ok(/dateLabelOf\(/.test(code), '未接公历日期标签');
-  // 四个字段都必须 setData，否则模板渲染空白且不报错
   ['todayLabel', 'lunarText', 'ganzhi', 'zodiac', 'festivalName'].forEach(f => {
     assert.ok(new RegExp('\\b' + f + ':').test(code), 'refreshToday 未 setData ' + f);
   });
-  // data 里也得声明这四个字段
   const data = (js.match(/data:\s*Object\.assign\(\{([\s\S]*?)\n\s*\}, cardStyle\.defaults/) || ['', ''])[1];
   ['todayLabel', 'lunarText', 'ganzhi', 'zodiac', 'festivalName'].forEach(f => {
     assert.ok(new RegExp('\\b' + f + ':').test(data), 'data 未声明 ' + f);
   });
 });
 
-t('分层折叠的两个 handler 存在且只切换自身状态', () => {
+t('分层折叠的两个 handler 存在，条目用 uid 唯一定位', () => {
   const js = rd(ROOT, 'pages', 'solar', 'solar.js');
   const g = funcBody(js, 'onToggleGroup');
   const i = funcBody(js, 'onToggleItem');
   assert.ok(g, '缺少 onToggleGroup（展开/收起分组）');
   assert.ok(i, '缺少 onToggleItem（展开/收起条目文案）');
-  // 分组切换：只翻自己的 open，用 map 生成新数组（不能直接改 this.data）
   assert.ok(/!g\.open/.test(strip(g)), 'onToggleGroup 未取反 open');
   assert.ok(/this\.setData\(\{\s*groups/.test(strip(g)), 'onToggleGroup 未整体 setData groups');
-  // 条目切换：必须用 wx:for-item别名传key/name，不能依赖外层 item
+  // 条目切换必须靠 uid 唯一定位（同一节日挂 5 条文案，name 会重复）
+  assert.ok(/dataset\.uid/.test(strip(i)), 'onToggleItem 未用 dataset.uid 唯一定位（name 重复会误触多条）');
   const wxml = rd(ROOT, 'pages', 'solar', 'solar.wxml');
   assert.ok(/wx:for-item="it"/.test(wxml), '条目循环未用 wx:for-item="it" 别名');
-  assert.ok(/data-key="\{\{item\.key\}\}".*data-name="\{\{it\.name\}\}"/.test(wxml),
-    'onToggleItem 的 dataset 传错：外层是 item、内层是 it，不能混用');
+  assert.ok(/data-key="\{\{item\.key\}\}".*data-uid="\{\{it\.uid\}\}"/.test(wxml),
+    'onToggleItem 的 dataset 应为 data-uid（item.key 外层、it.uid 内层，不能混用 name）');
 });
 
 t('节气页 WXML：条目文案与「成卡」按钮都在折叠体内（默认不展开）', () => {
   const wxml = rd(ROOT, 'pages', 'solar', 'solar.wxml');
-  // 文案与成卡按钮必须挂在 wx:if="{{it.open}}" 下，否则「收起」形同虚设
   const detail = wxml.match(/<view class="item-detail" wx:if="\{\{it\.open\}\}">([\s\S]*?)<\/view>\s*<\/view>/);
   assert.ok(detail, '找不到 item-detail 折叠体（条目文案未做二级收起）');
   assert.ok(has(detail[1], 'item-text'), '折叠体内缺文案');
   assert.ok(has(detail[1], 'onPickItem'), '折叠体内缺成卡按钮');
+  // 折叠态应展示 preview（前 18 字）+ tag，避免一屏塞满全文
+  assert.ok(/\{\{it\.preview\}\}/.test(wxml), '条目折叠态未展示 preview（应预览前 18 字）');
+  assert.ok(/wx:key="uid"/.test(wxml), '条目循环 wx:key 未改为 uid（name 重复会导致 wx:key 冲突告警）');
   // 分组体也必须受 open 控制
   assert.ok(/<view class="group-body" wx:if="\{\{item\.open\}\}">/.test(wxml),
     '分组体未受 open 控制（第一层收起失效）');
@@ -139,6 +146,49 @@ t('历法模块异常不得拖垮节气页（try/catch 兜底）', () => {
     'refreshToday 未 try/catch —— 历法模块一旦异常整页白屏');
 });
 
+t('历法模块已导出 lunarMonthName/lunarDayName（修复「0 条」崩溃根因）', () => {
+  const L = require(path.join(ROOT, 'utils', 'calendar_mix.js'));
+  assert.strictEqual(typeof L.lunarMonthName, 'function',
+    'calendar_mix 未导出 lunarMonthName（solar.js 调用会抛「is not a function」→ 整页 0 条）');
+  assert.strictEqual(typeof L.lunarDayName, 'function',
+    'calendar_mix 未导出 lunarDayName（农历日期标签会崩）');
+  assert.strictEqual(L.lunarMonthName(1, false), '正月', 'lunarMonthName(1,false) 应为「正月」');
+  assert.strictEqual(L.lunarDayName(1), '初一', 'lunarDayName(1) 应为「初一」');
+});
+
+t('农历/西方节日表已扩充到可支撑 100+ 条的规模', () => {
+  const L = require(path.join(ROOT, 'utils', 'calendar_mix.js'));
+  assert.ok(L.LUNAR_FESTIVALS.length >= 20,
+    'LUNAR_FESTIVALS 仅 ' + L.LUNAR_FESTIVALS.length + ' 条（需 ≥20 才能 ×5 ≥100）');
+  assert.ok(L.WESTERN_FESTIVALS.length >= 26,
+    'WESTERN_FESTIVALS 仅 ' + L.WESTERN_FESTIVALS.length + ' 条（需 ≥26 才能 ×5 ≥130）');
+  // 每个节日都要能取到 5 条纯中文文案
+  const LINES_LUNAR = require(path.join(ROOT, 'utils', 'lines_lunar.js'));
+  const LINES_WESTERN = require(path.join(ROOT, 'utils', 'lines_western.js'));
+  for (const f of L.LUNAR_FESTIVALS) {
+    assert.ok(LINES_LUNAR[f.name] && LINES_LUNAR[f.name].length === 5, '农历节日缺 5 条文案：' + f.name);
+  }
+  for (const f of L.WESTERN_FESTIVALS) {
+    assert.ok(LINES_WESTERN[f.name] && LINES_WESTERN[f.name].length === 5, '西方节日缺 5 条文案：' + f.name);
+  }
+});
+
+t('三个文案库内容合规：纯中文、18-48字、无重复、无英文/数字', () => {
+  const libs = ['lines_terms', 'lines_lunar', 'lines_western'];
+  for (const lib of libs) {
+    const m = require(path.join(ROOT, 'utils', lib + '.js'));
+    const all = Object.values(m).flat();
+    const seen = new Set();
+    for (const line of all) {
+      assert.ok(line.length >= 18 && line.length <= 48, `${lib} 长度越界(${line.length}): ${line}`);
+      assert.ok(/[一-鿿]/.test(line), `${lib} 非中文: ${line}`);
+      assert.ok(!/[A-Za-z0-9]/.test(line), `${lib} 含英文/数字: ${line}`);
+      assert.ok(!seen.has(line), `${lib} 重复: ${line}`);
+      seen.add(line);
+    }
+  }
+});
+
 t('每日一句已并入今日应景（农历 + 干支 + 节气/节日文案）', () => {
   const js = rd(ROOT, 'pages', 'spark', 'spark.js');
   const wxml = rd(ROOT, 'pages', 'spark', 'spark.wxml');
@@ -153,18 +203,14 @@ t('每日一句已并入今日应景（农历 + 干支 + 节气/节日文案）'
   assert.ok(/pickFestival\(/.test(code), 'loadAlmanac 未识别节日');
   assert.ok(/pickForToday\(/.test(code), 'loadAlmanac 未取节气文案');
   assert.ok(/try\s*\{/.test(code), 'loadAlmanac 未 try/catch —— 每日一句主功能会被历法异常拖垮');
-  // onLoad 必须调用它，否则并入的文案不会显示
   const onLoad = funcBody(js, 'onLoad');
   assert.ok(/loadAlmanac\(\)/.test(strip(onLoad)), 'spark onLoad 未调用 loadAlmanac');
-  // 模板要真的渲染出来
   ['almanacText', 'ganzhiZodiac', 'todayName', 'todayText'].forEach(f => {
     assert.ok(has(wxml, '{{' + f + '}}'), 'spark.wxml 未渲染 ' + f);
   });
 });
 
 t('每日一句主金句仍是唯一焦点（应景区不得抢戏）', () => {
-  // 认知负荷里的「单一焦点」：一屏只有一个主角。
-  // 判据：应景区在 DOM/样式上必须弱于主金句——用更小字号 + 浅底。
   const wxml = rd(ROOT, 'pages', 'spark', 'spark.wxml');
   const at = wxml.indexOf('class="almanac"');
   const qAt = wxml.indexOf('class="quote-card"');
@@ -191,8 +237,6 @@ t('新样式里的 CSS 变量都必须在 app.wxss 有定义', () => {
 });
 
 t('WXSS 不得用小程序不支持的选择器', () => {
-  // 白名单只有 .class/#id/element/分组/::after/::before。
-  // @media / :not() / :nth-child 都会让整份编译挂掉（2026-09-22 踩过）。
   ['solar', 'spark'].forEach(p => {
     const css = rd(ROOT, 'pages', p, p + '.wxss');
     assert.ok(!/@media/.test(css), p + '.wxss 出现 @media，小程序不支持');
