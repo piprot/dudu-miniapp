@@ -161,39 +161,66 @@ function lunarFull(date) {
 // ── 传统农历节日（按农历 month-day 匹配）──
 // kind: 'lunar'（农历）
 const LUNAR_FESTIVALS = [
-  { m: 1, d: 1, name: '春节', text: '爆竹声中一岁除，春风送暖入屠苏。春节，愿你把旧年的疲惫都留在门外，把新年的盼头都带进门。' },
-  { m: 1, d: 15, name: '元宵', text: '月上柳梢头，人约黄昏后。元宵的灯，照亮的不是街，是团圆的心。' },
-  { m: 2, d: 2, name: '龙抬头', text: '二月二，龙抬头。今天抬头望天，把一整年的好光景都看进眼里。' },
-  { m: 5, d: 5, name: '端午', text: '端午临中夏，时清日复长。粽子的香是年的味道，愿你岁岁安康。' },
-  { m: 7, d: 7, name: '七夕', text: '两情若是久长时，又岂在朝朝暮暮。七夕，愿你有相伴的人，也有独行的勇气。' },
-  { m: 7, d: 15, name: '中元', text: '中元寄追思，思念不隔阴阳。愿逝者安息，生者各自珍重。' },
-  { m: 8, d: 15, name: '中秋', text: '海上生明月，天涯共此时。中秋的月最圆，愿人长久，也愿你此刻不在孤单。' },
-  { m: 9, d: 9, name: '重阳', text: '遍插茱萸少一人。重阳登高，愿你看得远，也走得稳。' },
-  { m: 12, d: 8, name: '腊八', text: '腊八粥香，年味渐浓。熬一锅粥，把冬天的寒都煮化了。' },
-  { m: 12, d: 23, name: '小年', text: '糖瓜祭灶，扫尘除旧。小年一过，年就开场了。' }
+  { m: 1, d: 1, name: '春节' },
+  { m: 1, d: 5, name: '破五' },
+  { m: 1, d: 7, name: '人日' },
+  { m: 1, d: 15, name: '元宵' },
+  { m: 2, d: 2, name: '龙抬头' },
+  { m: 2, d: 15, name: '花朝' },
+  { m: 3, d: 3, name: '上巳' },
+  { m: 4, d: 8, name: '浴佛' },
+  { m: 5, d: 5, name: '端午' },
+  { m: 6, d: 6, name: '天贶' },
+  { m: 6, d: 24, name: '火把节' },
+  { m: 7, d: 7, name: '七夕' },
+  { m: 7, d: 15, name: '中元' },
+  { m: 8, d: 15, name: '中秋' },
+  { m: 9, d: 9, name: '重阳' },
+  { m: 10, d: 1, name: '寒衣' },
+  { m: 10, d: 15, name: '下元' },
+  { m: 12, d: 8, name: '腊八' },
+  { m: 12, d: 16, name: '尾牙' },
+  { m: 12, d: 23, name: '小年' }
   // 除夕单独处理（腊月最后一天，日期不固定）
 ];
 
 // ── 西方公历节日（按公历 month-day 匹配）──
 const WESTERN_FESTIVALS = [
-  { m: 1, d: 1, name: '元旦', text: 'Happy New Year!新的一年，愿你所求皆如愿，所行化坦途。' },
-  { m: 2, d: 14, name: '情人节', text: 'Valentine\'s Day. 爱不只落在节日里，但今天值得被特别说起。' },
-  { m: 3, d: 8, name: '妇女节', text: '她首先是她自己，然后才是谁的妻、谁的母。今天，愿每一个她都被温柔以待。' },
-  { m: 4, d: 1, name: '愚人节', text: 'April Fool\'s. 愿你今天开的玩笑都不伤人，也愿骗你的人，都只是想逗你笑。' },
-  { m: 5, d: 1, name: '劳动节', text: '劳动节，May Day. 劳动的人最体面，你流过的汗都算数。' },
-  { m: 5, d: 4, name: '青年节', text: '五四青年节。青春不是年纪，是还敢做梦的心。' },
-  { m: 5, d: 11, name: '母亲节', text: 'Mother\'s Day. 趁今天，好好谢谢那个把你养大的人。' },
-  { m: 6, d: 1, name: '儿童节', text: '六一儿童节。今天，允许自己当一天小孩，把天真找回来。' },
-  { m: 7, d: 1, name: '建党节', text: '建党节。不忘来路，方能走得远。' },
-  { m: 8, d: 1, name: '建军节', text: '八一建军节。致敬所有守家卫国的人，岁月静好因为有你们。' },
-  { m: 9, d: 10, name: '教师节', text: '教师节。一生有你未曾忘记的老师，是最深的缘分。' },
-  { m: 10, d: 1, name: '国庆节', text: '国庆节。愿你所见的山河，都如你所愿般辽阔与安宁。' },
-  { m: 10, d: 31, name: '万圣节', text: 'Happy Halloween!今晚允许自己有一点小小的淘气。' },
-  { m: 11, d: 11, name: '双十一', text: '双十一。买不买的先放一边，今天记得犒劳一下忙了一年的自己。' },
-  { m: 11, d: 26, name: '感恩节', text: 'Thanksgiving. 感谢那些不常说出口、却一直在托住你的人。' },
-  { m: 12, d: 24, name: '平安夜', text: '圣诞平安夜。愿这个夜晚，所有的等待都被温柔对待。' },
-  { m: 12, d: 25, name: '圣诞节', text: 'Merry Christmas!愿你被世界温柔以待，也愿你记得爱自己。' }
+  { m: 1, d: 1, name: '元旦' },
+  { m: 2, d: 14, name: '情人节' },
+  { m: 3, d: 8, name: '妇女节' },
+  { m: 3, d: 12, name: '植树节' },
+  { m: 3, d: 15, name: '消费者权益日' },
+  { m: 3, d: 22, name: '世界水日' },
+  { m: 3, d: 23, name: '世界气象日' },
+  { m: 4, d: 1, name: '愚人节' },
+  { m: 4, d: 7, name: '世界卫生日' },
+  { m: 4, d: 22, name: '世界地球日' },
+  { m: 4, d: 23, name: '世界读书日' },
+  { m: 5, d: 1, name: '劳动节' },
+  { m: 5, d: 4, name: '青年节' },
+  { m: 5, d: 12, name: '护士节' },
+  { m: 5, d: 15, name: '国际家庭日' },
+  { m: 5, d: 31, name: '世界无烟日' },
+  { m: 6, d: 1, name: '儿童节' },
+  { m: 6, d: 5, name: '世界环境日' },
+  { m: 6, d: 26, name: '国际禁毒日' },
+  { m: 9, d: 10, name: '教师节' },
+  { m: 10, d: 1, name: '国庆节' },
+  { m: 10, d: 31, name: '万圣节' },
+  { m: 11, d: 8, name: '记者节' },
+  { m: 11, d: 11, name: '双十一' },
+  { m: 12, d: 24, name: '平安夜' },
+  { m: 12, d: 25, name: '圣诞节' }
 ];
+
+// ── 文案回填：从纯中文文案库取首条作为「今日节日」展示文案 ──
+// 节日表只存农历/公历日期与名称；文案（每节 5 条）集中在 lines_* 库，
+// 这里回填第一条，保证「今日应景」展示的是纯中文、已审校的文案。
+const LINES_LUNAR = require('./lines_lunar');
+const LINES_WESTERN = require('./lines_western');
+LUNAR_FESTIVALS.forEach(f => { const l = LINES_LUNAR[f.name]; if (l && l[0]) f.text = l[0]; });
+WESTERN_FESTIVALS.forEach(f => { const l = LINES_WESTERN[f.name]; if (l && l[0]) f.text = l[0]; });
 
 /** 某天是否为除夕（腊月最后一天）——真实判断，不硬编码 */
 function isChineseNewYearEve(lunar) {
@@ -234,10 +261,10 @@ function pickFestival(date) {
 module.exports = {
   toLunar, toLunarText: (d) => { const f = lunarFull(d); return f && f.lunarText; },
   lunarFull, pickFestival,
-  LUNAR_FESTIVALS, WESTERN_FESTIVALS,
-  isChineseNewYearEve,
   // 顶层导出：solar 页 buildGroups 直接用来渲染「农历节日」条目的日期标签。
   // ⚠️ 之前漏导出这两个，导致真机报 `L.lunarMonthName is not a function`（2026-10-07 修复）。
   lunarMonthName, lunarDayName,
+  LUNAR_FESTIVALS, WESTERN_FESTIVALS,
+  isChineseNewYearEve,
   _internals: { LUNAR_INFO, leapMonthOf, monthDaysOf, yearDaysOf, ganzhiYear, zodiacOf }
 };

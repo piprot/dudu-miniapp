@@ -34,9 +34,9 @@ const __pageCfg = {
     // 用户要滚很久才看到想找的那一条（认知负荷 8 项里的「渐进披露」不通过）。
     // 现在：第一层只显示 3 个分组头（含条目数），第二层才是条目，且默认全收起。
     groups: [
-      { key: 'term', name: '二十四节气', icon: '🌾', desc: '东方节气 · 物候与时令', open: false, items: [] },
-      { key: 'lunar', name: '农历传统节日', icon: '🏮', desc: '按真实农历日期推算', open: false, items: [] },
-      { key: 'western', name: '西方节日', icon: '🎄', desc: '公历固定日期', open: false, items: [] }
+      { key: 'term', name: '二十四节气', icon: '🌾', desc: '东方节气 · 物候与时令', open: false, items: [], limit: 48 },
+      { key: 'lunar', name: '农历传统节日', icon: '🏮', desc: '按真实农历日期推算', open: false, items: [], limit: 48 },
+      { key: 'western', name: '西方节日', icon: '🎄', desc: '公历固定日期', open: false, items: [], limit: 48 }
     ],
     sel: { name: '', text: '' },
     todayTap: 0,          // 「换一条」点击次数
@@ -53,35 +53,16 @@ const __pageCfg = {
     this.refreshToday();
   },
 
-  // 三组条目：东方节气（原有） + 农历节日（新增） + 西方节日（新增）
+  // 三组条目：东方节气 + 农历节日 + 西方节日，每组 100+ 条文案（文案级扁平化）。
+  // 扁平化逻辑抽到 utils/solar_browse（纯函数），本页只负责 setData，便于守卫测试复用。
   buildGroups() {
-    const L = require('../../utils/calendar_mix');
-    const groups = [
-      {
-        key: 'term', name: '二十四节气', icon: '🌾', desc: '东方节气 · 物候与时令', open: false,
-        items: SOLAR_TERMS.map(t => ({
-          name: t.name, text: t.text, date: t.month + '/' + t.day, kind: 'term'
-        }))
-      },
-      {
-        key: 'lunar', name: '农历传统节日', icon: '🏮', desc: '按真实农历日期推算', open: false,
-        items: L.LUNAR_FESTIVALS.map(f => ({
-          name: f.name, text: f.text,
-          date: '农历' + L.lunarMonthName(f.m, false) + L.lunarDayName(f.d),
-          kind: 'lunar'
-        })).concat([{
-          name: '除夕', text: '岁除更始，灯火可亲。除夕愿你团团圆圆，岁岁平安。',
-          date: '农历腊月最后一天', kind: 'lunar'
-        }])
-      },
-      {
-        key: 'western', name: '西方节日', icon: '🎄', desc: '公历固定日期', open: false,
-        items: L.WESTERN_FESTIVALS.map(f => ({
-          name: f.name, text: f.text, date: f.m + '/' + f.d, kind: 'western'
-        }))
-      }
-    ];
-    this.setData({ groups });
+    try {
+      const { buildGroups } = require('../../utils/solar_browse');
+      this.setData({ groups: buildGroups() });
+    } catch (e) {
+      // 浏览库异常：保留默认空分组，主功能（今日文案）仍可用，不白屏
+      console.error('solar buildGroups 失败：', e);
+    }
   },
 
   // 今日概览：公历 / 农历 / 干支 / 生肖 / 今日节日
@@ -123,15 +104,23 @@ const __pageCfg = {
     this.setData({ groups });
   },
 
-  // 点条目 → 展开它的文案（分层的第二层）
+  // 点条目 → 展开它的文案（分层的第二层）。用 uid 唯一定位（同一节日有 5 条文案，name 会重复）
   onToggleItem(e) {
     const key = e.currentTarget.dataset.key;
-    const name = e.currentTarget.dataset.name;
+    const uid = e.currentTarget.dataset.uid;
     const groups = this.data.groups.map(g => {
       if (g.key !== key) return g;
-      const items = g.items.map(it => Object.assign({}, it, { open: it.open && it.name !== name ? false : (it.name === name ? !it.open : false) }));
+      const items = g.items.map(it => (it.uid === uid ? Object.assign({}, it, { open: !it.open }) : it));
       return Object.assign({}, g, { items });
     });
+    this.setData({ groups });
+  },
+
+  // 「展开更多」：把该组的渲染上限放开到全库（数据一直在，只是默认不铺开）
+  onShowMore(e) {
+    const key = e.currentTarget.dataset.key;
+    const groups = this.data.groups.map(g =>
+      (g.key === key ? Object.assign({}, g, { limit: g.items.length }) : g));
     this.setData({ groups });
   },
 
