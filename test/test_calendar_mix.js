@@ -228,5 +228,20 @@ t('表值逐位锁定：关键年份的 lunarInfo 不得漂移', () => {
   });
 });
 
+t('页面契约：solar 页用到的 lunarMonthName/lunarDayName 必须已导出（防 undefined 报错）', () => {
+  // 真机踩坑（2026-10-07）：solar.js buildGroups 用 L.lunarMonthName/L.lunarDayName 渲染
+  // 「农历节日」条目的日期标签，但这两个函数曾在 module.exports 里漏掉 →
+  // TypeError: L.lunarMonthName is not a function。
+  // 本断言把「页面依赖的导出」钉死，避免以后重构 exports 时又漏。
+  assert.strictEqual(typeof cal.lunarMonthName, 'function', 'lunarMonthName 未导出');
+  assert.strictEqual(typeof cal.lunarDayName, 'function', 'lunarDayName 未导出');
+  assert.strictEqual(cal.lunarMonthName(1, false), '正月');
+  assert.strictEqual(cal.lunarMonthName(4, true), '闰四月');
+  assert.strictEqual(cal.lunarMonthName(12, false), '腊月');
+  assert.strictEqual(cal.lunarDayName(1), '初一');
+  assert.strictEqual(cal.lunarDayName(15), '十五');
+  assert.strictEqual(cal.lunarDayName(23), '廿三');
+});
+
 console.log('结果：' + pass + ' 通过 / ' + fail + ' 失败');
 process.exitCode = fail ? 1 : 0;

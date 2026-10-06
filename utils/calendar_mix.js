@@ -236,5 +236,8 @@ module.exports = {
   lunarFull, pickFestival,
   LUNAR_FESTIVALS, WESTERN_FESTIVALS,
   isChineseNewYearEve,
+  // 顶层导出：solar 页 buildGroups 直接用来渲染「农历节日」条目的日期标签。
+  // ⚠️ 之前漏导出这两个，导致真机报 `L.lunarMonthName is not a function`（2026-10-07 修复）。
+  lunarMonthName, lunarDayName,
   _internals: { LUNAR_INFO, leapMonthOf, monthDaysOf, yearDaysOf, ganzhiYear, zodiacOf }
 };

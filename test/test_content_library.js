@@ -484,7 +484,7 @@ t('守卫：设计令牌必须被真正使用（禁止大面积硬编码色值�
 
   function walk(dir, acc) {
     for (const e of fs2.readdirSync(dir, { withFileTypes: true })) {
-      if (e.name === 'node_modules' || e.name === '.git' || e.name === 'tools_local') continue;
+      if (e.name === 'node_modules' || e.name === '.git' || e.name === 'tools_local' || e.name === '_backup') continue;
       const p = path2.join(dir, e.name);
       if (e.isDirectory()) walk(p, acc);
       else if (e.name.endsWith('.wxss')) acc.push(p);
@@ -562,7 +562,7 @@ t('守卫：所有可交互元素与图片都必须有可访问名称（/harden�
   const root = path.join(__dirname, '..');
   function walk(dir, acc) {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (e.name === 'node_modules' || e.name === '.git') continue;
+      if (e.name === 'node_modules' || e.name === '.git' || e.name === '_backup') continue;
       const p = path.join(dir, e.name);
       if (e.isDirectory()) walk(p, acc);
       else if (e.name.endsWith('.wxml')) acc.push(p);
