@@ -1,0 +1,41 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg-page);
+  padding: 28rpx 30rpx 64rpx;
+  box-sizing: border-box;
+}
+.hd { padding-bottom: 18rpx; margin-bottom: 22rpx; border-bottom: 3rpx solid var(--primary); }
+.hd-title { font-size: 40rpx; font-weight: 700; color: var(--ink); letter-spacing: 1rpx; }
+.hd-sub { font-size: 24rpx; color: var(--text-sub); margin-top: 10rpx; line-height: 1.5; }
+
+.quote-card {
+  position: relative;
+  background: var(--bg-card); border: 1rpx solid var(--border-soft);
+  border-radius: var(--r-lg); padding: 48rpx 32rpx 32rpx; margin-bottom: 24rpx;
+}
+.q-mark { position: absolute; top: 6rpx; left: 24rpx; font-size: 80rpx; color: var(--primary); opacity: 0.5; font-family: serif; line-height: 1; }
+.q-text { font-size: 34rpx; color: var(--ink); line-height: 1.7; font-weight: 500; padding-top: 30rpx; }
+.q-cat { margin-top: 18rpx; font-size: 23rpx; color: var(--primary-deep); background: #fdf6ec; border: 1rpx solid #f0e2c8; border-radius: var(--r-pill); padding: 6rpx 18rpx; display: inline-block; }
+
+.acts { display: flex; gap: 14rpx; margin-bottom: 20rpx; }
+.acts .btn { flex: 1; }
+.btn { font-size: 26rpx; color: var(--text-body); background: #ece4d6; border-radius: 14rpx; padding: 18rpx 0; line-height: 1.4; margin: 0; }
+.btn.ghost { font-size: 25rpx; background: #f7f1e6; color: var(--primary-deep); border: 1rpx solid var(--border); }
+.btn.primary { background: var(--primary); color: #fff; font-weight: 600; }
+
+.theme-row { display: flex; flex-wrap: wrap; gap: 14rpx; margin: 18rpx 0 6rpx; }
+.theme-chip {
+  display: flex; align-items: center; gap: 8rpx;
+  font-size: 24rpx; color: #6b5636; background: #f3ecdf;
+  border: 2rpx solid #e5d9c4; border-radius: 24rpx; padding: 10rpx 22rpx;
+}
+.theme-chip .dot { width: 16rpx; height: 16rpx; border-radius: 50%; }
+.theme-chip.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+.theme-chip.on .dot { box-shadow: 0 0 0 2rpx rgba(255, 255, 255, 0.65); }
+
+.canvas-wrap { margin-top: 22rpx; background: var(--bg-card); border: 1rpx solid var(--border-soft); border-radius: 20rpx; padding: 16rpx; }
+.canvas { width: 100%; background: var(--bg-page); border-radius: 14rpx; display: block; }
+.canvas-ph { font-size: 24rpx; color: #b3a890; text-align: center; padding: 48rpx 0; }
+.btn.save { flex: none; margin-top: 22rpx; padding: 18rpx 64rpx; }
+.err { margin-top: 16rpx; font-size: 24rpx; color: var(--danger); line-height: 1.6; }
+.tip { margin-top: 22rpx; font-size: 22rpx; color: var(--text-tertiary); line-height: 1.6; text-align: center; }

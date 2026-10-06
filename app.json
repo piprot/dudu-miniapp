@@ -6,7 +6,12 @@
     "pages/order/order",
     "pages/gen/gen",
     "pages/card/card",
-    "pages/poster/poster"
+    "pages/poster/poster",
+    "pages/quotes/quotes",
+    "pages/spark/spark",
+    "pages/weather/weather",
+    "pages/solar/solar",
+    "pages/line/line"
   ],
   "window": {
     "navigationBarBackgroundColor": "#1a1a1a",

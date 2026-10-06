@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "金句收藏馆",
+  "usingComponents": {
+    "privacy-panel": "../../components/privacy-panel/index"
+  }
+}

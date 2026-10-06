@@ -1,0 +1,40 @@
+<view class="page">
+  <view class="hd">
+    <view class="hd-title">🎬 台词 / 书摘卡</view>
+    <view class="hd-sub">影视台词 · 书本摘录 · 名言 → 金句卡（纯本地，零 AI）</view>
+  </view>
+
+  <view class="kinds">
+    <view wx:for="{{kinds}}" wx:key="key"
+      class="kind {{kind === item.key ? 'on' : ''}}" bindtap="onPickKind" data-key="{{item.key}}">{{item.name}}</view>
+  </view>
+
+  <view class="field">
+    <view class="label"> {{kindLabel}} 内容</view>
+    <textarea class="ta" value="{{text}}" bindinput="onField" data-field="text" placeholder="粘贴一句打动你的台词 / 书摘 / 名言" maxlength="-1" />
+  </view>
+
+  <view class="field">
+    <view class="label">出处（可选）</view>
+    <input class="input" value="{{source}}" bindinput="onField" data-field="source" placeholder="如：《肖申克的救赎》/ 某某说" />
+  </view>
+
+  <button class="btn primary gen" bindtap="onGen">生成卡片</button>
+
+  <view class="theme-row">
+    <view wx:for="{{themes}}" wx:key="id"
+      class="theme-chip {{theme === item.id ? 'on' : ''}}"
+      bindtap="onPickTheme" data-id="{{item.id}}"><view class="dot" style="background:{{item.color}}"></view>{{item.name}}</view>
+  </view>
+
+  <view class="canvas-wrap">
+    <canvas type="2d" id="lineCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
+    <view wx:if="{{!rendered}}" class="canvas-ph">点「生成卡片」后，预览显示在这里</view>
+    <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
+  </view>
+
+  <view class="err" wx:if="{{err}}">{{err}}</view>
+  <view class="tip">文案保存在你手机本地，不会上传任何服务器。</view>
+</view>
+
+<privacy-panel privacy-show="{{privacyShow}}" />

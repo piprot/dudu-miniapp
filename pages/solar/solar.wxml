@@ -1,0 +1,50 @@
+<view class="page">
+  <view class="hd">
+    <view class="hd-title">🗓️ 节气·今日文案</view>
+    <view class="hd-sub">节气 / 节日应景文案成卡（纯本地静态库，零 AI）</view>
+  </view>
+
+  <view class="today-card">
+    <view class="today-badge" wx:if="{{today.name}}">{{today.name}}</view>
+    <view class="today-text">{{today.text}}</view>
+    <view class="today-acts">
+      <button class="btn ghost" bindtap="onGenToday">🖼️ 生成今日卡</button>
+      <button class="btn ghost" bindtap="onSaveToVault">💾 存收藏馆</button>
+    </view>
+  </view>
+
+  <view class="tabs">
+    <view class="tab {{tab === 'term' ? 'on' : ''}}" bindtap="switchTab" data-tab="term">二十四节气</view>
+    <view class="tab {{tab === 'festival' ? 'on' : ''}}" bindtap="switchTab" data-tab="festival">常用节日</view>
+  </view>
+
+  <view class="list">
+    <view wx:if="{{tab === 'term'}}" wx:for="{{termList}}" wx:key="name" class="item" bindtap="onPickTerm" data-name="{{item.name}}" data-text="{{item.text}}">
+      <view class="item-name">{{item.name}}</view>
+      <view class="item-date">{{item.date}}</view>
+      <view class="item-text">{{item.text}}</view>
+    </view>
+    <view wx:if="{{tab === 'festival'}}" wx:for="{{festivalList}}" wx:key="name" class="item" bindtap="onPickFestival" data-name="{{item.name}}" data-text="{{item.text}}">
+      <view class="item-name">{{item.name}}</view>
+      <view class="item-date">{{item.date}}</view>
+      <view class="item-text">{{item.text}}</view>
+    </view>
+  </view>
+
+  <view class="theme-row">
+    <view wx:for="{{themes}}" wx:key="id"
+      class="theme-chip {{theme === item.id ? 'on' : ''}}"
+      bindtap="onPickTheme" data-id="{{item.id}}"><view class="dot" style="background:{{item.color}}"></view>{{item.name}}</view>
+  </view>
+
+  <view class="canvas-wrap">
+    <canvas type="2d" id="solarCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
+    <view wx:if="{{!rendered}}" class="canvas-ph">点「生成今日卡」或任一条目，预览显示在这里</view>
+    <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
+  </view>
+
+  <view class="err" wx:if="{{err}}">{{err}}</view>
+  <view class="tip">文案来自小程序内置节气/节日库，仅保存在你手机本地，不上传服务器。</view>
+</view>
+
+<privacy-panel privacy-show="{{privacyShow}}" />

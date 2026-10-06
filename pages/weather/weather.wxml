@@ -1,0 +1,52 @@
+<view class="page">
+  <view class="hd">
+    <view class="hd-title">🌤️ 天气心情卡</view>
+    <view class="hd-sub">天气 + 心情 → 图文卡（纯本地，零 AI · 已去除星座占卜风险）</view>
+  </view>
+
+  <view class="block">
+    <view class="block-title">今天什么天气</view>
+    <view class="grid">
+      <view wx:for="{{weatherList}}" wx:key="key"
+        class="cell {{weather === item.key ? 'on' : ''}}" bindtap="onPickWeather" data-key="{{item.key}}">
+        <view class="cell-ico">{{item.icon}}</view><view class="cell-name">{{item.name}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="block">
+    <view class="block-title">此刻心情</view>
+    <view class="grid">
+      <view wx:for="{{moodList}}" wx:key="key"
+        class="cell {{mood === item.key ? 'on' : ''}}" bindtap="onPickMood" data-key="{{item.key}}">
+        <view class="cell-ico">{{item.icon}}</view><view class="cell-name">{{item.name}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="block">
+    <view class="block-title">写一句（可选）</view>
+    <textarea class="ta" value="{{note}}" bindinput="onNote" placeholder="如：雨声里，把烦心事都冲走了" maxlength="-1" />
+    <button class="btn ghost pick" bindtap="onChooseImage">{{cover ? '重新选择图片' : '选择一张本地图（可选）'}}</button>
+    <view wx:if="{{cover}}" class="cover-mini">已选本地图片 ✓（不上传服务器）</view>
+  </view>
+
+  <button class="btn primary gen" bindtap="onGen">生成卡片</button>
+
+  <view class="theme-row">
+    <view wx:for="{{themes}}" wx:key="id"
+      class="theme-chip {{theme === item.id ? 'on' : ''}}"
+      bindtap="onPickTheme" data-id="{{item.id}}"><view class="dot" style="background:{{item.color}}"></view>{{item.name}}</view>
+  </view>
+
+  <view class="canvas-wrap">
+    <canvas type="2d" id="weatherCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
+    <view wx:if="{{!rendered}}" class="canvas-ph">点「生成卡片」后，预览显示在这里</view>
+    <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
+  </view>
+
+  <view class="err" wx:if="{{err}}">{{err}}</view>
+  <view class="tip">图片只存在你手机本地，不会上传任何服务器。</view>
+</view>
+
+<privacy-panel privacy-show="{{privacyShow}}" />

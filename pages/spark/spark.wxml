@@ -1,0 +1,35 @@
+<view class="page">
+  <view class="hd">
+    <view class="hd-title">💡 每日一句</view>
+    <view class="hd-sub">{{dateLabel}} · 今日灵感（本地确定性轮换，零 AI）</view>
+  </view>
+
+  <view class="quote-card">
+    <view class="q-mark">“</view>
+    <view class="q-text">{{quote.text}}</view>
+    <view class="q-cat" wx:if="{{quote.c}}">#{{quote.c}}</view>
+  </view>
+
+  <view class="acts">
+    <button class="btn ghost" bindtap="onShuffle">🎲 换一句</button>
+    <button class="btn ghost" bindtap="onSaveToVault">💾 存金句馆</button>
+    <button class="btn primary" bindtap="onPreview">🖼️ 预览成卡</button>
+  </view>
+
+  <view class="theme-row">
+    <view wx:for="{{themes}}" wx:key="id"
+      class="theme-chip {{theme === item.id ? 'on' : ''}}"
+      bindtap="onPickTheme" data-id="{{item.id}}"><view class="dot" style="background:{{item.color}}"></view>{{item.name}}</view>
+  </view>
+
+  <view class="canvas-wrap">
+    <canvas type="2d" id="sparkCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
+    <view wx:if="{{!rendered}}" class="canvas-ph">点「🖼️ 预览成卡」，日签显示在这里</view>
+    <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
+  </view>
+
+  <view class="err" wx:if="{{err}}">{{err}}</view>
+  <view class="tip">文案来自小程序内置语料库，仅保存在你手机本地，不上传服务器。</view>
+</view>
+
+<privacy-panel privacy-show="{{privacyShow}}" />

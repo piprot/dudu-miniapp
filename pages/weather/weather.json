@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "天气心情卡",
+  "usingComponents": {
+    "privacy-panel": "../../components/privacy-panel/index"
+  }
+}

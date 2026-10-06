@@ -1,0 +1,78 @@
+<view class="page">
+  <view class="hd">
+    <view class="hd-title">📚 金句收藏馆</view>
+    <view class="hd-sub">本地语料库 · 标签分类 · 搜索 · 一键成卡（纯本地，零 AI）</view>
+  </view>
+
+  <view class="search">
+    <input class="input" value="{{keyword}}" bindinput="onSearch" placeholder="搜索金句 / 出处 / 标签" />
+  </view>
+
+  <view class="tags" wx:if="{{tags.length}}">
+    <view wx:for="{{tags}}" wx:key="tag"
+      class="tag {{activeTag === item.tag ? 'on' : ''}}"
+      bindtap="onPickTag" data-tag="{{item.tag}}">#{{item.tag}} ({{item.count}})</view>
+    <view wx:if="{{activeTag}}" class="tag clear" bindtap="onPickTag" data-tag="{{activeTag}}">清除筛选</view>
+  </view>
+
+  <view class="stat">已收藏 {{count}} 条</view>
+
+  <view class="list">
+    <view wx:for="{{list}}" wx:key="id" class="qcard">
+      <view class="qtext" bindtap="onEdit" data-id="{{item.id}}">{{item.text}}</view>
+      <view class="qmeta" wx:if="{{item.tags.length || item.source}}">
+        <text wx:for="{{item.tags}}" wx:for-item="t" wx:key="*this" class="qtag">#{{t}}</text>
+        <text wx:if="{{item.source}}" class="qsrc">—— {{item.source}}</text>
+      </view>
+      <view class="qacts">
+        <view class="mini" bindtap="onMakeCard" data-id="{{item.id}}">🖼️ 成卡</view>
+        <view class="mini" bindtap="onCopy" data-text="{{item.text}}">📋 复制</view>
+        <view class="mini danger" bindtap="onDelete" data-id="{{item.id}}">🗑️ 删</view>
+      </view>
+    </view>
+    <view wx:if="{{!list.length}}" class="empty">还没有收藏，点下方「＋ 收藏金句」开始吧</view>
+  </view>
+
+  <button class="btn primary add" bindtap="onAdd">＋ 收藏金句</button>
+
+  <!-- 主题选择（6 套数据化主题，渲染引擎自动读取配色） -->
+  <view class="theme-row">
+    <view wx:for="{{themes}}" wx:key="id"
+      class="theme-chip {{theme === item.id ? 'on' : ''}}"
+      bindtap="onPickTheme" data-id="{{item.id}}"><view class="dot" style="background:{{item.color}}"></view>{{item.name}}</view>
+  </view>
+
+  <view class="canvas-wrap">
+    <canvas type="2d" id="quotesCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
+    <view wx:if="{{!rendered}}" class="canvas-ph">点某条金句的「🖼️ 成卡」，预览显示在这里</view>
+    <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
+  </view>
+
+  <view class="err" wx:if="{{err}}">{{err}}</view>
+  <view class="tip">收藏与卡片均保存在你手机本地，不会上传任何服务器。</view>
+</view>
+
+<!-- 编辑弹层 -->
+<view wx:if="{{showEditor}}" class="mask" catchtouchmove="noop">
+  <view class="sheet">
+    <view class="sheet-title">{{edit.id ? '编辑金句' : '收藏金句'}}</view>
+    <view class="field">
+      <view class="label">金句内容</view>
+      <textarea class="ta" value="{{edit.text}}" bindinput="onField" data-field="text" placeholder="写一句打动你的话" maxlength="-1" />
+    </view>
+    <view class="field">
+      <view class="label">出处（可选）</view>
+      <input class="input" value="{{edit.source}}" bindinput="onField" data-field="source" placeholder="如：出自《xxx》/ 谁说的" />
+    </view>
+    <view class="field">
+      <view class="label">标签（逗号分隔，可选）</view>
+      <input class="input" value="{{edit.tags}}" bindinput="onField" data-field="tags" placeholder="如：成长, 生活" />
+    </view>
+    <view class="sheet-acts">
+      <button class="btn ghost" bindtap="onCloseEditor">取消</button>
+      <button class="btn primary" bindtap="onSaveEdit">保存</button>
+    </view>
+  </view>
+</view>
+
+<privacy-panel privacy-show="{{privacyShow}}" />

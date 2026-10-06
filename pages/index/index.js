@@ -9,7 +9,12 @@ const TOOL_ORDER_KEY = 'dudu_tool_order_v1';
 const TOOL_DEFS = [
   { key: 'gen', cls: 'accent', title: '✍️ 文案工具箱', desc: '模板匹配 · 防折叠 · 知识库金句 · 我的素材' },
   { key: 'card', cls: 'card2', title: '🎴 卡片制作 / 日签', desc: '选模板填文字，一键制作卡片 · 可配本地图' },
-  { key: 'poster', cls: 'poster', title: '🖼️ 海报长图制作', desc: '一句话制作长图 · 仅保存到本机相册' }
+  { key: 'poster', cls: 'poster', title: '🖼️ 海报长图制作', desc: '一句话制作长图 · 仅保存到本机相册' },
+  { key: 'quotes', cls: 'accent', title: '📚 金句收藏馆', desc: '标签分类 · 搜索 · 一键成卡（本地语料库）' },
+  { key: 'spark', cls: 'card2', title: '💡 每日一句', desc: '今日灵感 · 随机换 · 存金句馆' },
+  { key: 'weather', cls: 'poster', title: '🌤️ 天气心情卡', desc: '天气 + 心情 → 图文卡' },
+  { key: 'solar', cls: 'accent', title: '🗓️ 节气·今日文案', desc: '节气 / 节日应景文案成卡' },
+  { key: 'line', cls: 'card2', title: '🎬 台词 / 书摘卡', desc: '影视书摘 → 金句卡' }
 ];
 
 const __pageCfg = {
@@ -113,7 +118,11 @@ const __pageCfg = {
   // 统一的工具卡点击入口（排序后绑定跟卡走，按 key 分发）。
   onTapTool(e) {
     const key = e.currentTarget.dataset.key;
-    const routes = { gen: '/pages/gen/gen', card: '/pages/card/card', poster: '/pages/poster/poster' };
+    const routes = {
+      gen: '/pages/gen/gen', card: '/pages/card/card', poster: '/pages/poster/poster',
+      quotes: '/pages/quotes/quotes', spark: '/pages/spark/spark',
+      weather: '/pages/weather/weather', solar: '/pages/solar/solar', line: '/pages/line/line'
+    };
     if (routes[key]) {
       wx.navigateTo({
         url: routes[key],
