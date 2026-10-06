@@ -17,13 +17,13 @@
   background: var(--bg-soft); border: 2rpx solid var(--border); border-radius: 14rpx;
   padding: 16rpx 0; text-align: center;
 }
-.cell.on { background: linear-gradient(135deg, #fff3e0 0%, #ffe6c2 100%); border-color: var(--primary); }
+.cell.on { background: linear-gradient(135deg, var(--bg-surface-3) 0%, var(--bg-surface-3) 100%); border-color: var(--primary); }
 .cell-ico { font-size: 40rpx; line-height: 1.1; }
 .cell-name { font-size: 23rpx; color: var(--text-body); margin-top: 6rpx; }
 
 .ta { width: 100%; box-sizing: border-box; background: var(--bg-card); border: 1rpx solid var(--border); border-radius: 14rpx; padding: 18rpx 20rpx; font-size: 27rpx; line-height: 1.6; color: var(--ink); min-height: 120rpx; }
-.btn { font-size: 28rpx; color: var(--text-body); background: #ece4d6; border-radius: 14rpx; padding: 18rpx 0; line-height: 1.4; margin: 0; }
-.btn.ghost { flex: none; padding: 14rpx 30rpx; font-size: 25rpx; background: #f7f1e6; color: var(--primary-deep); border: 1rpx solid var(--border); }
+.btn { font-size: 28rpx; color: var(--text-body); background: var(--bg-surface-4); border-radius: 14rpx; padding: 18rpx 0; line-height: 1.4; margin: 0; }
+.btn.ghost { flex: none; padding: 14rpx 30rpx; font-size: 25rpx; background: var(--bg-surface-1); color: var(--primary-deep); border: 1rpx solid var(--border); }
 .btn.pick { margin-top: 14rpx; }
 .btn-row { display: flex; gap: 16rpx; margin-top: 14rpx; }
 .btn-row .pick { margin-top: 0; flex: 1; }
@@ -44,7 +44,7 @@
 .recent-row { display: flex; flex-wrap: wrap; gap: 12rpx; }
 .chip {
   padding: 10rpx 22rpx; border-radius: 999rpx;
-  background: #f7f1e6; border: 1rpx solid var(--border);
+  background: var(--bg-surface-1); border: 1rpx solid var(--border);
   font-size: 24rpx; color: var(--primary-deep);
 }
 .chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
@@ -70,8 +70,8 @@
 .theme-row { display: flex; flex-wrap: wrap; gap: 14rpx; margin: 22rpx 0 6rpx; }
 .theme-chip {
   display: flex; align-items: center; gap: 8rpx;
-  font-size: 24rpx; color: #6b5636; background: #f3ecdf;
-  border: 2rpx solid #e5d9c4; border-radius: 24rpx; padding: 10rpx 22rpx;
+  font-size: 24rpx; color: #6b5636; background: var(--bg-surface-1);
+  border: 2rpx solid var(--bg-surface-5); border-radius: 24rpx; padding: 10rpx 22rpx;
 }
 .theme-chip .dot { width: 16rpx; height: 16rpx; border-radius: 50%; }
 .theme-chip.on { background: var(--primary); color: #fff; border-color: var(--primary); }

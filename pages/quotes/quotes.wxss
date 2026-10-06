@@ -22,12 +22,12 @@
   border: 1rpx solid var(--border); border-radius: var(--r-pill); padding: 8rpx 20rpx;
 }
 .tag.on { background: var(--primary); color: #fff; border-color: var(--primary); }
-.tag.clear { background: #f3ecdf; color: var(--text-tertiary); }
+.tag.clear { background: var(--bg-surface-1); color: var(--text-tertiary); }
 
 /* 今日推荐：金色渐变突出「天天换」的入口 */
 .today {
-  background: linear-gradient(135deg, #fff8e8 0%, #ffeec9 100%);
-  border: 1rpx solid #f0dcb0; border-radius: var(--r-md);
+  background: linear-gradient(135deg, var(--bg-surface-1) 0%, var(--bg-surface-2) 100%);
+  border: 1rpx solid var(--bg-surface-2); border-radius: var(--r-md);
   padding: 22rpx; margin-bottom: 18rpx;
 }
 .today-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx; }
@@ -38,8 +38,8 @@
 /* 分类胶囊（种子文案专属：人生/情感/职场/时间/成长/心境） */
 .cats { display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 16rpx; }
 .cat {
-  font-size: 24rpx; color: var(--primary-deep); background: #fdf6ec;
-  border: 1rpx solid #f0e2c8; border-radius: var(--r-pill); padding: 9rpx 24rpx;
+  font-size: 24rpx; color: var(--primary-deep); background: var(--bg-surface-1);
+  border: 1rpx solid var(--bg-surface-2); border-radius: var(--r-pill); padding: 9rpx 24rpx;
 }
 .cat.on { background: var(--primary); color: #fff; border-color: var(--primary); }
 
@@ -52,26 +52,26 @@
 }
 .qtext { font-size: 28rpx; color: var(--ink); line-height: 1.7; }
 .qmeta { margin-top: 12rpx; display: flex; flex-wrap: wrap; align-items: center; gap: 10rpx; }
-.qtag { font-size: 22rpx; color: var(--primary-deep); background: #fdf6ec; border: 1rpx solid #f0e2c8; border-radius: var(--r-pill); padding: 4rpx 14rpx; }
+.qtag { font-size: 22rpx; color: var(--primary-deep); background: var(--bg-surface-1); border: 1rpx solid var(--bg-surface-2); border-radius: var(--r-pill); padding: 4rpx 14rpx; }
 .qsrc { font-size: 22rpx; color: var(--text-tertiary); }
 .qacts { display: flex; gap: 14rpx; margin-top: 16rpx; }
 .mini {
-  font-size: 25rpx; color: var(--primary-deep); background: #f7f1e6;
+  font-size: 25rpx; color: var(--primary-deep); background: var(--bg-surface-1);
   border: 1rpx solid var(--border); border-radius: 12rpx; padding: 12rpx 26rpx;
 }
 .mini.danger { color: var(--danger); background: #fdeaea; border-color: #f3d2d2; }
 .empty { font-size: 25rpx; color: var(--text-tertiary); text-align: center; padding: 40rpx 0; }
 
-.btn { font-size: 28rpx; color: var(--text-body); background: #ece4d6; border-radius: 14rpx; padding: 18rpx 0; line-height: 1.4; margin: 0; }
-.btn.ghost { flex: none; padding: 14rpx 30rpx; font-size: 26rpx; background: #f7f1e6; color: var(--primary-deep); border: 1rpx solid var(--border); }
+.btn { font-size: 28rpx; color: var(--text-body); background: var(--bg-surface-4); border-radius: 14rpx; padding: 18rpx 0; line-height: 1.4; margin: 0; }
+.btn.ghost { flex: none; padding: 14rpx 30rpx; font-size: 26rpx; background: var(--bg-surface-1); color: var(--primary-deep); border: 1rpx solid var(--border); }
 .btn.primary { background: var(--primary); color: #fff; font-weight: 600; }
 .btn.add { width: 100%; margin-bottom: 18rpx; }
 
 .theme-row { display: flex; flex-wrap: wrap; gap: 14rpx; margin: 18rpx 0 6rpx; }
 .theme-chip {
   display: flex; align-items: center; gap: 8rpx;
-  font-size: 24rpx; color: #6b5636; background: #f3ecdf;
-  border: 2rpx solid #e5d9c4; border-radius: 24rpx; padding: 10rpx 22rpx;
+  font-size: 24rpx; color: #6b5636; background: var(--bg-surface-1);
+  border: 2rpx solid var(--bg-surface-5); border-radius: 24rpx; padding: 10rpx 22rpx;
 }
 .theme-chip .dot { width: 16rpx; height: 16rpx; border-radius: 50%; }
 .theme-chip.on { background: var(--primary); color: #fff; border-color: var(--primary); }

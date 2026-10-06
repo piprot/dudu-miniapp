@@ -7,26 +7,26 @@
 }
 .pp-card {
   width: 100%; box-sizing: border-box;
-  background: var(--bg-card, #fffdf8);
+  background: var(--bg-card, var(--bg-card));
   border-radius: var(--r-lg, 28rpx);
   padding: 40rpx 36rpx 32rpx;
   box-shadow: var(--shadow-card, 0 12rpx 40rpx rgba(0,0,0,.12));
 }
 .pp-title {
   font-size: var(--fs-title, 32rpx);
-  color: var(--ink, #2b2b2b);
+  color: var(--ink, var(--ink));
   font-weight: 600;
   text-align: center;
   margin-bottom: 20rpx;
 }
 .pp-body {
   font-size: var(--fs-body, 28rpx);
-  color: var(--text-body, #5b5346);
+  color: var(--text-body, var(--text-body));
   line-height: 1.7;
   margin-bottom: 32rpx;
 }
 .pp-link {
-  color: var(--primary, #f5793b);
+  color: var(--primary, var(--primary));
   text-decoration: underline;
 }
 .pp-actions { display: flex; }
@@ -39,11 +39,11 @@
 }
 .pp-btn-ghost {
   background: transparent;
-  color: var(--text-sub, #8a8378);
-  border: 2rpx solid var(--border, #e0d6c2);
+  color: var(--text-sub, var(--text-sub));
+  border: 2rpx solid var(--border, var(--border));
 }
 .pp-btn-primary {
-  background: var(--primary, #f5793b);
+  background: var(--primary, var(--primary));
   color: #fff;
   border: none;
 }

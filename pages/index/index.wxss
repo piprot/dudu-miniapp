@@ -1,11 +1,11 @@
 .page { padding: 24rpx 24rpx 200rpx; }
-.err-banner { margin: 0 0 16rpx; padding: 18rpx 22rpx; border-radius: 14rpx; background: #fdecea; border: 2rpx solid #f5c6c0; color: var(--danger); font-size: 24rpx; line-height: 1.6; word-break: break-all; display: flex; align-items: flex-start; justify-content: space-between; }
+.err-banner { margin: 0 0 16rpx; padding: 18rpx 22rpx; border-radius: 14rpx; background: var(--bg-surface-1); border: 2rpx solid #f5c6c0; color: var(--danger); font-size: 24rpx; line-height: 1.6; word-break: break-all; display: flex; align-items: flex-start; justify-content: space-between; }
 .err-text { flex: 1; }
 .err-copy { flex: none; margin-left: 16rpx; padding: 4rpx 16rpx; background: var(--danger); color: #fff; border-radius: 20rpx; font-size: 22rpx; }
 .hero {
   position: relative; margin: 8rpx 0 20rpx; padding: 36rpx 32rpx;
   border-radius: 24rpx;
-  background: linear-gradient(135deg, #fffdf9 0%, #fff6e8 100%);
+  background: linear-gradient(135deg, #fffdf9 0%, var(--bg-surface-1) 100%);
   border: 2rpx solid rgba(255, 255, 255, 0.85);
   box-shadow: 0 8rpx 24rpx rgba(150, 110, 50, 0.12), inset 0 2rpx 0 rgba(255, 255, 255, 0.9);
 }
@@ -23,7 +23,7 @@
 .points-label { font-size: 24rpx; color: #8a7f70; margin-left: 8rpx; }
 .daily-tag { font-size: 26rpx; }
 .daily-tag.done { color: var(--success); }
-.daily-tag.todo { color: #e65100; font-weight: 500; }
+.daily-tag.todo { color: var(--primary-deep); font-weight: 500; }
 .login-bar { display: flex; align-items: center; justify-content: space-between; background: #fff; border-radius: 20rpx; padding: 24rpx 28rpx; margin-bottom: 16rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); }
 .login-text { font-size: 28rpx; color: #5a5a5a; }
 .login-btn { background: var(--primary); color: #fff; font-size: 26rpx; border-radius: 999rpx; padding: 0 32rpx; margin: 0; }
@@ -39,7 +39,7 @@
 .chapter-meta { font-size: 24rpx; }
 .tag { padding: 6rpx 16rpx; border-radius: 999rpx; }
 .tag-free { background: #e8f5e9; color: var(--success); }
-.tag-lock { background: #fff3e0; color: #e65100; }
+.tag-lock { background: var(--bg-surface-3); color: var(--primary-deep); }
 .tag-open { background: #ede7f6; color: #5e35b1; }
 .pay-bar {
   position: fixed; left: 0; right: 0; bottom: 0;
@@ -47,21 +47,21 @@
   padding: 20rpx 32rpx calc(20rpx + env(safe-area-inset-bottom));
   background: #fff; box-shadow: 0 -4rpx 16rpx rgba(0,0,0,0.06);
 }
-.pay-price { font-size: 40rpx; font-weight: 700; color: #e65100; }
+.pay-price { font-size: 40rpx; font-weight: 700; color: var(--primary-deep); }
 .pay-unit { font-size: 24rpx; color: #8a7f70; font-weight: 400; }
 .pay-btn {
-  background: #e65100; color: #fff; font-size: 30rpx;
+  background: var(--primary-deep); color: #fff; font-size: 30rpx;
   border-radius: 999rpx; padding: 0 48rpx; margin: 0;
 }
 .pay-bar.owned { justify-content: center; color: var(--success); font-size: 28rpx; }
 .ai-entry { background: #fff; border-radius: 20rpx; padding: 28rpx; margin: 16rpx 0 8rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); }
 .ai-entry-title { font-size: 34rpx; font-weight: 600; color: var(--ink); }
 .ai-entry-sub { font-size: 26rpx; color: #8a7f70; margin: 8rpx 0 20rpx; line-height: 1.6; }
-.ai-entry-btn { background: #378ADD; color: #fff; font-size: 30rpx; border-radius: 999rpx; padding: 0 48rpx; margin: 0; }
+.ai-entry-btn { background: var(--accent-blue); color: #fff; font-size: 30rpx; border-radius: 999rpx; padding: 0 48rpx; margin: 0; }
 
 /* ── 2026-09-18 重构新增 ── */
-.page { background: linear-gradient(180deg, #fdf3e3 0%, #f7ead6 40%, #f5efe4 100%); }
-.hero-title { color: #4a3b28; font-size: 52rpx; font-weight: 800; }
+.page { background: linear-gradient(180deg, var(--bg-surface-1) 0%, var(--bg-surface-2) 40%, var(--bg-surface-1) 100%); }
+.hero-title { color: var(--text-title); font-size: 52rpx; font-weight: 800; }
 .hero-author { color: #9a8b74; }
 .points-bar {
   background: linear-gradient(135deg, #ffd98a 0%, #ffb84d 100%);
@@ -77,7 +77,7 @@
   box-shadow: 0 8rpx 24rpx rgba(245, 121, 59, 0.35);
 }
 .ai-entry-title { color: #fff; font-size: 38rpx; font-weight: 800; }
-.ai-entry-sub { color: #ffe8cf; }
+.ai-entry-sub { color: var(--bg-surface-1); }
 .ai-entry-btn {
   background: #fff; color: var(--primary); font-weight: 800;
   border-radius: 999rpx; padding: 0 48rpx; margin: 0;
@@ -94,7 +94,7 @@
 .ai-entry-btn:active { transform: scale(0.96); }
 
 .moments-sample {
-  background: #ffffff; border: 2rpx solid #f3e6d2; border-radius: 20rpx;
+  background: #ffffff; border: 2rpx solid var(--bg-surface-2); border-radius: 20rpx;
   padding: 24rpx; margin: 0 0 16rpx;
   box-shadow: 0 4rpx 14rpx rgba(150, 110, 50, 0.08);
 }
@@ -102,8 +102,8 @@
 .ms-title { font-size: 26rpx; font-weight: 700; color: #6b5636; }
 .ms-go { font-size: 23rpx; color: var(--primary); font-weight: 600; }
 .ms-item {
-  font-size: 25rpx; color: #4a3b28; line-height: 1.75;
-  background: #fdf9f0; border-left: 6rpx solid #ffce7a; border-radius: 0 14rpx 14rpx 0;
+  font-size: 25rpx; color: var(--text-title); line-height: 1.75;
+  background: var(--bg-soft); border-left: 6rpx solid #ffce7a; border-radius: 0 14rpx 14rpx 0;
   padding: 14rpx 18rpx; margin-bottom: 12rpx;
 }
 .ms-more { font-size: 22rpx; color: #a89270; text-align: center; margin-top: 4rpx; }
@@ -120,16 +120,16 @@
   border-left: 6rpx solid #ffce7a;
 }
 .tool-card.accent {
-  background: linear-gradient(135deg, #fff3e0 0%, #ffe6c2 100%);
+  background: linear-gradient(135deg, var(--bg-surface-3) 0%, var(--bg-surface-3) 100%);
   border-left-color: var(--primary);
 }
 .tool-card.card2 {
   background: linear-gradient(135deg, #eef6ff 0%, #dcecff 100%);
-  border-left-color: #378ADD;
+  border-left-color: var(--accent-blue);
 }
 .tool-card.poster {
   background: linear-gradient(135deg, #f3fff0 0%, #ddf5d8 100%);
-  border-left-color: #4caf7d;
+  border-left-color: var(--accent-green);
 }
-.tool-title { font-size: 32rpx; font-weight: 700; color: #4a3b28; }
+.tool-title { font-size: 32rpx; font-weight: 700; color: var(--text-title); }
 .tool-desc { font-size: 24rpx; color: #9a8b74; margin-top: 8rpx; line-height: 1.6; }

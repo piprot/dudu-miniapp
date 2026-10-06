@@ -24,15 +24,15 @@
 .item-date { font-size: 21rpx; color: var(--text-tertiary); margin: 4rpx 0 10rpx; }
 .item-text { font-size: 25rpx; color: var(--text-body); line-height: 1.6; }
 
-.btn { font-size: 26rpx; color: var(--text-body); background: #ece4d6; border-radius: 14rpx; padding: 18rpx 0; line-height: 1.4; margin: 0; }
-.btn.ghost { font-size: 25rpx; background: #f7f1e6; color: var(--primary-deep); border: 1rpx solid var(--border); }
+.btn { font-size: 26rpx; color: var(--text-body); background: var(--bg-surface-4); border-radius: 14rpx; padding: 18rpx 0; line-height: 1.4; margin: 0; }
+.btn.ghost { font-size: 25rpx; background: var(--bg-surface-1); color: var(--primary-deep); border: 1rpx solid var(--border); }
 .btn.primary { background: var(--primary); color: #fff; font-weight: 600; }
 
 .theme-row { display: flex; flex-wrap: wrap; gap: 14rpx; margin: 18rpx 0 6rpx; }
 .theme-chip {
   display: flex; align-items: center; gap: 8rpx;
-  font-size: 24rpx; color: #6b5636; background: #f3ecdf;
-  border: 2rpx solid #e5d9c4; border-radius: 24rpx; padding: 10rpx 22rpx;
+  font-size: 24rpx; color: #6b5636; background: var(--bg-surface-1);
+  border: 2rpx solid var(--bg-surface-5); border-radius: 24rpx; padding: 10rpx 22rpx;
 }
 .theme-chip .dot { width: 16rpx; height: 16rpx; border-radius: 50%; }
 .theme-chip.on { background: var(--primary); color: #fff; border-color: var(--primary); }

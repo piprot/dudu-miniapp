@@ -422,6 +422,82 @@ t('接线：风格/背景偏好持久化，但相册临时路径必须不落盘'
   }
 });
 
+t('守卫：设计令牌必须被真正使用（禁止大面积硬编码色值回流）', () => {
+  // 2026-10-06 /normalize 审计发现：app.wxss 里19 个令牌定义得好好的，
+  // 但 15 个 wxss 里有 152 种硬编码色值、318 次使用 —— 令牌形同虚设，
+  // 改主题色要翻 15 个文件。
+  // 已做两次收敛：
+  //   ① 精确匹配（值与令牌完全相同）→ 53 处，零视觉差异
+  //   ② 表面级聚类（58 种浅暖底 ΔE<3.0 → 5 档令牌）→ 45 处，零视觉差异
+  // 本守卫防止色值重新失控。
+  const fs2 = require('fs');
+  const path2 = require('path');
+  const root = path2.join(__dirname, '..');
+
+  function walk(dir, acc) {
+    for (const e of fs2.readdirSync(dir, { withFileTypes: true })) {
+      if (e.name === 'node_modules' || e.name === '.git' || e.name === 'tools_local') continue;
+      const p = path2.join(dir, e.name);
+      if (e.isDirectory()) walk(p, acc);
+      else if (e.name.endsWith('.wxss')) acc.push(p);
+    }
+    return acc;
+  }
+  const files = walk(root, []).filter(f => path2.basename(f) !== 'app.wxss');
+
+  // 统计「令牌未覆盖的暖系浅底」数量 —— 这是最容易失控的一类
+  const appSrc = fs2.readFileSync(path2.join(root, 'app.wxss'), 'utf8');
+  const tokens = new Set();
+  let m2;
+  const tre = /(--[a-z0-9-]+):\s*#[0-9a-fA-F]{3,6}/g;
+  while ((m2 = tre.exec(appSrc)) !== null) {
+    let hex = m2[0].slice(m2[0].indexOf('#'));
+    if (hex.length === 4) hex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
+    tokens.add(hex.toLowerCase());
+  }
+  assert.ok(tokens.size >= 20, '令牌数量异常少（' + tokens.size + '），app.wxss 是否被改坏');
+
+  const loose = {};
+  files.forEach(f => {
+    const src = fs2.readFileSync(f, 'utf8');
+    (src.match(/#[0-9a-fA-F]{6}\b/g) || []).forEach(h => {
+      const k = h.toLowerCase();
+      if (tokens.has(k)) return;                // 命中令牌定义值，不算
+      // 只统计暖系极浅底（明度高+ 低饱和），这是失控重灾区
+      const r = parseInt(k.slice(1, 3), 16), g = parseInt(k.slice(3, 5), 16), b = parseInt(k.slice(5, 7), 16);
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      const sat = mx === 0 ? 0 : (mx - mn) / mx;
+      const L = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+      if (L >= 0.86 && sat <= 0.32 && r >= b) {
+        const rel = path2.relative(root, f).replace(/\\/g, '/');
+        loose[rel] = (loose[rel] || 0) + 1;
+      }
+    });
+  });
+  const total = Object.values(loose).reduce((a, c) => a + c, 0);
+  // 阈值 20 的依据（非拍脑袋）：两轮收敛后残留 16 处，逐处核对过**全是有语义的一次性设计**，
+  // 不得归并——
+  //   #ffffff ×9  卡片底/输入框底/深底上的白字（不是「浅暖底」，是纯白）
+  //   #f3fff0 #ddf5d8  poster 卡的绿意底（有意的色相区分）
+  //   #fdeaea          danger 浅红底（语义色，不是浅暖底）
+  //   #fffdf9 #fdf8ef #fbf6ef #e8dcc8  hero/预览/样本卡的单次微调
+  // 换言之16 是「有意保留」的基线，不是「没收敛干净」。多于此数说明有人又手调了浅底。
+  assert.ok(total <= 20,
+    '暖系浅底硬编码回升到 ' + total + ' 处（有意保留的语义色基线是 16，阈值 20）。'
+    + '新增浅底必须用 --bg-surface-1~5；确需新档先用'
+    + ' `python tools_local/tok_cluster.py` 复核。分布: '
+    + JSON.stringify(loose));
+
+  // 令牌使用率：var() 引用应占绝对多数
+  const allSrc = files.map(f => fs2.readFileSync(f, 'utf8')).join('\n');
+  const varRefs = (allSrc.match(/var\(--[a-z0-9-]+\)/g) || []).length;
+  const hardRefs = (allSrc.match(/#[0-9a-fA-F]{6}\b/g) || []).length;
+  const ratio = varRefs / (varRefs + hardRefs);
+  assert.ok(ratio > 0.6,
+    '令牌引用率仅 ' + (ratio * 100).toFixed(0) + '%（var ' + varRefs
+    + ' / 硬编码 ' + hardRefs + '），阈值 60%');
+});
+
 t('守卫：不得引入包内字体文件（主包 2MB 上限 + canvas 不支持）', () => {
   // 2026-10-06 定案：字体走系统族，不落地字体文件。原因：
   //   ① 主包 2MB，完整中文字体 10MB+；② loadFontFace 不读包内路径；
