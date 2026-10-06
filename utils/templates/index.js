@@ -198,6 +198,8 @@ function buildCardModel(type, themeId, data, opts) {
     children
   };
   if (d.bgImg) model.backgroundImage = d.bgImg; // 页面加载图片后注入 backgroundImageAsset
+  // 内置包内背景图靠蒙版强度近似灰度/虚化/原图三档（网络图由picsum 服务端做，见 utils/bg_pack.js）
+  if (d.bgVeil) model.bgVeil = d.bgVeil;
   return model;
 }
 

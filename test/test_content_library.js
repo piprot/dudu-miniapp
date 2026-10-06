@@ -270,12 +270,16 @@ t('接线：四页均已接上背景图库（选图/切模式/换一张/取消/�
   // 守卫从「页面里逐个定义方法」升级为「mixin 提供方法 + 四页都注入 + wxml 都有控件」。
   const mixin = fs.readFileSync(
     path.join(__dirname, '..', 'utils', 'card_style_mixin.js'), 'utf8');
-  for (const fn of ['onPickPhoto', 'onCyclePhotoMode', 'onShufflePhoto',
+  for (const fn of ['onPickPhoto', 'onPickBuiltinBg', 'onCyclePhotoMode', 'onShufflePhoto',
     'onClearPhoto', 'onPickAlbumBg', 'onPickStyle']) {
     assert.ok(mixin.indexOf(fn + '(') >= 0, 'card_style_mixin 缺方法 ' + fn);
   }
-  // applyCardStyle 必须真的算出 bgImg（相册图优先于图库，都空则不设该键）
+  // applyCardStyle 必须真的算出 bgImg（相册 > 网络图库 > 内置兜底；显式取消则不设该键）
   assert.ok(/bgImg/.test(mixin), 'mixin 未产出 bgImg');
+  // 两级来源必须都在：内置兜底（零网络）+ 网络图库（增强项）
+  assert.ok(/bg_pack/.test(mixin), 'mixin 未接内置兜底图库 bg_pack');
+  assert.ok(/photo_lib/.test(mixin), 'mixin 未保留网络图库 photo_lib');
+  assert.ok(/bgFallback/.test(mixin), 'mixin 未给网络图挂内置兜底（白名单没配会白卡）');
   for (const p of ['weather', 'solar', 'quotes', 'line']) {
     const js = fs.readFileSync(
       path.join(__dirname, '..', 'pages', p, p + '.js'), 'utf8');
@@ -285,9 +289,11 @@ t('接线：四页均已接上背景图库（选图/切模式/换一张/取消/�
     assert.ok(/cardStyle\.defaults\(/.test(js), p + '.js data 未套用 card_style 字段');
     const wxml = fs.readFileSync(
       path.join(__dirname, '..', 'pages', p, p + '.wxml'), 'utf8');
-    for (const b of ['bindtap="onPickPhoto"', 'bindtap="onCyclePhotoMode"',
+    for (const b of ['bindtap="onPickPhoto"', 'bindtap="onPickBuiltinBg"',
+      'bindtap="onCyclePhotoMode"',
       'bindtap="onShufflePhoto"', 'bindtap="onClearPhoto"',
-      'bindtap="onPickAlbumBg"', 'bindtap="onPickStyle"', 'class="bg-scroll"']) {
+      'bindtap="onPickAlbumBg"', 'bindtap="onPickStyle"', 'class="bg-scroll"',
+      '{{builtinPhotos}}']) {
       assert.ok(wxml.indexOf(b) >= 0, p + '.wxml 缺 ' + b);
     }
   }
@@ -323,17 +329,47 @@ t('接线：四页都能让风格真正落到渲染（styleKey 进 applyCardStyl
     path.join(__dirname, '..', 'utils', 'card_style_mixin.js'), 'utf8')),
     'applyCardStyle 未校验 styleKey 合法性');
 
-  const page = { data: { styleKey: 'poster', localBg: '', bgPhotoId: '' } };
+  const page = { data: { styleKey: 'poster', localBg: '', bgSource: 'none', bgPhotoId: '' } };
   const out = mixin.applyCardStyle(page, { body: 'x' });
   assert.strictEqual(out.styleKey, 'poster', 'styleKey 未落到卡片数据');
-  assert.ok(!('bgImg' in out), '无背景时不应塞 bgImg 键');
+  assert.ok(!('bgImg' in out), '显式取消背景（none）时不应塞 bgImg 键');
 
   page.data.styleKey = 'evil;font:url(x)';
   assert.ok(!('styleKey' in mixin.applyCardStyle(page, {})), '非法 styleKey 未被拦下');
 
+  // 非法图库 id 绝不能变成任意 URL —— 只能回落内置兜底图（bg_pack 认得的路径）
+  const bgPack = require('../utils/bg_pack');
+  page.data.bgSource = 'lib';
   page.data.bgPhotoId = 'not-a-real-id';
-  assert.ok(!('bgImg' in mixin.applyCardStyle(page, {})),
-    '非法图库 id 未被拦下（防 dataset 注入任意 URL）');
+  const inj = mixin.applyCardStyle(page, {});
+  assert.strictEqual(inj.bgImg, bgPack.pathOf('bg00'),
+    '非法图库 id 未回落到内置兜底图（防 dataset 注入任意 URL）');
+  page.data.bgSource = 'builtin';
+  page.data.bgPhotoId = '../../secret.jpg';
+  const inj2 = mixin.applyCardStyle(page, {});
+  assert.strictEqual(inj2.bgImg, bgPack.pathOf('bg00'),
+    '非法内置路径未被拦下（防 dataset 注入任意包内路径）');
+});
+
+t('守卫：内置兜底图随包存在、无 webp、且在包体预算内', () => {
+  // 三条硬约束，任何一条破了都会让"零网络出图"落空：
+  //   ① 文件真实存在（清单与磁盘不能漂移）
+  //   ② 一律 JPEG —— 真机 <image> 不支持 webp（R9 红线同源）
+  //   ③ 总体积不把主包顶爆（2MB 上限，图片是包体大户）
+  const fsx = require('fs');
+  const pathx = require('path');
+  const bgPack = require('../utils/bg_pack');
+  const dir = pathx.join(__dirname, '..', 'images', 'bg');
+  const files = fsx.readdirSync(dir);
+  assert.strictEqual(files.length, bgPack.BUILTIN.length,
+    'images/bg 文件数与 bg_pack 清单不一致（漏图或清单未更新）');
+  files.forEach(f => {
+    assert.ok(/\.jpe?g$/i.test(f), '内置背景图必须 JPEG，发现: ' + f);
+  });
+  let total = 0;
+  files.forEach(f => { total += fsx.statSync(pathx.join(dir, f)).size; });
+  assert.ok(total < 600 * 1024, '内置背景图总体积 ' + Math.round(total / 1024)
+    + 'KB，超出 600KB 预算（会挤占主包 2MB 额度）');
 });
 
 t('接线：风格/背景偏好持久化，但相册临时路径必须不落盘', () => {

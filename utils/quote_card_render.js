@@ -68,8 +68,19 @@ function renderCard(page, opts) {
           if (c && im) c.asset = im;
         }));
         if (data.bgImg) jobs.push(loadImg(data.bgImg).then(im => {
-          if (im) model.backgroundImageAsset = im;
-          else delete model.backgroundImage; // 背景图加载失败 → 回退主题渐变，不画占位
+          if (im) {
+            model.backgroundImageAsset = im;
+            return;
+          }
+          // 网络图加载失败（白名单没配 / 断网 / 图源抖动）→ 改用内置兜底图；
+          // 内置图也失败才回退主题渐变。任何一级都不白卡、不抛错。
+          if (data.bgFallback) {
+            return loadImg(data.bgFallback).then(im2 => {
+              if (im2) model.backgroundImageAsset = im2;
+              else delete model.backgroundImage;
+            });
+          }
+          delete model.backgroundImage; // 无兜底 → 回退主题渐变，不画占位
         }));
 
         Promise.all(jobs).then(() => {

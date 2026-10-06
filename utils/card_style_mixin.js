@@ -9,17 +9,21 @@
 // ── 能力边界（与 utils/font_kit.js、utils/photo_lib.js 同源）──────────
 //  · 风格只改排版参数（字体族/字号/字距/对齐/装饰），不落地字体文件——
 //    主包 2MB 上限 + loadFontFace 不读包内路径 + canvas 不支持，三条硬墙。
-//  · 背景图分两类：内置图库（picsum 固定 ID，需 downloadFile 白名单）与
-//    手机相册（临时文件路径）。两者互斥：选相册图会清掉图库选中，反之亦然。
-//  · 背景加载失败由 quote_card_render 内部 delete model.backgroundImage
-//    回退主题渐变，不会白卡，也不会抛错。
+//  · 背景图分**三级来源**（2026-10-06 用户要求「内置压缩兜底图，网络图库作为增强项」）：
+//      album手机相册（用户自己的图，临时路径，不落盘）
+//      builtin  内置压缩兜底图（包内 /images/bg/*.jpg，零网络零白名单，永远能出图）← 默认
+//      lib     网络图库（picsum 100 张，需 downloadFile 白名单，是增强项不是前提）
+//    三级互斥：选相册清图库+内置，选图库/内置清相册。
+//  · 背景加载失败由 quote_card_render 内部处理：网络图失败 → 回落内置兜底图 →
+//    再失败才 delete model.backgroundImage 回退主题渐变，任何一级都不白卡。
 //
 // ── 持久化取舍 ─────────────────────────────────────────────────────────
-//  风格 / 图库图 ID / 图库处理方式 → 存本地（跨页面、跨启动保持一致）。
+//  风格 / 背景图 ID / 背景来源 / 处理方式 → 存本地（跨页面、跨启动保持一致）。
 //  相册临时路径 → **不存**（chooseMedia 的 tempFilePath 会被系统回收，
 //  存下来下次启动就是坏图），只在本次会话内有效。
 
 const photoLib = require('./photo_lib');
+const bgPack = require('./bg_pack');
 const fontKit = require('./font_kit');
 const { handlePrivacyApiFail } = require('./diag.js');
 const { renderCard } = require('./quote_card_render');
@@ -27,7 +31,12 @@ const { renderCard } = require('./quote_card_render');
 const KEY = 'dudu_card_style_v1';
 const PHOTO_MODES = ['gray', 'blur', 'raw'];
 const MODE_LABEL = { gray: '灰度衬底', blur: '虚化', raw: '原图' };
-const PREVIEW_COUNT = 24;   // 横向滚动缩略图只铺前24 张，全库 100 张仍可选（换一张）
+const PREVIEW_COUNT = 24;   // 网络图库横向滚动只铺前24 张，全库 100 张仍可选（换一张）
+
+// 内置包内图没有服务端做灰度/虚化，改用引擎暗色蒙版强度近似三档。
+// 核心目的不是"真的灰度"，而是**白字压在图上必须可读** → 越靠gray 蒙版越厚。
+const BUILTIN_VEIL = { gray: [0.46, 0.68], blur: [0.36, 0.56], raw: [0.24, 0.42] };
+const FALLBACK_ID = 'bg00';   // 网络图加载失败时回落到这张（保证不白卡的最后一层）
 
 /** 页面 data 里的风格/背景字段。defaultStyleKey 缺省用文艺（与模板层 DEFAULT_STYLE 对齐）。 */
 function defaults(defaultStyleKey) {
@@ -36,19 +45,29 @@ function defaults(defaultStyleKey) {
     styleKey: defaultStyleKey || 'literary',
     styleList: fontKit.STYLE_LIST,
     styleDefault: defaultStyleKey || 'literary',
-    // 背景图库
-    photos: [],
+    // 背景：内置压缩兜底图（默认来源，零网络零白名单）
+    builtinPhotos: bgPack.listAll(),
+    bgPhotoId: FALLBACK_ID,
+    bgSource: 'builtin',   // builtin=内置兜底| lib=网络图库 | album=手机相册
+    // 背景：网络图库（增强项，需 downloadFile 白名单）
+    photos: photoLib.listAll({ mode: 'gray' }).slice(0, PREVIEW_COUNT),
+    netAvailable: false,   // 网络图库是否可用（探测结果，见 probeNetLib）
     photoMode: 'gray',
     photoModeLabel: MODE_LABEL.gray,
-    bgPhotoId: '',
-    bgAuthor: '',
-    bgSource: 'lib',      // lib=内置图库 | album=手机相册
-    localBg: ''           // 相册临时路径（不持久化）
+    bgAuthor: bgPack.authorOf(FALLBACK_ID),
+    localBg: ''            // 相册临时路径（不持久化）
   };
 }
 
 function normalizeMode(m) {
   return PHOTO_MODES.indexOf(m) >= 0 ? m : 'gray';
+}
+
+function normalizeSource(s) {
+  // none 是显式的「不要背景」（用户点了取消背景）。必须与 builtin 区分：
+  // builtin 是兜底默认值，id 为空会回落默认图；none 则真的不设 bgImg。
+  if (s === 'lib' || s === 'album' || s === 'none') return s;
+  return 'builtin';
 }
 
 function readStore() {
@@ -65,21 +84,52 @@ function writeStore(patch) {
 }
 
 /**
- * 组装 renderCard 的 data：注入 styleKey 与 bgImg。
- * bgImg 优先级：相册临时图 > 内置图库图；都没有则不设该键（走主题渐变）。
+ * 组装 renderCard 的 data：注入 styleKey 与背景三键（bgImg / bgVeil / bgFallback）。
+ *
+ * 优先级：相册临时图 > 当前来源（内置兜底 / 网络图库）；都没有则不设 bgImg（走主题渐变）。
+ * 网络图额外挂 bgFallback（内置兜底图路径）——白名单没配 / 断网 / 图源抖动时，
+ * quote_card_render 会自动改用这张内置图，**保证永远能出带背景的卡**。
+ *
  * @param {object} base 页面自己的卡片数据（title/body/author/cover…）
  */
 function applyCardStyle(page, base) {
   const d = (page && page.data) || {};
   const out = Object.assign({}, base || {});
   if (d.styleKey && fontKit.hasStyle(d.styleKey)) out.styleKey = d.styleKey;
+
+  const mode = normalizeMode(d.photoMode);
+  const src = normalizeSource(d.bgSource);
   let bg = '';
-  if (d.localBg) bg = d.localBg;
-  else if (d.bgPhotoId && photoLib.has(d.bgPhotoId)) {
-    bg = photoLib.urlOf(d.bgPhotoId, { mode: normalizeMode(d.photoMode) });
+
+  if (d.localBg) {
+    bg = d.localBg;                          // 相册图：原图直用，不叠 veil（用户自己的图）
+  } else if (src === 'none') {
+    bg = '';                                 // 用户显式取消背景 → 走主题渐变
+  } else if (src === 'lib' && photoLib.has(d.bgPhotoId)) {
+    bg = photoLib.urlOf(d.bgPhotoId, { mode });
+    if (!bg) bg = bgPack.pathOf(FALLBACK_ID);  // 未知 id → 兜底
+  } else if (src === 'lib') {
+    bg = bgPack.pathOf(FALLBACK_ID);         // lib 来源但 id 失效 → 回落内置
+  } else {
+    // builtin：未知/空 id 一律拦下落回默认内置图
+    bg = bgPack.pathOf(d.bgPhotoId) || bgPack.pathOf(FALLBACK_ID);
   }
-  if (bg) out.bgImg = bg;
-  else delete out.bgImg;
+
+  if (bg) {
+    out.bgImg = bg;
+    // 内置包内图没有服务端做灰度/虚化，用引擎蒙版强度近似三档（保白字可读）。
+    // 判定用「是否为 http(s) 绝对地址」而不是前缀字符串——比逐个比对 /images/ 稳。
+    const isRemote = /^https?:\/\//i.test(bg);
+    if (!isRemote) out.bgVeil = BUILTIN_VEIL[mode];
+    else delete out.bgVeil;
+    // 网络图挂兜底：加载失败时由渲染层改用内置图
+    if (isRemote) out.bgFallback = bgPack.pathOf(FALLBACK_ID);
+    else delete out.bgFallback;
+  } else {
+    delete out.bgImg;
+    delete out.bgVeil;
+    delete out.bgFallback;
+  }
   return out;
 }
 
@@ -106,7 +156,12 @@ function repaint(page) {
 
 const cardStyleMethods = {
   /**
-   * onLoad 里调一次：恢复持久化的风格/图库选择，并铺缩略图。
+   * onLoad 里调一次：恢复持久化的风格/背景选择，并铺缩略图。
+   *
+   * 背景恢复的三级净化（防手改 storage / 库更新后旧 ID 失效）：
+   *   bgSource=album → 相册路径本就不落盘，必然为空 → 回落内置兜底
+   *   bgSource=lib    → ID 必须在 photo_lib 内，否则降级为 builtin
+   *   bgSource=builtin→ ID 必须在 bg_pack 内，否则回落默认内置图
    * @param {string} [defaultStyleKey] 该页面的默认风格（不传则 literary）
    */
   initCardStyle(defaultStyleKey) {
@@ -114,14 +169,25 @@ const cardStyleMethods = {
     const s = readStore();
     const styleKey = fontKit.hasStyle(s.styleKey) ? s.styleKey : def;
     const photoMode = normalizeMode(s.photoMode);
-    // 图库 ID 必须仍在库内（防手改storage / 库更新后旧 ID 失效）
-    const bgPhotoId = photoLib.has(s.bgPhotoId) ? s.bgPhotoId : '';
+
+    let src = normalizeSource(s.bgSource);
+    let bgPhotoId = s.bgPhotoId;
+    if (src === 'lib') {
+      if (!photoLib.has(bgPhotoId)) { src = 'builtin'; bgPhotoId = FALLBACK_ID; }
+    } else if (src === 'builtin') {
+      if (!bgPack.has(bgPhotoId)) bgPhotoId = FALLBACK_ID;
+    } else {
+      bgPhotoId = '';                // album（路径不落盘必然为空）/ none：都无选中图
+    }
+
     this.setData(Object.assign({}, defaults(def), {
       styleKey,
       photoMode,
       photoModeLabel: MODE_LABEL[photoMode],
+      bgSource: src,
       bgPhotoId,
-      bgAuthor: bgPhotoId ? photoLib.authorOf(bgPhotoId) : '',
+      bgAuthor: (src === 'lib' && bgPhotoId) ? photoLib.authorOf(bgPhotoId)
+        : (src === 'builtin' && bgPhotoId) ? bgPack.authorOf(bgPhotoId) : '',
       photos: photoLib.listAll({ mode: photoMode }).slice(0, PREVIEW_COUNT)
     }));
   },
@@ -134,6 +200,22 @@ const cardStyleMethods = {
     repaint(this);
   },
 
+  /** 选内置压缩兜底图（默认来源，零网络零白名单）。 */
+  onPickBuiltinBg(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!bgPack.has(id)) return;             // 防dataset 注入任意路径
+    this.setData({
+      bgPhotoId: id,
+      bgAuthor: bgPack.authorOf(id),
+      bgSource: 'builtin',
+      localBg: '',                          // 二选一：清掉相册图
+      rendered: false
+    });
+    writeStore({ bgSource: 'builtin', bgPhotoId: id });
+    repaint(this);
+  },
+
+  /** 选网络图库（增强项：需 downloadFile 白名单，失败自动回落内置图）。 */
   onPickPhoto(e) {
     const id = e.currentTarget.dataset.id;
     if (!photoLib.has(id)) return;          // 防dataset 注入任意 URL
@@ -141,32 +223,36 @@ const cardStyleMethods = {
       bgPhotoId: id,
       bgAuthor: photoLib.authorOf(id),
       bgSource: 'lib',
-      localBg: '',                          // 二选一：清掉相册图
-      rendered: false
-    });
-    writeStore({ bgPhotoId: id });
-    repaint(this);
-  },
-
-  /** 换一张：库内循环取下一张。 */
-  onShufflePhoto() {
-    const ids = photoLib.PHOTOS.map(p => p.id);
-    if (!ids.length) return;
-    const cur = ids.indexOf(this.data.bgPhotoId);
-    const nextId = ids[(cur + 1) % ids.length];
-    this.setData({
-      bgPhotoId: nextId,
-      bgAuthor: photoLib.authorOf(nextId),
-      bgSource: 'lib',
       localBg: '',
       rendered: false
     });
-    writeStore({ bgPhotoId: nextId });
+    writeStore({ bgSource: 'lib', bgPhotoId: id });
+    repaint(this);
+  },
+
+  /**
+   * 换一张：在**当前来源内**循环（内置 16 张 / 网络 100 张各自成环）。
+   * 用户想换风格档位请显式点缩略图，不在这里跨来源跳——避免"想换张内置图
+   * 结果被丢到网络图库，而白名单没配 → 又回落内置"的困惑。
+   */
+  onShufflePhoto() {
+    const isLib = this.data.bgSource === 'lib';
+    const list = isLib ? photoLib.PHOTOS.map(p => p.id) : bgPack.ids();
+    if (!list.length) return;
+    const cur = list.indexOf(this.data.bgPhotoId);
+    const nextId = list[(cur + 1) % list.length];
+    this.setData({
+      bgPhotoId: nextId,
+      bgAuthor: isLib ? photoLib.authorOf(nextId) : bgPack.authorOf(nextId),
+      localBg: '',
+      rendered: false
+    });
+    writeStore({ bgSource: isLib ? 'lib' : 'builtin', bgPhotoId: nextId });
     repaint(this);
     wx.showToast({ title: '已换背景', icon: 'none' });
   },
 
-  /** 灰度 → 虚化 → 原图 循环；query 参数变了必须重算缩略图 URL。 */
+  /** 灰度 → 虚化 → 原图 循环；网络图 query 变了必须重算缩略图 URL。 */
   onCyclePhotoMode() {
     const next = PHOTO_MODES[(PHOTO_MODES.indexOf(normalizeMode(this.data.photoMode)) + 1) % PHOTO_MODES.length];
     this.setData({
@@ -180,7 +266,7 @@ const cardStyleMethods = {
     wx.showToast({ title: '背景：' + MODE_LABEL[next], icon: 'none' });
   },
 
-  /** 从手机相册选一张作背景（与图库互斥）。临时路径不持久化。 */
+  /** 从手机相册选一张作背景（与内置/图库互斥）。临时路径不持久化。 */
   onPickAlbumBg() {
     const self = this;
     wx.chooseMedia({
@@ -193,7 +279,7 @@ const cardStyleMethods = {
         self.setData({
           localBg: p,
           bgSource: 'album',
-          bgPhotoId: '',// 二选一：清掉图库选中
+          bgPhotoId: '',                      // 二选一：清掉图库/内置选中
           bgAuthor: '',
           rendered: false
         });
@@ -204,15 +290,15 @@ const cardStyleMethods = {
     });
   },
 
-  /** 取消背景，回到主题渐变。 */
+  /** 取消背景，回到主题渐变（bgSource=none，区别于兜底默认的 builtin）。 */
   onClearPhoto() {
-    this.setData({ bgPhotoId: '', bgAuthor: '', localBg: '', bgSource: 'lib', rendered: false });
-    writeStore({ bgPhotoId: '' });
+    this.setData({ bgPhotoId: '', bgAuthor: '', localBg: '', bgSource: 'none', rendered: false });
+    writeStore({ bgSource: 'none', bgPhotoId: '' });
     repaint(this);
   }
 };
 
 module.exports = {
-  KEY, PHOTO_MODES, MODE_LABEL, PREVIEW_COUNT,
-  defaults, normalizeMode, applyCardStyle, repaint, cardStyleMethods
+  KEY, PHOTO_MODES, MODE_LABEL, PREVIEW_COUNT, BUILTIN_VEIL, FALLBACK_ID,
+  defaults, normalizeMode, normalizeSource, applyCardStyle, repaint, cardStyleMethods
 };

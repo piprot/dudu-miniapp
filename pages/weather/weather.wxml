@@ -84,7 +84,7 @@
   </view>
 
   <view class="block">
-    <view class="block-title">背景图（可选）</view>
+    <view class="block-title">背景图（内置 16 张，零网络）</view>
     <view class="bg-row">
       <view class="bg-ops">
         <view class="bg-op" bindtap="onPickAlbumBg">🖼️ 从相册选</view>
@@ -93,18 +93,31 @@
       <view wx:if="{{bgPhotoId}}" class="bg-mode" bindtap="onShufflePhoto">🎲 换一张</view>
     </view>
     <scroll-view wx:if="{{!localBg}}" class="bg-scroll" scroll-x="true" show-scrollbar="{{false}}">
-      <view wx:for="{{photos}}" wx:key="id"
-        class="bg-item {{bgPhotoId === item.id ? 'on' : ''}}"
-        bindtap="onPickPhoto" data-id="{{item.id}}">
+      <view wx:for="{{builtinPhotos}}" wx:key="id"
+        class="bg-item {{bgSource === 'builtin' && bgPhotoId === item.id ? 'on' : ''}}"
+        bindtap="onPickBuiltinBg" data-id="{{item.id}}">
         <image class="bg-thumb" src="{{item.url}}" mode="aspectFill" />
       </view>
     </scroll-view>
-    <view wx:if="{{localBg}}" class="bg-picked">已用相册图✓（你选的那张）</view>
+    <view wx:if="{{localBg}}" class="bg-picked">已用相册图 ✓（你选的那张）</view>
     <view wx:if="{{bgPhotoId}}" class="bg-mode" bindtap="onCyclePhotoMode">
       处理方式：{{photoModeLabel}} ▸ 点击切换
     </view>
     <view wx:if="{{bgPhotoId}}" class="bg-credit">背景：{{bgAuthor}} · 来源 picsum（Unsplash）</view>
-    <view class="loc-hint">图库照片默认灰度衬底让文字更易读；加载失败会自动回退主题渐变，不影响出卡。</view>
+    <view class="loc-hint">内置图已随包压缩好，不走网络、不需要服务器域名白名单，永远可用。默认灰度衬底，文字更易读。</view>
+  </view>
+
+  <view class="block">
+    <view class="block-title">更多背景（网络图库 · 增强项）</view>
+    <scroll-view wx:if="{{!localBg}}" class="bg-scroll" scroll-x="true" show-scrollbar="{{false}}">
+      <view wx:for="{{photos}}" wx:key="id"
+        class="bg-item {{bgSource === 'lib' && bgPhotoId === item.id ? 'on' : ''}}"
+        bindtap="onPickPhoto" data-id="{{item.id}}">
+        <image class="bg-thumb" src="{{item.url}}" mode="aspectFill" />
+      </view>
+    </scroll-view>
+    <view wx:if="{{bgSource === 'lib'}}" class="bg-picked">正在用网络图库 ✓</view>
+    <view class="loc-hint">网络图库是增强项：需在后台「开发管理 → 服务器域名 → downloadFile」填 picsum.photos 与 fastly.picsum.photos。未配置或加载失败会自动回退到内置图，不影响出卡。</view>
   </view>
 
   <button class="btn primary gen" bindtap="onGen">生成卡片</button>

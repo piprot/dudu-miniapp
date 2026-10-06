@@ -128,6 +128,7 @@ function buildPosterModel(themeId, data, opts) {
 
   const model = { width: W, height: total, gradient: p.bg, radius: p.radius, children };
   if (d.bgImg) model.backgroundImage = d.bgImg;
+  if (d.bgVeil) model.bgVeil = d.bgVeil; // 内置包内图用蒙版强度近似三档处理方式
   return model;
 }
 

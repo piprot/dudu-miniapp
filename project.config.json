@@ -55,6 +55,10 @@
         "type": "file"
       },
       {
+        "value": "preview-qr-v1125.png",
+        "type": "file"
+      },
+      {
         "value": ".md",
         "type": "suffix"
       },

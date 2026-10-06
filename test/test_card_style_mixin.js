@@ -24,6 +24,7 @@ global.wx = {
 
 const mixin = require('../utils/card_style_mixin');
 const photoLib = require('../utils/photo_lib');
+const bgPack = require('../utils/bg_pack');
 const fontKit = require('../utils/font_kit');
 
 let pass = 0, fail = 0;
@@ -42,13 +43,15 @@ function makePage(overrides) {
   return page;
 }
 const ev = (ds) => ({ currentTarget: { dataset: ds } });
+/** 清空持久化后建页：给需要「用户从未做过选择」的测试用，避免被前序测试的 store 残留污染。 */
+function freshPage() { delete store[mixin.KEY]; return makePage(); }
 const FIRST_ID = photoLib.PHOTOS[0].id;
 const SECOND_ID = photoLib.PHOTOS[1].id;
 
 // ── ① 字段与默认值 ──────────────────────────────────────────────────────
 t('defaults 含四页共用的全部字段，且默认文艺风', () => {
   const d = mixin.defaults('literary');
-  for (const k of ['styleKey', 'styleList', 'photos', 'photoMode', 'photoModeLabel',
+  for (const k of ['styleKey', 'styleList', 'photos', 'builtinPhotos', 'photoMode', 'photoModeLabel',
     'bgPhotoId', 'bgAuthor', 'bgSource', 'localBg']) {
     assert.ok(k in d, '缺字段 ' + k);
   }
@@ -57,6 +60,23 @@ t('defaults 含四页共用的全部字段，且默认文艺风', () => {
   assert.strictEqual(d.photoModeLabel, '灰度衬底');
   assert.strictEqual(d.localBg, '', '相册图默认必须为空');
   assert.strictEqual(d.styleList.length, fontKit.STYLE_LIST.length);
+  assert.strictEqual(d.bgSource, 'builtin', '默认背景来源必须是内置兜底（零网络）');
+  assert.strictEqual(d.builtinPhotos.length, bgPack.BUILTIN.length, '内置图数量不对');
+  assert.ok(d.builtinPhotos.every(p => String(p.url).indexOf('/images/bg/') === 0), '内置图必须是包内路径');
+});
+
+t('bg_pack 清单自洽：ID 唯一、路径存在、作者非空、无 webp', () => {
+  const seen = new Set();
+  for (const b of bgPack.BUILTIN) {
+    assert.ok(!seen.has(b.id), 'ID 重复: ' + b.id);
+    seen.add(b.id);
+    assert.ok(/^\/images\/bg\/[a-z0-9]+\.jpg$/.test(b.path), '路径格式异常: ' + b.path);
+    assert.ok(fs.existsSync(path.join(__dirname, '..', b.path)), '包内文件缺失: ' + b.path);
+    assert.ok(b.author && b.source, '缺作者/溯源: ' + b.id);
+    assert.ok(b.picsumId, '缺 picsum 溯源 id: ' + b.id);
+  }
+  assert.ok(bgPack.stats().authors >= 12, '作者过于集中，视觉会重复');
+  assert.strictEqual(bgPack.pathOf('nope'), '', '未知 id 必须返回空串');
 });
 
 t('每页可指定自己的默认风格（缺省回退 literary）', () => {
@@ -73,38 +93,109 @@ t('initCardStyle 铺缩略图且默认灰度', () => {
   assert.ok(p.data.photos[0].url.indexOf('grayscale') >= 0, '默认应为灰度衬底');
 });
 
-t('initCardStyle 恢复持久化的风格与图库选择', () => {
-  store[mixin.KEY] = { styleKey: 'poster', photoMode: 'blur', bgPhotoId: SECOND_ID };
+t('initCardStyle 恢复持久化的风格与背景选择（网络图库来源）', () => {
+  store[mixin.KEY] = { styleKey: 'poster', photoMode: 'blur', bgSource: 'lib', bgPhotoId: SECOND_ID };
   const p = makePage();
   p.initCardStyle('literary');
   assert.strictEqual(p.data.styleKey, 'poster');
   assert.strictEqual(p.data.photoMode, 'blur');
   assert.strictEqual(p.data.photoModeLabel, '虚化');
+  assert.strictEqual(p.data.bgSource, 'lib', '网络图库来源未恢复');
   assert.strictEqual(p.data.bgPhotoId, SECOND_ID);
   assert.strictEqual(p.data.bgAuthor, photoLib.authorOf(SECOND_ID), '作者未回填');
   delete store[mixin.KEY];
 });
 
+t('initCardStyle 恢复持久化的内置兜底图选择', () => {
+  const bid = bgPack.ids()[3];
+  store[mixin.KEY] = { styleKey: 'literary', photoMode: 'gray', bgSource: 'builtin', bgPhotoId: bid };
+  const p = makePage();
+  p.initCardStyle('literary');
+  assert.strictEqual(p.data.bgSource, 'builtin');
+  assert.strictEqual(p.data.bgPhotoId, bid);
+  assert.strictEqual(p.data.bgAuthor, bgPack.authorOf(bid));
+  delete store[mixin.KEY];
+});
+
 t('initCardStyle 净化脏偏好：未知风格/未知图库 id/未知模式全部回落', () => {
-  store[mixin.KEY] = { styleKey: 'haha', photoMode: 'sepia', bgPhotoId: '../../etc/passwd' };
+  store[mixin.KEY] = { styleKey: 'haha', photoMode: 'sepia', bgSource: 'lib', bgPhotoId: '../../etc/passwd' };
   const p = makePage();
   p.initCardStyle('literary');
   assert.strictEqual(p.data.styleKey, 'literary', '未知风格未回落');
   assert.strictEqual(p.data.photoMode, 'gray', '未知模式未回落');
-  assert.strictEqual(p.data.bgPhotoId, '', '未知图库 id 未清空');
+  assert.strictEqual(p.data.bgSource, 'builtin', '非法网络 id 应降级为内置兜底');
+  assert.strictEqual(p.data.bgPhotoId, mixin.FALLBACK_ID, '应回落到默认内置图');
   delete store[mixin.KEY];
 });
 
-// ── ③ 图库选择与互斥 ────────────────────────────────────────────────────
+t('initCardStyle 恢复 none（用户曾取消背景）时不给兜底图', () => {
+  store[mixin.KEY] = { styleKey: 'literary', bgSource: 'none', bgPhotoId: '' };
+  const p = makePage();
+  p.initCardStyle('literary');
+  assert.strictEqual(p.data.bgSource, 'none', 'none 应被保留，不能回落成 builtin');
+  assert.strictEqual(p.data.bgPhotoId, '');
+  assert.strictEqual(mixin.applyCardStyle(p, {}).bgImg, undefined, 'none 不应产生 bgImg');
+  delete store[mixin.KEY];
+});
+
+// ── ③ 背景选择与互斥（内置兜底 / 网络图库 / 相册）──────────────────────
 t('onPickPhoto 选中的 id 必须真实存在，否则完全忽略', () => {
   const p = makePage();
   p.onPickPhoto(ev({ id: FIRST_ID }));
   assert.strictEqual(p.data.bgPhotoId, FIRST_ID);
+  assert.strictEqual(p.data.bgSource, 'lib');
   assert.strictEqual(p.data.bgAuthor, photoLib.authorOf(FIRST_ID));
 
   const p2 = makePage();
+  const before = p2.data.bgPhotoId;
   p2.onPickPhoto(ev({ id: 'javascript:alert(1)' }));
-  assert.strictEqual(p2.data.bgPhotoId, '', '非法 id 未被拦下');
+  assert.strictEqual(p2.data.bgPhotoId, before, '非法 id 未被拦下，状态被改动了');
+  assert.strictEqual(p2.data.bgSource, 'builtin', '非法 id 不得切到网络来源');
+});
+
+t('onPickBuiltinBg 只接受内置库内的 id（防 dataset 注入任意路径）', () => {
+  const p = makePage();
+  const bid = bgPack.ids()[2];
+  p.onPickBuiltinBg(ev({ id: bid }));
+  assert.strictEqual(p.data.bgPhotoId, bid);
+  assert.strictEqual(p.data.bgSource, 'builtin');
+  assert.strictEqual(p.data.bgAuthor, bgPack.authorOf(bid));
+
+  const p2 = makePage();
+  const before = p2.data.bgPhotoId;
+  p2.onPickBuiltinBg(ev({ id: '/etc/passwd' }));
+  assert.strictEqual(p2.data.bgPhotoId, before, '非法路径未被拦下');
+});
+
+t('内置兜底图是默认来源：未做任何选择时也能出带背景的卡', () => {
+  const p = freshPage();
+  p.initCardStyle('literary');
+  const d = mixin.applyCardStyle(p, { body: 'x' });
+  assert.ok(d.bgImg, '默认应带内置兜底图');
+  assert.ok(String(d.bgImg).indexOf('/images/bg/') === 0, '默认必须是包内内置图，实际=' + d.bgImg);
+  assert.ok(!('bgFallback' in d), '内置图不需要再挂兜底');
+});
+
+t('内置图随处理方式切换引擎蒙版强度（本地无服务端做灰度/虚化）', () => {
+  const p = freshPage();
+  p.initCardStyle('literary');
+  const g = mixin.applyCardStyle(p, {}).bgVeil;
+  p.onCyclePhotoMode();                       // gray → blur
+  const b = mixin.applyCardStyle(p, {}).bgVeil;
+  p.onCyclePhotoMode();                       // blur → raw
+  const r = mixin.applyCardStyle(p, {}).bgVeil;
+  assert.deepStrictEqual([g, b, r], [mixin.BUILTIN_VEIL.gray, mixin.BUILTIN_VEIL.blur, mixin.BUILTIN_VEIL.raw]);
+  assert.ok(g[0] > b[0] && b[0] > r[0], 'gray 蒙版必须最厚（保白字可读）');
+});
+
+t('网络图挂内置兜底，失败可回落（白名单没配也不白卡）', () => {
+  const p = freshPage();
+  p.initCardStyle('literary');
+  p.onPickPhoto(ev({ id: FIRST_ID }));
+  const d = mixin.applyCardStyle(p, {});
+  assert.ok(String(d.bgImg).indexOf('picsum.photos') >= 0, '应使用网络图');
+  assert.strictEqual(d.bgFallback, bgPack.pathOf(mixin.FALLBACK_ID), '网络图必须挂内置兜底');
+  assert.ok(d.bgVeil === undefined, '网络图由服务端做灰度/虚化，不该叠内置图 veil');
 });
 
 t('相册图与图库图互斥：选相册清图库，选图库清相册', () => {
@@ -183,18 +274,28 @@ t('切到虚化后整份缩略图清单都换成虚化 URL（不只第一张）'
     photoLib.listAll({ mode: 'blur' }).slice(0, mixin.PREVIEW_COUNT).map(x => x.id));
 });
 
-t('onShufflePhoto 在库内循环取下一张', () => {
-  const p = makePage();
+t('onShufflePhoto 在当前来源内循环取下一张（内置/网络各自成环）', () => {
+  // 内置环
+  const p = freshPage();
+  const bids = bgPack.ids();
+  p.setData({ bgSource: 'builtin', bgPhotoId: bids[0] });
+  p.onShufflePhoto();
+  assert.strictEqual(p.data.bgPhotoId, bids[1]);
+  assert.strictEqual(p.data.bgSource, 'builtin', '换一张不得跨来源');
+  p.setData({ bgPhotoId: bids[bids.length - 1] });
+  p.onShufflePhoto();
+  assert.strictEqual(p.data.bgPhotoId, bids[0], '内置环未绕回');
+
+  // 网络环
+  const p2 = makePage();
   const ids = photoLib.PHOTOS.map(x => x.id);
-  p.setData({ bgPhotoId: ids[0] });
-  p.onShufflePhoto();
-  assert.strictEqual(p.data.bgPhotoId, ids[1]);
-  p.onShufflePhoto();
-  assert.strictEqual(p.data.bgPhotoId, ids[2]);
-  // 从最后一张再换回到第一张
-  p.setData({ bgPhotoId: ids[ids.length - 1] });
-  p.onShufflePhoto();
-  assert.strictEqual(p.data.bgPhotoId, ids[0]);
+  p2.setData({ bgSource: 'lib', bgPhotoId: ids[0] });
+  p2.onShufflePhoto();
+  assert.strictEqual(p2.data.bgPhotoId, ids[1]);
+  assert.strictEqual(p2.data.bgSource, 'lib');
+  p2.setData({ bgPhotoId: ids[ids.length - 1] });
+  p2.onShufflePhoto();
+  assert.strictEqual(p2.data.bgPhotoId, ids[0], '网络环未绕回');
 });
 
 // ── ⑤ 风格切换 ──────────────────────────────────────────────────────────
@@ -215,20 +316,45 @@ t('onPickStyle 只接受 font_kit 认得的 key，且同值不重复渲染', () 
 });
 
 // ── ⑥ applyCardStyle：背景优先级与非法值拦截 ───────────────────────────
-t('applyCardStyle 背景优先级：相册图 > 图库图 > 无', () => {
+t('applyCardStyle 背景优先级：相册图 > 网络图库 > 内置兜底 > 无', () => {
   const p = makePage();
-  p.setData({ bgPhotoId: FIRST_ID, photoMode: 'gray' });
+  // 内置（默认来源）
+  p.setData({ bgSource: 'builtin', bgPhotoId: bgPack.ids()[0] });
+  const withBuiltin = mixin.applyCardStyle(p, { body: 'x' });
+  assert.ok(String(withBuiltin.bgImg).indexOf('/images/bg/') === 0, '未使用内置兜底图');
+
+  // 网络图库
+  p.setData({ bgSource: 'lib', bgPhotoId: FIRST_ID, photoMode: 'gray' });
   const withLib = mixin.applyCardStyle(p, { body: 'x' });
   assert.ok(withLib.bgImg.indexOf(photoLib.urlOf(FIRST_ID, { mode: 'gray' })) >= 0,
     '未使用图库 URL');
 
+  // 相册图优先于两者
   p.setData({ localBg: 'wxfile://tmp/pic.jpg' });
   const withAlbum = mixin.applyCardStyle(p, { body: 'x' });
   assert.strictEqual(withAlbum.bgImg, 'wxfile://tmp/pic.jpg', '相册图未优先于图库图');
 
-  p.setData({ localBg: '', bgPhotoId: '' });
+  // 显式取消背景（none）才真的没有 bgImg
+  p.setData({ localBg: '', bgSource: 'none', bgPhotoId: '' });
   const none = mixin.applyCardStyle(p, { body: 'x' });
-  assert.ok(!('bgImg' in none), '无背景时不应有 bgImg');
+  assert.ok(!('bgImg' in none), '取消背景后不应有 bgImg');
+  assert.ok(!('bgFallback' in none), '取消背景后不应有 bgFallback');
+  assert.ok(!('bgVeil' in none), '取消背景后不应有 bgVeil');
+});
+
+t('applyCardStyle 未知内置 id 拦下落回默认内置图（不产生坏路径）', () => {
+  const p = makePage();
+  p.setData({ bgSource: 'builtin', bgPhotoId: '/etc/passwd' });
+  const d = mixin.applyCardStyle(p, {});
+  assert.strictEqual(d.bgImg, bgPack.pathOf(mixin.FALLBACK_ID), '未回落到默认内置图');
+});
+
+t('applyCardStyle 网络来源 id 失效时降级为内置图而非坏URL', () => {
+  const p = makePage();
+  p.setData({ bgSource: 'lib', bgPhotoId: 'deadbeef' });
+  const d = mixin.applyCardStyle(p, {});
+  assert.strictEqual(d.bgImg, bgPack.pathOf(mixin.FALLBACK_ID), '未降级为内置图');
+  assert.ok(d.bgFallback === undefined, '已降级为内置图，不该再挂兜底');
 });
 
 t('applyCardStyle 不修改传入的 base（纯函数）', () => {

@@ -150,9 +150,15 @@ function computeLayout(model, opts, measure) {
   //   background      —— 纯色；
   //   gradient        —— 两色线性渐变。
   // backgroundImageAsset 由调用方加载图片后注入（computeLayout 保持纯函数）。
+  //
+  // bgVeil：蒙版强度覆盖 [上不透明度, 下不透明度]，缺省 [0.32, 0.52]。
+  //   网络图的灰度/虚化由 picsum 服务端做（?grayscale / ?blur=6），
+  //   但**内置包内图没有服务端**（见 utils/bg_pack.js 注释），
+  //   只能靠加厚/减薄暗色蒙版来近似三档，核心目的是保证白字可读。
   if (m.backgroundImage) {
+    const v = (m.bgVeil && m.bgVeil.length === 2) ? m.bgVeil : [0.32, 0.52];
     blocks.push({ type: 'image', x: 0, y: 0, w: m.width, h: m.height, radius: 0, objectFit: 'cover', asset: m.backgroundImageAsset });
-    blocks.push({ type: 'gradient', x: 0, y: 0, w: m.width, h: m.height, radius: 0, colors: ['rgba(15,14,22,0.32)', 'rgba(15,14,22,0.52)'], direction: 'v' });
+    blocks.push({ type: 'gradient', x: 0, y: 0, w: m.width, h: m.height, radius: 0, colors: ['rgba(15,14,22,' + v[0] + ')', 'rgba(15,14,22,' + v[1] + ')'], direction: 'v' });
   } else if (m.background) {
     blocks.push({ type: 'rect', x: 0, y: 0, w: m.width, h: m.height, radius: m.radius || 0, background: m.background });
   } else if (m.gradient) {
