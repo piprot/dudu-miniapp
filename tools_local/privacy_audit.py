@@ -152,10 +152,65 @@ def main():
         for p in problems:
             print('  · ' + p)
         return 1
-    print('结论：✓ 隐私配置无需修改')
+    print('结论：✓ 代码层无需修改（requiredPrivateInfos 不声明是对的）')
     print('  · 位置类接口零调用，requiredPrivateInfos 不声明是对的')
     print('  · 敏感接口均为用户主动触发（选图/存图/剪贴板），不需 requiredPrivateInfos')
     print('  · __usePrivacyCheck__ 已开启')
+    print('=' * 66)
+    print()
+    print('=' * 66)
+    print('⚠️ 但「后台用户隐私保护指引」是**另一层**，本地代码查不到，需人工核验')
+    print('=' * 66)
+    print('官方依据（用户隐私保护指引填写说明）：')
+    print('  「若提交审核的开发版本，其隐私接口调用情况与隐私协议内容有出入，')
+    print('    或隐私协议内容为空，则在提审时会提醒开发者进行更新。」')
+    print()
+    print('后台入口（两个，作用不同）：')
+    print('  ① 现网版本：账号设置 - 服务内容声明 - 用户隐私保护指引 - 去完善')
+    print('  ② 提审版本：管理 - 版本管理 - 提交代码审核 - 信息填写页面')
+    print('     （提审被拦就在这里改，不影响现网）')
+    print()
+
+    # ── 反推后台该勾什么 ──────────────────────────────────────────────
+    API2LABEL = {
+        'chooseMedia': '选中的照片或视频信息 / 摄像头',
+        'chooseImage': '选中的照片或视频信息 / 摄像头',
+        'saveImageToPhotosAlbum': '相册（仅写入）权限',
+        'setClipboardData': '剪切板（写入）',
+        'getClipboardData': '剪切板（读取）',
+        'getUserProfile': '用户信息（头像、昵称等）',
+        'getUserInfo': '用户信息（头像、昵称等）',
+        'getPhoneNumber': '手机号',
+        'getSystemInfo': '设备信息',
+        'getSystemInfoSync': '设备信息',
+    }
+    need = {}
+    for api, ps in runtime.items():
+        if api in API2LABEL:
+            need.setdefault(API2LABEL[api], set()).add(api)
+
+    print('【后台隐私指引应勾选】（由运行时接口反推，逐项与后台核对）')
+    if not need:
+        print('  ✓ 无需勾选任何信息类型')
+    else:
+        for label in sorted(need):
+            print('  □ %-32s ← %s' % (label, ', '.join(sorted(need[label]))))
+        print()
+        print('  每项都要写**具体用途**。官方明确禁止模糊描述：')
+        print('    ❌「用于提升用户体验」')
+        print('    ✅「用于把生成的卡片保存到相册，方便你分享给朋友」')
+
+    print()
+    print('【后台隐私指引不应勾选】')
+    if used_required:
+        for a in sorted(used_required):
+            print('  ✗ 位置信息（%s）—— 代码里没有这个调用，勾了属' % a)
+            print('     「收集信息与功能不匹配」，审核会查。')
+    else:
+        print('  ✗ 位置信息 —— 项目运行时零调用位置接口，')
+        print('     城市选择走 utils/region_data.js 静态列表（用户手动选），')
+        print('     **不需要勾选，勾了反而是过度声明**。')
+    print()
     print('=' * 66)
     return 0
 
