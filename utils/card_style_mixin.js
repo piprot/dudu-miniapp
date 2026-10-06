@@ -50,8 +50,13 @@ function defaults(defaultStyleKey) {
     bgPhotoId: FALLBACK_ID,
     bgSource: 'builtin',   // builtin=内置兜底| lib=网络图库 | album=手机相册
     // 背景：网络图库（增强项，需 downloadFile 白名单）
-    photos: photoLib.listAll({ mode: 'gray' }).slice(0, PREVIEW_COUNT),
-    netAvailable: false,   // 网络图库是否可用（探测结果，见 probeNetLib）
+    // ⚠️ 刻意置空数组 + 默认收起（netLibOpen=false）：区块展开时才由
+    //    onToggleNetLib 惰性探测并填入。否则用户没配 downloadFile 白名单时，
+    //    首屏会一次发起 24 个注定失败的远程请求（/optimize 修的就是这个）。
+    photos: [],
+    netAvailable: null, // null=未探测 | true=可用 | false=不可用（见 onToggleNetLib）
+    netLibOpen: false,  // 网络图库区块是否展开
+    netProbing: false,  // 探测中
     photoMode: 'gray',
     photoModeLabel: MODE_LABEL.gray,
     bgAuthor: bgPack.authorOf(FALLBACK_ID),
@@ -188,7 +193,12 @@ const cardStyleMethods = {
       bgPhotoId,
       bgAuthor: (src === 'lib' && bgPhotoId) ? photoLib.authorOf(bgPhotoId)
         : (src === 'builtin' && bgPhotoId) ? bgPack.authorOf(bgPhotoId) : '',
-      photos: photoLib.listAll({ mode: photoMode }).slice(0, PREVIEW_COUNT)
+      // photos 不在这里填：折叠机制下缩略图由 onToggleNetLib 探测后才注入。
+      // 若此处无条件填回，等于绕过折叠，首屏又背上 24 个远程请求。
+      // 保留用户上次探测结果（restore 不该重置网络可用性状态）。
+      netLibOpen: false,
+      netAvailable: this.data && this.data.netAvailable !== undefined
+        ? this.data.netAvailable : null
     }));
   },
 
@@ -258,7 +268,11 @@ const cardStyleMethods = {
     this.setData({
       photoMode: next,
       photoModeLabel: MODE_LABEL[next],
-      photos: photoLib.listAll({ mode: next }).slice(0, PREVIEW_COUNT),
+      // 只在图库已展开且可用时才重算缩略图 URL（query 变了 URL 才变）。
+      // 未展开时保持空数组，避免这里把折叠机制绕过去。
+      photos: (this.data.netLibOpen && this.data.netAvailable)
+        ? photoLib.listAll({ mode: next }).slice(0, PREVIEW_COUNT)
+        : this.data.photos,
       rendered: false
     });
     writeStore({ photoMode: next });
@@ -295,6 +309,58 @@ const cardStyleMethods = {
     this.setData({ bgPhotoId: '', bgAuthor: '', localBg: '', bgSource: 'none', rendered: false });
     writeStore({ bgSource: 'none', bgPhotoId: '' });
     repaint(this);
+  },
+
+  /**
+   * 展开「更多背景（网络图库）」时惰性探测可用性（/optimize）。
+   *
+   * 为什么需要：网络图库区块若无条件渲染，用户没配 downloadFile 白名单时
+   * 会一次发起 24 个注定失败的远程请求 —— 拖慢首屏、刷满错误日志，
+   * 而内置兜底图本来就够用。
+   *
+   * 为什么惰性：探测本身就是一次网络请求，放onLoad 里等于无条件多一次。
+   * 放onToggleNetLib 里只在用户真的要用时才测，且测一次就记住。
+   *
+   * 用 wx.getImageInfo 而非 wx.request：它走与 <image> 完全相同的
+   * downloadFile 通道，探测结果才等价于「图能不能显示」。
+   */
+  onToggleNetLib() {
+    const self = this;
+    const next = !this.data.netLibOpen;
+    if (!next || this.data.netAvailable !== null) {
+      // 折叠，或已探明结果 → 直接切状态，不重复探测
+      this.setData({ netLibOpen: next });
+      return;
+    }
+    this.setData({ netLibOpen: true, netProbing: true });
+    const probe = photoLib.urlOf(photoLib.listAll({ mode: 'gray' })[0].id, { mode: 'gray' });
+    wx.getImageInfo({
+      src: probe,
+      success() { self._setNetAvail(true); },
+      fail() { self._setNetAvail(false); }
+    });
+  },
+
+  _setNetAvail(ok) {
+    this.setData({
+      netAvailable: ok,
+      netProbing: false,
+      // 探测失败：把网络图从渲染树摘掉，避免 24 个 doomed 请求
+      // 探测成功：此刻 photos 还是空数组（折叠期间从未填充），
+      //   必须重新 listAll 填入 —— 直接沿用 this.data.photos 会永远空着。
+      photos: ok
+        ? photoLib.listAll({ mode: this.data.photoMode }).slice(0, PREVIEW_COUNT)
+        : [],
+      bgSource: ok ? this.data.bgSource : 'builtin',
+      bgPhotoId: ok ? this.data.bgPhotoId : FALLBACK_ID,
+      bgAuthor: ok ? this.data.bgAuthor : bgPack.authorOf(FALLBACK_ID),
+      rendered: ok ? this.data.rendered : false
+    });
+    if (!ok) {
+      // 回落内置图必须重绘，否则卡片仍挂着加载失败的空背景
+      writeStore({ bgSource: 'builtin', bgPhotoId: FALLBACK_ID });
+      repaint(this);
+    }
   }
 };
 

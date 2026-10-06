@@ -128,6 +128,21 @@ page {
 .bg-picked { margin-top: 12rpx; font-size: 24rpx; color: var(--success); }
 .bg-hint { margin-top: 10rpx; font-size: 22rpx; color: var(--text-tertiary); line-height: 1.6; }
 
+/* ── 网络图库折叠开关（/optimize · 2026-10-06）──
+   网络图库是「增强项」，未配 downloadFile 白名单时那 24 张缩略图必然全部加载失败。
+   改成默认折叠 + 惰性探测：首屏零远程请求，用户点开才测可用性。
+   样式沿用 .bg-op 胶囊形态，与相邻控件同族，避免视觉突兀。 */
+.net-toggle {
+  display: inline-block; padding: 10rpx 24rpx; margin-bottom: 14rpx;
+  border-radius: 999rpx;
+  background: var(--bg-surface-1); border: 1rpx solid var(--border);
+  font-size: 23rpx; color: var(--primary-deep);
+}
+.net-hint {
+  font-size: 22rpx; color: var(--text-tertiary);
+  line-height: 1.6; margin-bottom: 14rpx;
+}
+
 /* 分组卡片容器：天气 / 节气 / 金句 / 台词书摘四页的「风格」「背景」等区块共用 */
 .block { background: var(--bg-card); border: 1rpx solid var(--border-soft); border-radius: var(--r-md); padding: 22rpx; margin-bottom: 20rpx; }
 .block-title { font-size: 26rpx; font-weight: 600; color: var(--text-title); margin-bottom: 16rpx; }

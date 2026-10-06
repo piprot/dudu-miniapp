@@ -92,12 +92,45 @@ t('每页可指定自己的默认风格（缺省回退 literary）', () => {
 });
 
 // ── ② initCardStyle 恢复与净化 ──────────────────────────────────────────
-t('initCardStyle 铺缩略图且默认灰度', () => {
+t('initCardStyle 默认不铺网络缩略图（首屏零远程请求，/optimize）', () => {
+  // 2026-10-06 /optimize：改前 init 就 listAll().slice(0,24) 铺满，
+  // 未配 downloadFile 白名单时首屏直接发起 24 个 doomed 请求。
+  // 改后折叠为默认态，photos 必须是空数组。
   const p = makePage();
   p.initCardStyle('literary');
-  assert.strictEqual(p.data.photos.length, mixin.PREVIEW_COUNT, '缩略图数量不对');
-  assert.ok(p.data.photos.length <= photoLib.PHOTOS.length);
+  assert.strictEqual(p.data.photos.length, 0,
+    'init 不应预铺网络缩略图（实测 ' + p.data.photos.length + ' 张）');
+  assert.strictEqual(p.data.netLibOpen, false, '网络图库区块应默认折叠');
+  assert.strictEqual(p.data.netAvailable, null, '初始应为「未探测」，不是 false');
+  // 内置兜底图不受影响 —— 这是「零网络出图」的根基
+  assert.ok(p.data.builtinPhotos.length > 0, '内置兜底图必须照常提供');
+  assert.strictEqual(p.data.bgSource, 'builtin', '默认来源必须是内置兜底');
+});
+
+t('展开网络图库才惰性探测并铺缩略图；探测失败回退内置', () => {
+  const p = makePage();
+  p.initCardStyle('literary');
+  // 先给一个可控的探测结果
+  let probeResult = 'ok';
+  global.wx.getImageInfo = (o) => (probeResult === 'ok' ? o.success({}) : o.fail({}));
+
+  p.onToggleNetLib();
+  assert.strictEqual(p.data.netLibOpen, true, '点开应展开');
+  assert.strictEqual(p.data.netAvailable, true, '探测成功应标记可用');
+  assert.strictEqual(p.data.photos.length, mixin.PREVIEW_COUNT,
+    '探测成功后才铺满 ' + mixin.PREVIEW_COUNT + ' 张缩略图');
   assert.ok(p.data.photos[0].url.indexOf('grayscale') >= 0, '默认应为灰度衬底');
+  assert.ok(p.data.photos.length <= photoLib.PHOTOS.length);
+
+  // 再来一页模拟探测失败：必须摘掉网络图并回退内置
+  const q = makePage();
+  q.initCardStyle('literary');
+  probeResult = 'fail';
+  q.onToggleNetLib();
+  assert.strictEqual(q.data.netAvailable, false, '探测失败应标记不可用');
+  assert.strictEqual(q.data.photos.length, 0, '不可用时不应渲染任何网络缩略图');
+  assert.strictEqual(q.data.bgSource, 'builtin', '应回退到内置兜底');
+  assert.strictEqual(q.data.bgPhotoId, mixin.FALLBACK_ID, '应回退到默认内置图');
 });
 
 t('initCardStyle 恢复持久化的风格与背景选择（网络图库来源）', () => {
@@ -252,6 +285,10 @@ t('onClearPhoto 清空全部背景，回主题渐变', () => {
 t('处理方式灰度→虚化→原图循环，缩略图 URL 随之变化', () => {
   const p = makePage();
   p.initCardStyle('literary');
+  // /optimize 后缩略图默认不铺，需先展开图库（探测成功）才有清单可比
+  global.wx.getImageInfo = (o) => o.success({});
+  p.onToggleNetLib();
+  assert.ok(p.data.photos.length > 0, '展开图库后应铺出缩略图');
   const seen = [p.data.photos[0].url];
   const labels = [p.data.photoModeLabel];
   for (let i = 0; i < 3; i++) {
@@ -272,6 +309,9 @@ t('处理方式灰度→虚化→原图循环，缩略图 URL 随之变化', () 
 t('切到虚化后整份缩略图清单都换成虚化 URL（不只第一张）', () => {
   const p = makePage();
   p.initCardStyle('literary');
+  // /optimize：先展开图库，否则循环不会重算 URL（未展开时保持空数组是对的）
+  global.wx.getImageInfo = (o) => o.success({});
+  p.onToggleNetLib();
   p.onCyclePhotoMode();
   assert.strictEqual(p.data.photoMode, 'blur');
   assert.ok(p.data.photos.length > 1);
@@ -437,11 +477,31 @@ t('从未渲染过时改风格/背景不调canvas（避免空画布报错）', (
 t('repaint 判定「已渲染」看 _cardOpts 而非 data.rendered', () => {
   // 回归：setter 会把 rendered 置false（提示参数已变），
   // 若repaint 拿 data.rendered 当判据，风格切换就永远不会生效。
+  //
+  // ⚠️ 切片必须**只取 repaint 函数体**，不能从 'function repaint' 一直切到文件尾。
+  // 2026-10-06 踩过：/optimize 新增的 _setNetAvail 里有
+  // `rendered: ok ? this.data.rendered : false`（合法的状态回填），
+  // 被「切到文件尾」的旧写法一并捕获，误报 repaint 依赖 data.rendered。
+  // 改为匹配到下一个顶层 `function ` 为止。
   const src = fs.readFileSync(
     path.join(__dirname, '..', 'utils', 'card_style_mixin.js'), 'utf8');
-  const body = src.slice(src.indexOf('function repaint'));
+  const start = src.indexOf('function repaint');
+  assert.ok(start > 0, '找不到 repaint 函数');
+  // 按大括号配对精确提取函数体。第二版踩过的坑：按「下一个 \nfunction 」截断
+  // 会把后面的 `const cardStyleMethods = {...}` 整个对象字面量吞进来
+  // （它是 const 不是 function），于是 _setNetLib 之外的无关代码也被扫描。
+  const bodyStart = src.indexOf('{', start);
+  let depth = 0, end = bodyStart;
+  for (let i = bodyStart; i < src.length; i++) {
+    if (src[i] === '{') depth++;
+    else if (src[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
+  }
+  const body = src.slice(bodyStart, end + 1);
+  assert.ok(body.length > 20 && body.length < 2000,
+    'repaint 函数体提取异常（长度 ' + body.length + '），大括号配对可能失效');
   assert.ok(body.indexOf('data.rendered') < 0,
-    'repaint 又用 data.rendered 判定是否重绘，会导致切换风格不生效');
+    'repaint 又用 data.rendered 判定是否重绘，会导致切换风格不生效'
+    + '\n--- repaint 函数体 ---\n' + body);
 });
 
 // ── ⑧ 持久化取舍 ────────────────────────────────────────────────────────

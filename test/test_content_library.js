@@ -595,6 +595,50 @@ t('守卫：所有可交互元素与图片都必须有可访问名称（/harden�
     '扫描到的 <image> 数量异常少（' + imgTotal.length + '），扫描逻辑可能失效');
 });
 
+t('守卫：网络图库必须惰性加载（首屏零远程请求，/optimize）', () => {
+  // 2026-10-06 /optimate：改前四页无条件渲染 24 张网络缩略图，
+  // 未配 downloadFile 白名单时首屏一次发起 24 个 doomed 请求 ——
+  // 拖慢首屏、刷满错误日志，而内置兜底图本来就够用。
+  // 改后：默认折叠（netLibOpen=false）+ photos 空数组，展开才惰性探测。
+  const mixin = require('../utils/card_style_mixin');
+  const src = fs.readFileSync(
+    path.join(__dirname, '..', 'utils', 'card_style_mixin.js'), 'utf8');
+
+  const d = mixin.defaults('literary');
+  assert.strictEqual(d.photos.length, 0,
+    '默认态不应预铺网络缩略图（实测 ' + d.photos.length + ' 张）');
+  assert.strictEqual(d.netLibOpen, false, '网络图库区块应默认折叠');
+  assert.strictEqual(d.netAvailable, null, '初始应为「未探测」而非 false（false 会误判不可用）');
+
+  // 四页 WXML 的网络图库 scroll-view 必须带 netLibOpen + netAvailable 守卫，
+  // 否则折叠了数据却仍渲染空列表只是白忙一场
+  ['weather', 'solar', 'quotes', 'line'].forEach(pg => {
+    const wxml = fs.readFileSync(
+      path.join(__dirname, '..', 'pages', pg, pg + '.wxml'), 'utf8');
+    const idx = wxml.indexOf('onPickPhoto');
+    assert.ok(idx > 0, pg + '.wxml 未找到网络图库区块');
+    const seg = wxml.slice(Math.max(0, idx - 420), idx);
+    assert.ok(/netLibOpen\s*&&\s*netAvailable/.test(seg),
+      pg + '.wxml 网络图库 scroll-view 缺 wx:if="{{netLibOpen && netAvailable}}" 守卫，'
+      + '折叠机制形同虚设');
+    assert.ok(/bindtap="onToggleNetLib"/.test(wxml),
+      pg + '.wxml 缺展开开关 onToggleNetLib，用户无法触发探测');
+  });
+
+  // 折叠机制不能被绕过：restore / onCyclePhotoMode 都不能无条件重填 photos
+  ['initCardStyle', 'onCyclePhotoMode'].forEach(fn => {
+    const i = src.indexOf(fn + '(');
+    assert.ok(i > 0, '找不到 ' + fn);
+    const seg = src.slice(i, i + 700);
+    const idx = seg.indexOf('photoLib.listAll');
+    if (idx < 0) return;   // 该函数本就不该填 photos，正确
+    // 若填了，必须有 netLibOpen/netAvailable 条件包着
+    const before = seg.slice(Math.max(0, idx - 260), idx);
+    assert.ok(/netLibOpen|netAvailable/.test(before),
+      fn + ' 无条件重填 photos，会绕过折叠机制让首屏又背上远程请求');
+  });
+});
+
 t('守卫：不得引入包内字体文件（主包 2MB 上限 + canvas 不支持）', () => {
   // 2026-10-06 定案：字体走系统族，不落地字体文件。原因：
   //   ① 主包 2MB，完整中文字体 10MB+；② loadFontFace 不读包内路径；
