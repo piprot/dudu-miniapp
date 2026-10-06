@@ -42,8 +42,11 @@ const PHOTO_MODES = ['gray', 'blur', 'raw'];
 const MODE_LABEL = { gray: '深衬底', blur: '中衬底', raw: '淡衬底' };
 
 // 内置包内图没有服务端做灰度/虚化，改用引擎暗色蒙版强度近似三档。
-// 核心目的不是"真的灰度"，而是**白字压在图上必须可读** → 越靠gray 蒙版越厚。
-const BUILTIN_VEIL = { gray: [0.46, 0.68], blur: [0.36, 0.56], raw: [0.24, 0.42] };
+// ⚠️ 强度整体大幅下调（2026-10-06）：旧版 gray 档最深到 0.68，整张卡压得像蒙了层灰，
+//    用户反馈「背景颜色太深，看着太郁闷」。现在靠**浅蒙版 + 文字投影**保证可读
+//    （投影见 render_engine layoutText 的 shadow 字段），图能看清，文字也读得清。
+//    别再为了「更可读」把这里调回去——可读性已经由文字投影兜住了。
+const BUILTIN_VEIL = { gray: [0.30, 0.44], blur: [0.20, 0.32], raw: [0.12, 0.20] };
 const FALLBACK_ID = 'bg01';   // 背景加载失败时回落到这张（保证不白卡的最后一层）
 
 /** 页面 data 里的风格/背景字段。defaultStyleKey 缺省用文艺（与模板层 DEFAULT_STYLE 对齐）。 */

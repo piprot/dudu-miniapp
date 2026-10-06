@@ -4,24 +4,49 @@
     <view class="hd-sub">天气 + 心情 → 图文卡（纯本地，零 AI · 已去除星座占卜风险）</view>
   </view>
 
-  <view class="block">
-    <view class="block-title">今天什么天气</view>
-    <view class="grid">
-      <view wx:for="{{weatherList}}" wx:key="key"
-        class="cell {{weather === item.key ? 'on' : ''}}" bindtap="onPickWeather" data-key="{{item.key}}">
-        <view class="cell-ico">{{item.icon}}</view><view class="cell-name">{{item.name}}</view>
+  <!-- 分层选择：大类（天气/心情）→ 小类（具体项），常用前置。
+     旧版是 8 天气格子 + 8 心情格子一次性铺开（16 个选项墙），已改为下钻式。 -->
+  <view class="picker">
+    <view wx:if="{{pgHot.length}}" class="pg-row">
+      <view class="pg-cap">常用</view>
+      <view class="pg-hot">
+        <view wx:for="{{pgHot}}" wx:key="groupKey"
+          class="pg-hot-chip {{pgGroup === item.groupKey && pgItem === item.key ? 'on' : ''}}"
+          bindtap="onPickHot" data-group="{{item.groupKey}}" data-item="{{item.key}}">
+          <text wx:if="{{item.icon}}" class="pg-ico">{{item.icon}}</text>{{item.name}}
+        </view>
+      </view>
+    </view>
+
+    <view class="pg-row">
+      <view class="pg-cap">{{groupLabel}}</view>
+      <scroll-view class="pg-scroll" scroll-x="true" show-scrollbar="{{false}}">
+        <view wx:for="{{pgGroups}}" wx:key="key"
+          class="pg-chip {{pgGroup === item.key ? 'on' : ''}}"
+          bindtap="onPickGroup" data-group="{{item.key}}">
+          <text wx:if="{{item.hot}}" class="pg-dot"></text>{{item.name}}
+        </view>
+      </scroll-view>
+    </view>
+
+    <view class="pg-row" wx:if="{{pgGroupOpen && pgItems.length}}">
+      <view class="pg-cap">{{itemLabel}}<text class="pg-cap-sub">· {{pgGroupName}}</text></view>
+      <view class="pg-items">
+        <view wx:for="{{pgItems}}" wx:key="key"
+          class="pg-item pg-item-ico {{pgItem === item.key ? 'on' : ''}}"
+          bindtap="onPickGroupItem" data-group="{{pgGroup}}" data-item="{{item.key}}">
+          <text wx:if="{{item.icon}}" class="pg-ico">{{item.icon}}</text>{{item.name}}
+        </view>
       </view>
     </view>
   </view>
 
-  <view class="block">
-    <view class="block-title">此刻心情</view>
-    <view class="grid">
-      <view wx:for="{{moodList}}" wx:key="key"
-        class="cell {{mood === item.key ? 'on' : ''}}" bindtap="onPickMood" data-key="{{item.key}}">
-        <view class="cell-ico">{{item.icon}}</view><view class="cell-name">{{item.name}}</view>
-      </view>
-    </view>
+  <!-- 当前组合回显：让用户一眼看到「现在是 晴 + 开心」，不必在小类里逐个确认 -->
+  <view class="combo">
+    <text class="combo-ico">{{pgGroup === 'm' ? moodEmoji : weatherEmoji}}</text>
+    <text class="combo-txt">{{pgGroup === 'm' ? moodName : weatherName}}</text>
+    <text class="combo-sep">·</text>
+    <text class="combo-txt">{{pgGroup === 'm' ? weatherName : moodName}}</text>
   </view>
 
   <view class="block">

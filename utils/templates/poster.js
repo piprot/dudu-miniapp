@@ -9,7 +9,7 @@
 //   · 光学中心 —— 标题/金句块在头部与落款之间的剩余空间里偏上(40%)就位；
 //     旧版 height=max(y,480) 让落款吊在半空、下面一整块死白。
 //   · 落款钉底 —— 分隔线 + 品牌名 + 长按提示（左）｜小程序码（右），永远贴住底边。
-//   · 提示不折行 —— 「长按识别小程序码」给足一行宽度（旧版挤在 56px 码宽里折成两行）。
+//   · 落款第二行只放真实来源（author/source），不写「长按识别」引导文案（旧版挤在 56px 码宽里折成两行）。
 //   · 强字体对比 —— 金句衬线大字（Songti/SimSun）+ 左侧主色竖条；标题粗无衬线；
 //     正文无衬线 1.8 行距；单一左对齐（仅作者署名靠右）。
 //   · 合规 —— 头像/首字圆形占位已随「社交-笔记」整改移除（旧版圆形占位与落款
@@ -27,7 +27,8 @@ const W = 375;
 const PAD = 32;
 const SERIF = "'Songti SC', 'SimSun', serif";   // 衬线 = 高级感/编辑感的核心
 const BRAND = 'dudu 画面感';
-const QR_HINT = '长按识别小程序码';
+// 原 QR_HINT = '长按识别小程序码' 已删（2026-10-06）：卡面不写引导语，二维码自己会说话。
+// 落款第二行改显示 d.author / d.source，没有就不渲染（见文件末尾落款段）。
 const QR_SIZE = 56;
 const MIN_H = 600;        // 375:600 ≈ 5:8，金句海报的编辑式比例（旧 480 太方）
 const HEADER_H = 88;      // 顶带4 + 日期行(top40,h16) + 呼吸
@@ -50,10 +51,18 @@ function buildPosterModel(themeId, data, opts) {
   const font = p.cjkFont;
   const innerW = W - PAD * 2;
 
-  const text = (arr, content, o) => arr.push(Object.assign(
-    { type: 'text', content: String(content == null ? '' : content), fontFamily: font }, o));
-  const serif = (arr, content, o) => arr.push(Object.assign(
-    { type: 'text', content: String(content == null ? '' : content), fontFamily: SERIF }, o));
+  // 照片背景：文字靠投影保证可读，而非压暗整卡（理由同 templates/index.js）
+  const PHOTO_SHADOW = (fontPx) => ({
+    color: 'rgba(0,0,0,0.5)', blur: Math.max(3, Math.round(fontPx * 0.35)), y: 1
+  });
+  const withShadow = (node) => {
+    if (onPhoto && !node.shadow) node.shadow = PHOTO_SHADOW(node.fontSize || 14);
+    return node;
+  };
+  const text = (arr, content, o) => arr.push(withShadow(Object.assign(
+    { type: 'text', content: String(content == null ? '' : content), fontFamily: font }, o)));
+  const serif = (arr, content, o) => arr.push(withShadow(Object.assign(
+    { type: 'text', content: String(content == null ? '' : content), fontFamily: SERIF }, o)));
 
   // ── 中段（标题/金句/作者/正文）先在本地坐标系排完，再整体垂直就位 ──
   const mid = [];
@@ -114,14 +123,22 @@ function buildPosterModel(themeId, data, opts) {
   // 中段整体就位
   mid.forEach(c => children.push(Object.assign({}, c, { top: (c.top || 0) + midTop })));
 
-  // ── 落款（钉底）：分隔线 + 品牌名 + 长按提示（左）｜小程序码（右）──
+  // ── 落款（钉底）：分隔线 + 品牌名 + 来源署名（左）｜小程序码（右）──
   children.push({ type: 'line', left: PAD, top: footerTop, width: innerW, thickness: 1, color: p.line });
   const hasQr = !!d.qr;
   text(children, d.nickname || BRAND, {
     left: PAD, top: footerTop + 16, width: innerW - (hasQr ? QR_SIZE + 20 : 0),
     color: ink, fontSize: 15, fontWeight: 'bold', lineHeight: 20, lineClamp: 1
   });
-  text(children, QR_HINT, { left: PAD, top: footerTop + 40, width: 180, color: sub, fontSize: 10, lineHeight: 14 });
+  // ⚠️ 第二行不再是「长按识别小程序码」这类引导语（2026-10-06 去掉）：
+  //    海报是分享到站外的成品，卡面写引导文案像广告。二维码本身自带含义，不需要文字解释。
+  //⚠️ 也不重复画author —— 署名**已经在中段**渲染过（右对齐，`—— 作者`，见上方中段段）。
+  //    之前这里再画一次，导致同一署名出现两遍、且中段那个还多叠了一层破折号（`—— —— 鲁迅`）。
+  //    这里只补中段没有的场景：source 存在但 author 不存在时，用 source 兜底落款。
+  const footNote = (!d.author && d.source) ? d.source : '';
+  if (footNote) {
+    text(children, footNote, { left: PAD, top: footerTop + 40, width: 200, color: sub, fontSize: 10, lineHeight: 14, lineClamp: 1 });
+  }
   if (hasQr) {
     children.push({ type: 'qrcode', left: W - PAD - QR_SIZE, top: footerTop + 16, size: QR_SIZE, asset: d.qrAsset });
   }

@@ -67,6 +67,14 @@ function renderCard(page, opts) {
           const c = model.children.find(x => x.type === 'image' && x.src === data.cover);
           if (c && im) c.asset = im;
         }));
+        // ⚠️ 二维码必须在这里加载 asset，否则 draw() 会走 drawPlaceholder 画一个「码」字灰块。
+        //    这个坑踩过一次：data.qr 设了路径，但 jobs 只push 了 cover / bgImg，
+        //    qrcode 节点的 asset 恒为 undefined → 四个页面（金句/天气/节气/台词）二维码全都不显示。
+        //    对照 pages/card/card.js 的同名逻辑补齐，别以为"设了路径就会画"。
+        if (data.qr) jobs.push(loadImg(data.qr).then(im => {
+          const q = model.children.find(x => x.type === 'qrcode');
+          if (q && im) q.asset = im;
+        }));
         if (data.bgImg) jobs.push(loadImg(data.bgImg).then(im => {
           if (im) {
             model.backgroundImageAsset = im;

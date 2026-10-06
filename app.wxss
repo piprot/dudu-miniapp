@@ -131,3 +131,88 @@ page {
 /* 分组卡片容器：天气 / 节气 / 金句 / 台词书摘四页的「风格」「背景」等区块共用 */
 .block { background: var(--bg-card); border: 1rpx solid var(--border-soft); border-radius: var(--r-md); padding: 22rpx; margin-bottom: 20rpx; }
 .block-title { font-size: 26rpx; font-weight: 600; color: var(--text-title); margin-bottom: 16rpx; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   分层选择器（大类 → 小类下钻 + 常用前置）—— 金句/天气/节气/台词四页共用
+   ═══════════════════════════════════════════════════════════════════════
+   为什么不做成「所有类目一次性铺开」：
+     标签随收藏无限增长，平铺会占满整屏且无起点（用户明确反馈观感差）。
+   层级：常用（一步到位）→ 大类（单行横滚）→ 小类（只显示当前大类下的）。
+   视觉上靠**字号与底色**分层：小标题是弱化的，字才是可选的——避免三层都是胶囊、看不出主次。 */
+.picker {
+  background: var(--bg-card);
+  border: 1rpx solid var(--border-soft);
+  border-radius: var(--r-md);
+  padding: 20rpx 20rpx 8rpx;
+  margin-bottom: 16rpx;
+}
+.pg-row { margin-bottom: 18rpx; }
+.pg-row:last-child { margin-bottom: 10rpx; }
+/* 小标题：弱化成灰字+ 小圆点，明确它是「这组标签的标题」而不是一个可点项 */
+.pg-cap {
+  font-size: 21rpx; color: var(--text-tertiary);
+  letter-spacing: 1rpx; margin-bottom: 12rpx;
+  display: flex; align-items: center;
+}
+.pg-cap::before {
+  content: ''; width: 6rpx; height: 6rpx; border-radius: 50%;
+  background: var(--primary); margin-right: 10rpx; opacity: 0.55;
+}
+.pg-cap-sub { color: var(--text-body); margin-left: 8rpx; font-weight: 500; }
+
+/* 常用区：主色描边，和下面的大类区拉开视觉差——它是「快捷入口」而非「完整分类」 */
+.pg-hot { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.pg-hot-chip {
+  font-size: 25rpx; color: var(--primary-deep);
+  background: var(--bg-surface-1);
+  border: 1rpx solid var(--primary);
+  border-radius: var(--r-pill); padding: 9rpx 24rpx;
+}
+.pg-hot-chip.on { background: var(--primary); color: #fff; }
+
+/* 大类区：横向滚动，避免大类变多后换行占高 */
+.pg-scroll { white-space: nowrap; width: 100%; }
+.pg-chip {
+  display: inline-block;
+  font-size: 25rpx; color: var(--text-body);
+  background: var(--bg-soft);
+  border: 1rpx solid var(--border);
+  border-radius: var(--r-pill); padding: 9rpx 26rpx;
+  margin-right: 12rpx;
+}
+.pg-chip.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+/* 有常用项的大类打个小圆点，暗示「里面有你常用的」，可少点一次 */
+.pg-dot {
+  display: inline-block; width: 10rpx; height: 10rpx; border-radius: 50%;
+  background: var(--primary); margin-right: 8rpx; vertical-align: 1rpx;
+}
+.pg-chip.on .pg-dot { background: #fff; }
+
+/* 小类区：浅底小胶囊，明显弱于大类（从属关系） */
+.pg-items { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.pg-item {
+  font-size: 23rpx; color: var(--text-body);
+  background: var(--bg-surface-1);
+  border: 1rpx solid transparent;
+  border-radius: var(--r-pill); padding: 8rpx 22rpx;
+}
+.pg-item.on {
+  background: var(--bg-surface-2); color: var(--primary-deep);
+  border-color: var(--primary); font-weight: 500;
+}
+.stat-filter { color: var(--primary-deep); }
+
+/* 分层选择器里的图标项 + 天气页组合回显 */
+.pg-ico { margin-right: 6rpx; font-size: 26rpx; }
+.pg-item-ico { padding: 10rpx 24rpx; font-size: 25rpx; }
+/* 组合回显：让用户不逐个点小类也能确认当前选了什么 */
+.combo {
+  display: flex; align-items: center; gap: 10rpx;
+  background: var(--bg-surface-1);
+  border: 1rpx solid var(--border);
+  border-radius: var(--r-pill);
+  padding: 12rpx 24rpx; margin-bottom: 16rpx;
+}
+.combo-ico { font-size: 30rpx; }
+.combo-txt { font-size: 26rpx; color: var(--text-title); font-weight: 500; }
+.combo-sep { color: var(--text-tertiary); }

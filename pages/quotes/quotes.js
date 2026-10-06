@@ -8,7 +8,27 @@ const { THEME_LIST } = require('../../utils/themes/index.js');
 const { pickDaily } = require('../../utils/daily_rotate');
 const { CATEGORY_NAMES } = require('../../utils/content_quotes');
 const cardStyle = require('../../utils/card_style_mixin');  // 排版风格 + 背景图（四页共用）
+const catPicker = require('../../utils/cat_picker_mixin.js'); // 分层选择器（大类→小类下钻 + 常用前置）
 const privacyPanel = require('../../utils/privacy_panel.js'); // 隐私授权面板：同意按钮须用 open-type=agreePrivacyAuthorization
+
+// 常用分类：进页最常点的四个。**必须是真实高频**，不是凑数——
+// 常用区的作用是让用户一步到位，若放不相关的项反而误导（用户会点「人生」但其实要「职场」）。
+const HOT_CATS = ['growth', 'life', 'work', 'calm'];
+
+// 分层选择器：大类 = 主题分类，小类 = 该类下真实存在的标签（从库里统计，不是写死）。
+// 标签云随收藏无限增长，绝不能一次性平铺（旧版几十个 tag 铺满屏，观感极差）。
+function buildPickerGroups(allQuotes) {
+  const keys = Object.keys(CATEGORY_NAMES);
+  return keys.map(k => {
+    const items = [{ key: '__all__', name: '全部' }];
+    const seen = {};
+    allQuotes.forEach(q => {
+      if (!q.id || q.id.indexOf('q_seed_' + k + '_') !== 0) return;
+      (q.tags || []).forEach(t => { if (!seen[t]) { seen[t] = 1; items.push({ key: t, name: t }); } });
+    });
+    return { key: k, name: CATEGORY_NAMES[k], items };
+  });
+}
 
 const __pageCfg = {
   data: Object.assign({
@@ -16,11 +36,11 @@ const __pageCfg = {
     themes: THEME_LIST.map(t => ({ id: t.id, name: t.name, color: t.colors.primary })),
     theme: 'warm',
     list: [],            // 当前筛选结果
-    tags: [],            // 标签云 [{tag,count}]
+    tags: [],            // 全部标签（保留给统计/未来用；UI 不再平铺展示，见分层选择器）
     count: 0,            // 收藏总数
     keyword: '',
     activeTag: '',
-    cats: Object.keys(CATEGORY_NAMES).map(k => ({ key: k, name: CATEGORY_NAMES[k] })),
+    // 旧字段 cats（6 大类平铺）已删——改用分层选择器的 pgGroups/pgHot/pgItems
     activeCat: '',
     todayPick: null,     // 今日推荐一条（天天换）
     showEditor: false,
@@ -32,8 +52,38 @@ const __pageCfg = {
     savedKey: ''
   }, cardStyle.defaults('literary')),   // 金句卡默认文艺风
 
-  onLoad() { this.initCardStyle('literary'); store.seedIfEmpty(); this.refresh(); },
+  onLoad() { this.initCardStyle('literary'); store.seedIfEmpty(); this.initPicker(); this.refresh(); },
   onShow() { this.refresh(); },
+
+  // 分层选择器初始化：大类=分类，小类=该类下真实存在的标签
+  initPicker() {
+    const picker = catPicker.build({
+      groups: buildPickerGroups(store.listQuotes()),
+      hotKeys: HOT_CATS.map(c => c + ':__all__'),
+      activeGroup: HOT_CATS[0],
+      activeItem: '__all__',
+      groupLabel: '按主题',
+      itemLabel: '细选标签'
+    });
+    Object.assign(this.data, picker.data);
+    // 小类/常用选择器 → 更新筛选条件（分类 + 标签两级同时生效）
+    this._pickerOnChange = (it) => {
+      if (!it) return;
+      const groupKey = this.data.pgGroup;
+      const tag = (it.key === '__all__') ? '' : it.key;
+      this.setData({ activeCat: groupKey, activeTag: tag });
+      this.applyFilter();
+    };
+    // 进页默认落在第一个常用大类上
+    this._pickerOnChange({ key: '__all__' });
+  },
+
+  // 标签云随收藏增长 → 大类下的小类也要跟着变，重进页面时重建一次分组
+  rebuildPickerGroups() {
+    const groups = buildPickerGroups(store.listQuotes());
+    const items = (groups.find(g => g.key === this.data.pgGroup) || { items: [] }).items;
+    this.setData({ pgGroups: groups, pgItems: items });
+  },
 
   // 从本地库刷新列表 + 标签云 + 总数
   refresh() {
@@ -45,6 +95,9 @@ const __pageCfg = {
       count: all.length,
       todayPick: this.pickToday(all)
     });
+    // 分组依赖库里的标签集合，收藏/删标签后必须重建，
+    // 否则会出现「新建的标签在分类下选不到」。
+    if (this.data.pgGroups && this.data.pgGroups.length) this.rebuildPickerGroups();
   },
 
   // 「今日推荐」：按日期从全库里稳定轮换一条，同一天不变、跨天必变。
@@ -55,14 +108,9 @@ const __pageCfg = {
     return q ? { id: q.id, text: q.text, source: q.source || '' } : null;
   },
 
-  // 分类筛选（life/love/work/time/growth/calm）：按 category 字段前缀过滤
-  onPickCat(e) {
-    const cat = e.currentTarget.dataset.cat;
-    this.setData({ activeCat: (this.data.activeCat === cat ? '' : cat) });
-    this.applyFilter();
-  },
-
-  // 分类是「种子文案专属」字段（id 以 q_seed_ 开头），用户自建条目不参与分类筛选
+  // 筛选统一入口：分类（大类）+ 标签（小类）两级同时生效。
+// 分层选择器的回调改activeCat/activeTag 后调用这里。
+// 分类是「种子文案专属」字段（id 以 q_seed_ 开头），用户自建条目不参与分类筛选。
   applyFilter() {
     const cat = this.data.activeCat;
     let list = store.searchQuotes({ keyword: this.data.keyword, tag: this.data.activeTag });
@@ -96,12 +144,6 @@ const __pageCfg = {
 
   onSearch(e) {
     this.setData({ keyword: e.detail.value });
-    this.applyFilter();
-  },
-
-  onPickTag(e) {
-    const tag = e.currentTarget.dataset.tag;
-    this.setData({ activeTag: (this.data.activeTag === tag ? '' : tag) });
     this.applyFilter();
   },
 
@@ -207,6 +249,8 @@ const __pageCfg = {
 };
 
 // 注入风格/背景交互（与天气/节气/台词书摘同一套）
-Object.assign(__pageCfg, cardStyle.cardStyleMethods);
+// 分层选择器方法：在 initPicker 里挂（它的 data 依赖库里的标签集合，运行时才确定），
+// 这里只挂方法壳。
+Object.assign(__pageCfg, cardStyle.cardStyleMethods, catPicker.build({groups: []}).methods);
 Object.assign(__pageCfg, privacyPanel.privacyPanelMethods);
 Page(__pageCfg);

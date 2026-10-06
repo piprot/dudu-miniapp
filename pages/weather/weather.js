@@ -19,6 +19,7 @@ const { seedOf } = require('../../utils/daily_rotate');
 const region = require('../../utils/region_data');
 const regionStore = require('../../utils/region_store');
 const cardStyle = require('../../utils/card_style_mixin');  // 排版风格 + 背景图（四页共用）
+const catPicker = require('../../utils/cat_picker_mixin.js'); // 分层选择器（大类→小类 + 常用前置）
 const privacyPanel = require('../../utils/privacy_panel.js');
 
 const WEATHER = [
@@ -42,7 +43,21 @@ const MOODS = [
   { key: 'lonely', name: '孤独', icon: '🫧' }
 ];
 
+// ── 分层选择（2026-10-06）──────────────────────────────────────────────
+// 旧版是「8 个天气格子 + 8 个心情格子」两段共 16 个选项一次性铺开，
+// 用户反馈观感差、找不到起点。改成分层：
+//   大类 = 今天什么天气 / 此刻心情（两个大区，用 segment 在顶部切换）
+//   小类 = 该区里的具体项
+//   常用 = 晴/开心/平静/多云——真实高频，置顶一步到位
+// WEATHER / MOODS 保持扁平（渲染与文案逻辑依赖它们），分组只存在于 UI 层。
+const PICKS = [
+  { groupKey: 'w', name: '今天什么天气', items: WEATHER },
+  { groupKey: 'm', name: '此刻心情', items: MOODS }
+];
+const HOT_PICKS = ['w:sunny', 'm:happy', 'm:calm', 'w:cloudy'];
+
 function nameOf(list, key) { const it = list.find(x => x.key === key); return it ? it.name : ''; }
+function emojiOf(list, key) { const it = list.find(x => x.key === key); return it ? (it.icon || '') : ''; }
 
 const __pageCfg = {
   // 排版风格与背景图的字段由 card_style_mixin.defaults() 注入
@@ -57,6 +72,10 @@ const __pageCfg = {
     moodList: MOODS,
     weather: 'sunny',
     mood: 'happy',
+    // 当前组合的回显（分层选择器下方的「晴 · 开心」）：从 WEATHER/MOODS 派生，
+    // 别在 WXML 里做查找——模板表达式不该承担查表职责。
+    weatherName: '晴', weatherEmoji: '☀️',
+    moodName: '开心', moodEmoji: '😊',
     note: '',
     cover: '',
     // 城市（纯本地静态列表选中，零网络零隐私接口）。
@@ -84,6 +103,39 @@ const __pageCfg = {
     // 图库只取前 24 张（mixin 内已做）：横向滚动足够，占用也小
     this.setData({ recent: regionStore.getRecent() });
     this.restoreCity();
+    this.initPicker();
+  },
+
+  // 分层选择器：大类=天气/心情分区，小类=具体项
+  initPicker() {
+    const picker = catPicker.build({
+      groups: PICKS.map(g => ({ key: g.groupKey, name: g.name, items: g.items })),
+      hotKeys: HOT_PICKS,
+      activeGroup: 'w',
+      activeItem: this.data.weather || 'sunny',
+      groupLabel: '选择',
+      itemLabel: '细选'
+    });
+    Object.assign(this.data, picker.data);
+    // 选中项写回页面字段（weather / mood）——这是分层选择器与旧页面的唯一接缝
+    this._pickerOnChange = (it) => {
+      if (!it) return;
+      const gk = this.data.pgGroup;
+      if (gk === 'w') this.setData({ weather: it.key });
+      else if (gk === 'm') this.setData({ mood: it.key });
+      this.syncComboEcho();
+    };
+    this.syncComboEcho();
+  },
+
+  // 同步「晴 · 开心」回显。每次改天气/心情都要调，否则回显会与实际组合脱节。
+  syncComboEcho() {
+    this.setData({
+      weatherName: nameOf(WEATHER, this.data.weather),
+      weatherEmoji: emojiOf(WEATHER, this.data.weather),
+      moodName: nameOf(MOODS, this.data.mood),
+      moodEmoji: emojiOf(MOODS, this.data.mood)
+    });
   },
 
   // 恢复上次选中的城市；没有或已失效（数据改名）则保持未选状态。
@@ -103,8 +155,10 @@ const __pageCfg = {
     });
   },
 
-  onPickWeather(e) { this.setData({ weather: e.currentTarget.dataset.key }); },
-  onPickMood(e) { this.setData({ mood: e.currentTarget.dataset.key }); },
+  //旧 onPickWeather / onPickMood 已删：选择统一由分层选择器（cat_picker_mixin）驱动。
+  // 保留这两个作为兼容壳，避免别处（如自动化脚本/测试）调用时静默失败。
+  onPickWeather(e) { this.setData({ weather: e.currentTarget.dataset.key }); this.syncComboEcho(); this.syncPicker({ groupKey: 'w', key: e.currentTarget.dataset.key }); },
+  onPickMood(e) { this.setData({ mood: e.currentTarget.dataset.key }); this.syncComboEcho(); this.syncPicker({ groupKey: 'm', key: e.currentTarget.dataset.key }); },
 
   onNote(e) { this.setData({ note: e.detail.value }); },
 
@@ -199,13 +253,16 @@ const __pageCfg = {
     // 优先级：用户手写 > 静态库自动文案（256 条轮换）> 兜底句
     const auto = this.currentAutoText();
     const body = note || auto || ('今天' + (locLabel ? '在' + locLabel + '，' : '') + '天气' + wn + '，心情' + mn + '。记录此刻，留下一点画面感。');
+    // ⚠️ 城市/天气降到 12px kicker 小字，金句升格为 hero 主体（2026-10-06）。
+    // 旧版把「北京·晴·好心情」塞进 20px 粗体标题槽，天气信息比金句还抢眼——喧宾夺主。
+    // 现在卡面层级是：主标题（可选）> 金句（20px 粗）> 城市天气（12px 灰）。
     const title = (locLabel ? locLabel + ' · ' : '') + wn + ' · ' + mn;
     const hasCover = !!this.data.cover;
     const type = hasCover ? 'imagetext' : 'quote';
     // 风格 + 背景由 card_style_mixin 组装（相册图优先于图库，都空则走主题渐变）。
     const base = hasCover
-      ? Object.assign({ cover: this.data.cover }, { title, body })
-      : { title, body };
+      ? Object.assign({ cover: this.data.cover }, { kicker: title, body, hero: true })
+      : { kicker: title, body, hero: true };
     const data = cardStyle.applyCardStyle(this, base);
     this._lastData = { type, theme: this.data.theme, data };
     // 供 mixin.repaint 在风格/背景变化后原样重绘
@@ -267,6 +324,6 @@ const __pageCfg = {
 
 // 注入风格/背景交互（onPickStyle / onPickBuiltinBg / onPickAlbumBg /
 //   onShufflePhoto / onCyclePhotoMode / onClearPhoto）
-Object.assign(__pageCfg, cardStyle.cardStyleMethods);
+Object.assign(__pageCfg, cardStyle.cardStyleMethods, catPicker.build({ groups: [] }).methods);
 Object.assign(__pageCfg, privacyPanel.privacyPanelMethods);
 Page(__pageCfg);

@@ -16,13 +16,9 @@
 }
 .ta { min-height: 150rpx; }
 
-.tags { display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 12rpx; }
-.tag {
-  font-size: 23rpx; color: var(--text-body); background: var(--bg-soft);
-  border: 1rpx solid var(--border); border-radius: var(--r-pill); padding: 8rpx 20rpx;
-}
-.tag.on { background: var(--primary); color: #fff; border-color: var(--primary); }
-.tag.clear { background: var(--bg-surface-1); color: var(--text-tertiary); }
+/* 旧 .tags / .cats（一次性平铺标签云与大类）已删——
+   改用 app.wxss 的 .picker 分层选择器（常用→大类→小类）。
+   平铺是用户明确点过的问题：标签随收藏无限增长，铺满整屏且没有起点。 */
 
 /* 今日推荐：金色渐变突出「天天换」的入口 */
 .today {
@@ -35,13 +31,7 @@
 .today-text { font-size: 28rpx; color: var(--ink); line-height: 1.7; }
 .mini.gold { background: #8a6a2f; color: #fff; border-color: #8a6a2f; padding: 10rpx 22rpx; font-size: 23rpx; }
 
-/* 分类胶囊（种子文案专属：人生/情感/职场/时间/成长/心境） */
-.cats { display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 16rpx; }
-.cat {
-  font-size: 24rpx; color: var(--primary-deep); background: var(--bg-surface-1);
-  border: 1rpx solid var(--bg-surface-2); border-radius: var(--r-pill); padding: 9rpx 24rpx;
-}
-.cat.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+/* 旧 .cats（6 大类平铺）已删——改用 app.wxss 的 .picker 分层选择器（常用→大类→小类）。*/
 
 .stat { font-size: 23rpx; color: var(--text-tertiary); margin-bottom: 16rpx; }
 

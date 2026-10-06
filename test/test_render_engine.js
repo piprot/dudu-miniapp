@@ -186,5 +186,57 @@ t('主题色均为合法色值（#rgb / #rrggbb）', () => {
   }
 });
 
+// ── 中文行首禁则（2026-10-06）──
+// 起因：逐字塞的折行会把句末标点挤到下一行独占一行（「…脚步\n。」），看着像排版事故。
+t('折行禁则：标点不得出现在行首（不得独占一行）', () => {
+  const NO_START = '，。、；：！？）」』】〉》”’';
+  const measure = (txt, f) => Array.from(String(txt)).reduce((s, c) => s + (/[\x00-\xff]/.test(c) ? 0.5 : 1), 0) * f;
+  const cases = [
+    '今天风很轻，连时间都放慢了脚步。今天也要好好吃饭。',
+    '慢慢来，稳一点，才是长期主义者的智慧。',
+    '他说：「今天也要加油」，于是又失败了。',
+    '第一句。第二句。第三句。第四句。'
+  ];
+  cases.forEach(text => {
+    [12, 14, 16, 20].forEach(f => {
+      // 多种宽度都试：确保无论怎么折，标点都不落行首
+      const w = Math.round(Array.from(text).length * f * 0.6);
+      wrapText(text, w, measure, f).forEach(line => {
+        assert.ok(line.length > 0, '不应产生空行');
+        assert.ok(NO_START.indexOf(line[0]) < 0,
+          `标点「${line[0]}」出现在行首（f=${f}, w=${w}）：${JSON.stringify(line)}`);
+      });
+    });
+  });
+});
+
+t('折行禁则：开引号/开括号不得留在行尾', () => {
+  const NO_END = '（「『【〈《“‘';
+  const measure = (txt, f) => Array.from(String(txt)).reduce((s, c) => s + (/[\x00-\xff]/.test(c) ? 0.5 : 1), 0) * f;
+  const text = '他说：「今天也要加油」，于是又失败了。';
+  [12, 14, 16].forEach(f => {
+    const lines = wrapText(text, Math.round(Array.from(text).length * f * 0.6), measure, f);
+    lines.slice(0, -1).forEach(line => {
+      assert.ok(NO_END.indexOf(line[line.length - 1]) < 0,
+        `开括号「${line[line.length - 1]}」留在行尾：${JSON.stringify(line)}`);
+    });
+  });
+});
+
+t('折行禁则不吞字：所有行拼起来必须等于原文', () => {
+  const measure = (txt, f) => Array.from(String(txt)).reduce((s, c) => s + (/[\x00-\xff]/.test(c) ? 0.5 : 1), 0) * f;
+  const text = '第一句。第二句。第三句。第四句。第五句。';
+  [12, 14, 16, 20].forEach(f => {
+    const w = Math.round(Array.from(text).length * f * 0.6);
+    assert.strictEqual(wrapText(text, w, measure, f).join(''), text,
+      `f=${f} 折行后丢字了（禁则合并时把字吃掉了）`);
+  });
+});
+
+t('折行禁则：短文本（不折行）原样返回，不做任何改写', () => {
+  const measure = (txt, f) => Array.from(String(txt)).reduce((s, c) => s + (/[\x00-\xff]/.test(c) ? 0.5 : 1), 0) * f;
+  assert.deepStrictEqual(wrapText('短句。', 9999, measure, 14), ['短句。']);
+});
+
 console.log(`\n结果：${pass} 通过 / ${fail} 失败`);
 process.exit(fail ? 1 : 0);

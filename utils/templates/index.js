@@ -77,8 +77,20 @@ function buildCardModel(type, themeId, data, opts) {
   const titleAlign = styleOn ? S.titleAlign : (type === 'dailysign' ? 'center' : 'left');
   const bodyAlign = styleOn ? S.bodyAlign : 'left';
 
-  const txt = (content, o) => children.push(Object.assign(
-    { type: 'text', content: String(content == null ? '' : content), fontFamily: font }, o));
+  // 照片背景：文字靠**投影**保证可读，而不是把整卡蒙版压暗（旧版压到0.68，整张图发闷）。
+// 投影强度按字号给：大字需要更多糊边才压得住背景，小字反之（糊太多会糊成一团）。
+const PHOTO_SHADOW = (fontPx) => ({
+  color: 'rgba(0,0,0,0.5)',
+  blur: Math.max(3, Math.round(fontPx * 0.35)),
+  y: 1
+});
+  // onPhoto 时自动给所有文字挂投影；显式传了 shadow 的以传入为准
+  const txt = (content, o) => {
+    const node = Object.assign(
+      { type: 'text', content: String(content == null ? '' : content), fontFamily: font }, o);
+    if (onPhoto && !node.shadow) node.shadow = PHOTO_SHADOW(node.fontSize || 14);
+    children.push(node);
+  };
   const rect = (o) => children.push(Object.assign({ type: 'rect' }, o));
 
   // ── 顶部主色细条（锚点 ①）──
@@ -94,6 +106,18 @@ function buildCardModel(type, themeId, data, opts) {
   const brandW = Math.ceil(measure(brand, 10));
   txt(brand, { left: W - PAD - brandW, top: y + 5, width: brandW, color: sub, fontSize: 10, lineHeight: 12 });
   y += 22 + 16;
+
+  // ── kicker：小字元信息行（城市/天气/日期等），**必须比正文小**──
+  // 用途：天气卡这类「金句是主体、天气只是场景」的卡，把场景信息从20px 粗体标题槽
+  // 降到 12px 灰字，让金句真正成为视觉主体。旧版把「北京·晴·好心情」塞进标题槽，
+  // 结果天气信息比金句还抢眼，喧宾夺主。
+  if (d.kicker) {
+    const kFs = 12, kLh = 17;
+    const kLines = countLines(d.kicker, innerW, kFs, measure, 2);
+    txt(d.kicker, { left: PAD, top: y, width: innerW, color: sub, fontSize: kFs, lineHeight: kLh,
+      lineClamp: 2, textAlign: (styleOn ? S.bodyAlign : (type === 'dailysign' ? 'center' : 'left')) });
+    y += kLines * kLh + 6;
+  }
 
   // ── 标题（公告卡带主色左竖条）──
   if (d.title) {
@@ -131,8 +155,10 @@ function buildCardModel(type, themeId, data, opts) {
   const wantDeco = isQuote && !!d.body && !(styleOn && !S.showDeco);
   if (wantDeco) {
     const mark = styleOn ? S.deco : '❝';
-    const dSize = styleOn ? S.decoSize : 26;
-    const dLh = styleOn ? Math.round(dSize * 1.2) : 30;
+    // 装饰符**不能比金句本体还大**（旧版26px 引号压过 17px 金句，喧宾夺主还显闷）。
+    // 现在封顶到 20px：hero 卡（金句 20px）用 18，小金句（17px）配 20 刚好成对。
+    const dSize = styleOn ? S.decoSize : (d.hero ? 18 : 20);
+    const dLh = Math.round(dSize * 1.2);
     txt(mark, { left: PAD, top: y, width: type === 'dailysign' ? innerW : 40, color: p.primary,
       fontSize: dSize, fontWeight: 'bold', lineHeight: dLh,
       fontFamily: decoFont,
@@ -141,11 +167,19 @@ function buildCardModel(type, themeId, data, opts) {
   }
 
   // ── 正文（行距 1.7+）──
+  // d.hero=true 时正文升格为**真正的主体**：字号/行距都往上抬一档。
+  // 天气卡用它——场景信息降到 12px kicker 后，金句必须明显放大才撑得住「主视觉」，
+  // 否则卡面会变成「一堆小字+ 一句平铺的正文」，看着没有重点。
   if (d.body) {
-    const fs = styleOn ? S.bodySize : (isQuote ? 17 : (type === 'recommend' ? 15 : 14));
-    const lh = styleOn ? S.bodyLineHeight : (isQuote ? 30 : (type === 'recommend' ? 26 : 24));
+    const hero = !!d.hero;
+    const fs = styleOn ? (hero ? S.bodySize + 3 : S.bodySize)
+      : (hero ? 20 : (isQuote ? 17 : (type === 'recommend' ? 15 : 14)));
+    const lh = styleOn ? (hero ? S.bodyLineHeight + 4 : S.bodyLineHeight)
+      : (hero ? 34 : (isQuote ? 30 : (type === 'recommend' ? 26 : 24)));
     const clamp = isQuote ? 6 : 8;
-    txt(d.body, { left: PAD, top: y, width: innerW, color: ink, fontSize: fs, lineHeight: lh, lineClamp: clamp,
+    txt(d.body, { left: PAD, top: y, width: innerW, color: ink,
+      fontSize: fs, lineHeight: lh, lineClamp: clamp,
+      fontWeight: hero && !styleOn ? 'bold' : undefined,
       fontFamily: bodyFont, letterSpacing: styleOn ? S.bodySpacing : 0,
       textAlign: type === 'dailysign' && !styleOn ? 'center' : bodyAlign });
     y += countLines(d.body, innerW, fs, measure, clamp) * lh + 12;
@@ -182,13 +216,16 @@ function buildCardModel(type, themeId, data, opts) {
   if (hasQr) {
     children.push({ type: 'qrcode', left: W - PAD - QS, top: y, size: QS, asset: d.qrAsset });
   }
-  const foot = d.author || (hasQr ? '长按识别小程序码，进入小程序' : '');
+  // ⚠️ 落款只认用户真实署名（author / source）。**不再兜底「长按识别小程序码」这类引导文案**——
+  //    二维码自己会说话，卡面写「长按识别…」属于噪声，且在小红书/朋友圈场景里显得像广告。
+  //    没有 author 就让这一行空着（下面 foot 为空则不push text节点，不占纵向空间）。
+  const foot = d.author || d.source || '';
   if (foot) {
-    txt(foot, { left: PAD, top: y + Math.round((QS - 18) / 2), width: hasQr ? innerW - QS - 12 : innerW,
-      color: sub, fontSize: 12, lineHeight: 18, lineClamp: 2,
-      textAlign: (type === 'dailysign' && !d.author) ? 'center' : 'left' });
+    txt(foot, { left: PAD, top: hasQr ? y + Math.round((QS - 18) / 2) : y,
+      width: hasQr ? innerW - QS - 12 : innerW,
+      color: sub, fontSize: 12, lineHeight: 18, lineClamp: 2, textAlign: 'left' });
   }
-  y += QS + 18;
+  y += (hasQr ? QS : 18) + 18;
 
   const height = Math.max(y, 200);
   const model = {
