@@ -342,12 +342,12 @@ t('接线：四页都能让风格真正落到渲染（styleKey 进 applyCardStyl
   page.data.bgSource = 'lib';
   page.data.bgPhotoId = 'not-a-real-id';
   const inj = mixin.applyCardStyle(page, {});
-  assert.strictEqual(inj.bgImg, bgPack.pathOf('bg00'),
+  assert.strictEqual(inj.bgImg, bgPack.pathOf(mixin.FALLBACK_ID),
     '非法图库 id 未回落到内置兜底图（防 dataset 注入任意 URL）');
   page.data.bgSource = 'builtin';
   page.data.bgPhotoId = '../../secret.jpg';
   const inj2 = mixin.applyCardStyle(page, {});
-  assert.strictEqual(inj2.bgImg, bgPack.pathOf('bg00'),
+  assert.strictEqual(inj2.bgImg, bgPack.pathOf(mixin.FALLBACK_ID),
     '非法内置路径未被拦下（防 dataset 注入任意包内路径）');
 });
 
@@ -368,8 +368,11 @@ t('守卫：内置兜底图随包存在、无 webp、且在包体预算内', () 
   });
   let total = 0;
   files.forEach(f => { total += fsx.statSync(pathx.join(dir, f)).size; });
-  assert.ok(total < 600 * 1024, '内置背景图总体积 ' + Math.round(total / 1024)
-    + 'KB，超出 600KB 预算（会挤占主包 2MB 额度）');
+  // 预算依据：基础包体 864KB + 内置图上限 1000KB ≈ 1864KB/ 2048KB ≈ 91%，
+  // 再多就顶爆主包（超限是上传直接失败）。改动前务必跑
+  // `node tools_local/pack_volume.js` 复核真实占用。
+  assert.ok(total < 1000 * 1024, '内置背景图总体积 ' + Math.round(total / 1024)
+    + 'KB，超出 1000KB 预算（基础包体 864KB，加起来会顶爆主包 2MB）');
 });
 
 t('接线：风格/背景偏好持久化，但相册临时路径必须不落盘', () => {

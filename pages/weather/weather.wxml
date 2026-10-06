@@ -84,7 +84,7 @@
   </view>
 
   <view class="block">
-    <view class="block-title">背景图（内置 16 张，零网络）</view>
+    <view class="block-title">背景图（内置 60 张，零网络）</view>
     <view class="bg-row">
       <view class="bg-ops">
         <view class="bg-op" bindtap="onPickAlbumBg">🖼️ 从相册选</view>
@@ -104,7 +104,7 @@
       处理方式：{{photoModeLabel}} ▸ 点击切换
     </view>
     <view wx:if="{{bgPhotoId}}" class="bg-credit">背景：{{bgAuthor}} · 来源 picsum（Unsplash）</view>
-    <view class="loc-hint">内置图已随包压缩好，不走网络、不需要服务器域名白名单，永远可用。默认灰度衬底，文字更易读。</view>
+    <view class="loc-hint">内置 60 张已随包压缩好，不走网络、不需要服务器域名白名单，永远可用。默认灰度衬底，文字更易读。</view>
   </view>
 
   <view class="block">

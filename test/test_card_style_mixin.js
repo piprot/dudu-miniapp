@@ -75,7 +75,14 @@ t('bg_pack 清单自洽：ID 唯一、路径存在、作者非空、无 webp', (
     assert.ok(b.author && b.source, '缺作者/溯源: ' + b.id);
     assert.ok(b.picsumId, '缺 picsum 溯源 id: ' + b.id);
   }
-  assert.ok(bgPack.stats().authors >= 12, '作者过于集中，视觉会重复');
+  // 60 张 / 59 位作者：picsum 清单只有 59 位不同作者，所以第 60 张必然重复 1 位。
+  // 这条锁住「60 张里最多 1 位作者取 2 张」，避免将来选图逻辑写错导致视觉重复。
+  assert.strictEqual(bgPack.BUILTIN.length, 60, '内置图应为60 张');
+  const authorCount = {};
+  bgPack.BUILTIN.forEach(b => { authorCount[b.author] = (authorCount[b.author] || 0) + 1; });
+  const dup = Object.values(authorCount).filter(v => v > 2);
+  assert.strictEqual(dup.length, 0, '不应有作者占 3 张以上（视觉会明显重复）');
+  assert.strictEqual(bgPack.stats().authors, 59, '应为 59 位作者（第 60 张重复其中 1 位）');
   assert.strictEqual(bgPack.pathOf('nope'), '', '未知 id 必须返回空串');
 });
 

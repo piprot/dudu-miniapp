@@ -36,7 +36,7 @@ const PREVIEW_COUNT = 24;   // 网络图库横向滚动只铺前24 张，全库 
 // 内置包内图没有服务端做灰度/虚化，改用引擎暗色蒙版强度近似三档。
 // 核心目的不是"真的灰度"，而是**白字压在图上必须可读** → 越靠gray 蒙版越厚。
 const BUILTIN_VEIL = { gray: [0.46, 0.68], blur: [0.36, 0.56], raw: [0.24, 0.42] };
-const FALLBACK_ID = 'bg00';   // 网络图加载失败时回落到这张（保证不白卡的最后一层）
+const FALLBACK_ID = 'bg01';   // 网络图加载失败时回落到这张（保证不白卡的最后一层）
 
 /** 页面 data 里的风格/背景字段。defaultStyleKey 缺省用文艺（与模板层 DEFAULT_STYLE 对齐）。 */
 function defaults(defaultStyleKey) {
