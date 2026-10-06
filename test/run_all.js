@@ -61,7 +61,6 @@ const SUITES = [
   // ── 2026-10-06 静态内容库 + 每日轮换引擎（运营「一定要天天换」）──
   'test/test_content_library.js',
   'test/test_region_data.js',
-  'test/test_photo_lib.js',
   'test/test_font_kit.js',
   'test/test_card_style_mixin.js',
   'test/test_charge_units.js',

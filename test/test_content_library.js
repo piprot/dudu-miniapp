@@ -265,21 +265,21 @@ t('接线：weather 页已接上省市级联 picker 与最近使用', () => {
   assert.ok(wxml.indexOf('bindtap="onPickRecent"') >= 0, 'wxml 缺最近使用区');
 });
 
-t('接线：四页均已接上背景图库（选图/切模式/换一张/取消/相册）', () => {
+t('接线：四页均已接上背景图库（选图/切档位/换一张/取消/相册）', () => {
   // 2026-10-06 起这套逻辑抽到 utils/card_style_mixin.js，四页共用；
   // 守卫从「页面里逐个定义方法」升级为「mixin 提供方法 + 四页都注入 + wxml 都有控件」。
   const mixin = fs.readFileSync(
     path.join(__dirname, '..', 'utils', 'card_style_mixin.js'), 'utf8');
-  for (const fn of ['onPickPhoto', 'onPickBuiltinBg', 'onCyclePhotoMode', 'onShufflePhoto',
+  for (const fn of ['onPickBuiltinBg', 'onCyclePhotoMode', 'onShufflePhoto',
     'onClearPhoto', 'onPickAlbumBg', 'onPickStyle']) {
     assert.ok(mixin.indexOf(fn + '(') >= 0, 'card_style_mixin 缺方法 ' + fn);
   }
-  // applyCardStyle 必须真的算出 bgImg（相册 > 网络图库 > 内置兜底；显式取消则不设该键）
+  // applyCardStyle 必须真的算出 bgImg（相册 > 内置图；显式取消则不设该键）
   assert.ok(/bgImg/.test(mixin), 'mixin 未产出 bgImg');
-  // 两级来源必须都在：内置兜底（零网络）+ 网络图库（增强项）
-  assert.ok(/bg_pack/.test(mixin), 'mixin 未接内置兜底图库 bg_pack');
-  assert.ok(/photo_lib/.test(mixin), 'mixin 未保留网络图库 photo_lib');
-  assert.ok(/bgFallback/.test(mixin), 'mixin 未给网络图挂内置兜底（白名单没配会白卡）');
+  // 两级来源：内置图库（零网络）+ 手机相册。网络图库已整层移除（见下方专项守卫）。
+  assert.ok(/bg_pack/.test(mixin), 'mixin 未接内置图库 bg_pack');
+  // bgFallback 现在挂给相册图：临时路径可能被系统回收，挂了才能不白卡
+  assert.ok(/bgFallback/.test(mixin), 'mixin 未给相册图挂内置兜底（原图失效会白卡）');
   for (const p of ['weather', 'solar', 'quotes', 'line']) {
     const js = fs.readFileSync(
       path.join(__dirname, '..', 'pages', p, p + '.js'), 'utf8');
@@ -289,7 +289,7 @@ t('接线：四页均已接上背景图库（选图/切模式/换一张/取消/�
     assert.ok(/cardStyle\.defaults\(/.test(js), p + '.js data 未套用 card_style 字段');
     const wxml = fs.readFileSync(
       path.join(__dirname, '..', 'pages', p, p + '.wxml'), 'utf8');
-    for (const b of ['bindtap="onPickPhoto"', 'bindtap="onPickBuiltinBg"',
+    for (const b of ['bindtap="onPickBuiltinBg"',
       'bindtap="onCyclePhotoMode"',
       'bindtap="onShufflePhoto"', 'bindtap="onClearPhoto"',
       'bindtap="onPickAlbumBg"', 'bindtap="onPickStyle"', 'class="bg-scroll"',
@@ -591,52 +591,119 @@ t('守卫：所有可交互元素与图片都必须有可访问名称（/harden�
 
   assert.strictEqual(noName.length, 0,
     '以下元素缺可访问名称（读屏无法播报）：\n    - ' + noName.join('\n    - '));
-  assert.ok(imgTotal.length >= 11,
-    '扫描到的 <image> 数量异常少（' + imgTotal.length + '），扫描逻辑可能失效');
+
+  // 扫描器自证有效：imgTotal 的数量必须等于用独立方法（直接数 <image 出现次数）
+  // 数出来的数量。两者不等说明上面那个正则漏配了，noName 的结论不可信。
+  //
+  // ⚠️ 这里**刻意不用硬编码下限**。原写法是 `imgTotal.length >= 11`，
+  //  那是 2026-10-06 /harden 当时的基线（8 张网络缩略图 + 1 头像 + 2 分镜）。
+  //   网络图库整层删除后真实数量降到 7，硬编码基线立刻变成假警报 ——
+  //   而修它的错误方式是"把 11 改成 7"，下次再删图又会假警报一次。
+  //   动态交叉验证才是不需要维护的版本。
+  let rawCount = 0;
+  files.forEach(f => {
+    const src = fs.readFileSync(f, 'utf8');
+    rawCount += (src.match(/<image\b/g) || []).length;
+  });
+  assert.strictEqual(imgTotal.length, rawCount,
+    '扫描器漏配：正则抓到 ' + imgTotal.length + ' 张<image>，'
+    + '直接计数为 ' + rawCount + ' 张，正则 <image\\b[^>]*?(?:\\/>|>) 失效');
+  assert.ok(rawCount > 0, '全仓 <image> 数量为 0，扫描范围或路径可能错了');
 });
 
-t('守卫：网络图库必须惰性加载（首屏零远程请求，/optimize）', () => {
-  // 2026-10-06 /optimate：改前四页无条件渲染 24 张网络缩略图，
-  // 未配 downloadFile 白名单时首屏一次发起 24 个 doomed 请求 ——
-  // 拖慢首屏、刷满错误日志，而内置兜底图本来就够用。
-  // 改后：默认折叠（netLibOpen=false）+ photos 空数组，展开才惰性探测。
-  const mixin = require('../utils/card_style_mixin');
+t('守卫：网络图库已整层移除，不得复活（首屏与出卡零网络请求）', () => {
+  // 2026-10-06 演进史（三轮，值得留着当反面教材）：
+  //   ① 原始版：四页无条件渲染 24 张网络缩略图 → 未配白名单时首屏 24 个 doomed 请求
+  //   ② /optimize：改默认折叠 + 惰性探测 → 首屏 0 请求，但探测本身仍是网络请求
+  //   ③ 最终：整层删除。原因很直接 —— downloadFile 白名单**始终没配**，
+  //     那 100 张图一张都没成功显示过，折叠只是把失败推迟，没解决失败。
+  //     内置 60 张已覆盖需求，删掉后出卡路径上彻底不存在网络请求。
   const src = fs.readFileSync(
     path.join(__dirname, '..', 'utils', 'card_style_mixin.js'), 'utf8');
+  const d = require('../utils/card_style_mixin').defaults('literary');
 
-  const d = mixin.defaults('literary');
-  assert.strictEqual(d.photos.length, 0,
-    '默认态不应预铺网络缩略图（实测 ' + d.photos.length + ' 张）');
-  assert.strictEqual(d.netLibOpen, false, '网络图库区块应默认折叠');
-  assert.strictEqual(d.netAvailable, null, '初始应为「未探测」而非 false（false 会误判不可用）');
-
-  // 四页 WXML 的网络图库 scroll-view 必须带 netLibOpen + netAvailable 守卫，
-  // 否则折叠了数据却仍渲染空列表只是白忙一场
+  // ① 状态字段必须从 data 里消失（留空数组等于名存实亡）
+  for (const k of ['photos', 'netAvailable', 'netLibOpen', 'netProbing']) {
+    assert.ok(!(k in d), '网络图库遗留字段仍在 data 里：' + k);
+  }
+  // ② 模块本体不得存在
+  assert.ok(!fs.existsSync(path.join(__dirname, '..', 'utils', 'photo_lib.js')),
+    'utils/photo_lib.js 应已删除（网络图库整层移除）');
+  assert.ok(!fs.existsSync(path.join(__dirname, '..', 'test', 'test_photo_lib.js')),
+    'test/test_photo_lib.js 应已删除');
+  assert.ok(!/require\(['"]\.\/photo_lib['"]\)/.test(src), 'mixin 仍 require photo_lib');
+  // ③ 四页 WXML 不得残留任何网络图库痕迹
   ['weather', 'solar', 'quotes', 'line'].forEach(pg => {
     const wxml = fs.readFileSync(
       path.join(__dirname, '..', 'pages', pg, pg + '.wxml'), 'utf8');
-    const idx = wxml.indexOf('onPickPhoto');
-    assert.ok(idx > 0, pg + '.wxml 未找到网络图库区块');
-    const seg = wxml.slice(Math.max(0, idx - 420), idx);
-    assert.ok(/netLibOpen\s*&&\s*netAvailable/.test(seg),
-      pg + '.wxml 网络图库 scroll-view 缺 wx:if="{{netLibOpen && netAvailable}}" 守卫，'
-      + '折叠机制形同虚设');
-    assert.ok(/bindtap="onToggleNetLib"/.test(wxml),
-      pg + '.wxml 缺展开开关 onToggleNetLib，用户无法触发探测');
+    for (const k of ['网络图库', 'onPickPhoto', 'onToggleNetLib',
+      'netLibOpen', 'netAvailable', 'netProbing', 'downloadFile']) {
+      assert.ok(wxml.indexOf(k) < 0, pg + '.wxml 仍残留「' + k + '」');
+    }
+    // 内置图库必须还在（不能把整块背景功能一起删掉）
+    assert.ok(/bindtap="onPickBuiltinBg"/.test(wxml), pg + '.wxml 丢了内置图库选择');
+    assert.ok(wxml.indexOf('builtinPhotos') > 0, pg + '.wxml 丢了内置图库清单');
   });
+  // ④ 样式表不得留孤儿类
+  const appWxss = fs.readFileSync(
+    path.join(__dirname, '..', 'app.wxss'), 'utf8');
+  for (const k of ['.net-toggle', '.net-hint']) {
+    assert.ok(appWxss.indexOf(k) < 0, 'app.wxss 残留孤儿样式 ' + k);
+  }
+  // ⑤ 全仓不得再有 picsum 的**运行时网络依赖**。
+  //    判据是「picsum 域名」而不是字符串 picsum，因为：
+  //      · bg_pack.js 的文件头注释里有图源出处（溯源信息，必须留）
+  //      · bg_pack.js 每条清单还有 picsumId 字段（整数溯源 id，必须留）
+  //    两者都该留。要禁的是**代码去请求 picsum.photos 这个域名**。
+  //    剥掉注释后再判，避免把溯源信息误判成网络依赖。
+  const runtimeHits = [];
+  for (const dir of ['utils', 'pages']) {
+    const full = path.join(__dirname, '..', dir);
+    for (const e of fs.readdirSync(full, { withFileTypes: true })) {
+      if (!e.isFile() || !/\.(js|wxml|wxss)$/.test(e.name)) continue;
+      const raw = fs.readFileSync(path.join(full, e.name), 'utf8');
+      const code = raw
+        .replace(/\/\*[\s\S]*?\*\//g, '')// 块注释
+        .replace(/^\s*\/\/.*$/gm, '')       // 行注释
+        .replace(/<!--[\s\S]*?-->/g, '');   // wxml 注释
+      if (/picsum\.photos/i.test(code)) runtimeHits.push(dir + '/' + e.name);
+      if (/BASE\s*=\s*['"]https?:/i.test(code)) {
+        runtimeHits.push(dir + '/' + e.name + '（含 http(s) BASE 常量）');
+      }
+    }
+  }
+  assert.strictEqual(runtimeHits.length, 0,
+    '这些文件在代码体（已剥注释）里仍引用 picsum 域名，说明有运行时网络依赖：'
+    + runtimeHits.join(', '));
+});
 
-  // 折叠机制不能被绕过：restore / onCyclePhotoMode 都不能无条件重填 photos
-  ['initCardStyle', 'onCyclePhotoMode'].forEach(fn => {
-    const i = src.indexOf(fn + '(');
-    assert.ok(i > 0, '找不到 ' + fn);
-    const seg = src.slice(i, i + 700);
-    const idx = seg.indexOf('photoLib.listAll');
-    if (idx < 0) return;   // 该函数本就不该填 photos，正确
-    // 若填了，必须有 netLibOpen/netAvailable 条件包着
-    const before = seg.slice(Math.max(0, idx - 260), idx);
-    assert.ok(/netLibOpen|netAvailable/.test(before),
-      fn + ' 无条件重填 photos，会绕过折叠机制让首屏又背上远程请求');
-  });
+t('守卫：背景必须零网络可用（内置图库 + 相册，两级足矣）', () => {
+  // 上面那条防「网络图库复活」，这条防「任何形式的新网络依赖」。
+  // 判定方式：applyCardStyle 产出的 bgImg 要么是包内路径，要么是相册临时路径。
+  const mixin = require('../utils/card_style_mixin');
+  const p = { data: Object.assign({}, mixin.defaults('literary')),
+    setData(x) { Object.assign(this.data, x); } };
+
+  const cases = [
+    { desc: '默认内置图', patch: {} },
+    { desc: '指定内置图', patch: { bgSource: 'builtin', bgPhotoId: require('../utils/bg_pack').ids()[5] } },
+    { desc: '旧 lib storage', patch: { bgSource: 'lib', bgPhotoId: '999' } },
+    { desc: '相册图', patch: { localBg: 'wxfile://tmp/a.jpg' } },
+    { desc: '取消背景', patch: { localBg: '', bgSource: 'none', bgPhotoId: '' } }
+  ];
+  for (const c of cases) {
+    p.setData(c.patch);
+    const d = mixin.applyCardStyle(p, { body: 'x' });
+    if (!d.bgImg) {           // 显式取消背景 =无图，合法
+      assert.strictEqual(c.desc, '取消背景', c.desc + ' 意外丢了背景');
+      continue;
+    }
+    assert.ok(!/^https?:\/\//i.test(d.bgImg),
+      c.desc + ' 的 bgImg 竟是网络 URL：' + d.bgImg);
+    assert.ok(String(d.bgImg).indexOf('/images/bg/') === 0
+      || String(d.bgImg).indexOf('wxfile://') === 0,
+      c.desc + ' 的 bgImg 既非包内路径也非相册路径：' + d.bgImg);
+  }
 });
 
 t('守卫：不得引入包内字体文件（主包 2MB 上限 + canvas 不支持）', () => {

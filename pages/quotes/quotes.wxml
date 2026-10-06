@@ -83,29 +83,7 @@
       处理方式：{{photoModeLabel}} ▸ 点击切换
     </view>
     <view wx:if="{{bgPhotoId}}" class="bg-credit">背景：{{bgAuthor}} · 来源 picsum（Unsplash）</view>
-    <view class="loc-hint">内置 60 张已随包压缩好，不走网络、不需要服务器域名白名单，永远可用。默认灰度衬底，文字更易读。</view>
-  </view>
-
-  <view class="block">
-    <view class="block-title">更多背景（网络图库 · 增强项）</view>
-    <!-- /optimize：默认折叠。用户点开才惰性探测图库可用性并渲染缩略图；
-         未配 downloadFile 白名单时不再首屏发起 24 个注定失败的请求。 -->
-    <view class="net-toggle" bindtap="onToggleNetLib">{{netLibOpen ? '收起网络图库' : '展开网络图库（需域名白名单）'}}</view>
-    <view wx:if="{{netProbing}}" class="net-hint">正在检测图库可用性…</view>
-    <view wx:if="{{netLibOpen && netAvailable === false}}" class="net-hint">
-      网络图库不可用：未配置 downloadFile 白名单或网络不通。已自动回退到内置图（60 张随包，永久可用）。
-    </view>
-    <scroll-view wx:if="{{!localBg && netLibOpen && netAvailable}}" class="bg-scroll" scroll-x="true" show-scrollbar="{{false}}">
-      <view wx:for="{{photos}}" wx:key="id"
-        class="bg-item {{bgSource === 'lib' && bgPhotoId === item.id ? 'on' : ''}}"
-        bindtap="onPickPhoto" data-id="{{item.id}}"
-        aria-label="选用网络背景图，摄影者 {{item.author}}">
-        <image class="bg-thumb" src="{{item.url}}" mode="aspectFill"
-          aria-hidden="true" />
-      </view>
-    </scroll-view>
-    <view wx:if="{{bgSource === 'lib'}}" class="bg-picked">正在用网络图库 ✓</view>
-    <view class="loc-hint">网络图库是增强项：需在后台「开发管理 → 服务器域名 → downloadFile」填 picsum.photos 与 fastly.picsum.photos。未配置或加载失败会自动回退到内置图，不影响出卡。</view>
+    <view class="loc-hint">内置 60 张已随包压缩好，不走网络、不需要服务器域名白名单，永远可用。默认深衬底，文字更易读。</view>
   </view>
 
   <!-- 主题选择（6 套数据化主题，渲染引擎自动读取配色） -->

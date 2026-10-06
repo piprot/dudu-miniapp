@@ -6,15 +6,23 @@
 // 复制四份必然漂移（改一处忘三处），故把状态 + 交互 + 持久化 + 重绘收在一处，
 // 页面只需 Object.assign(pageCfg, cardStyle.methods) 并在渲染前调 applyCardStyle()。
 //
-// ── 能力边界（与 utils/font_kit.js、utils/photo_lib.js 同源）──────────
+// ── 能力边界（与 utils/font_kit.js 同源）──────────────────────────────
 //  · 风格只改排版参数（字体族/字号/字距/对齐/装饰），不落地字体文件——
 //    主包 2MB 上限 + loadFontFace 不读包内路径 + canvas 不支持，三条硬墙。
-//  · 背景图分**三级来源**（2026-10-06 用户要求「内置压缩兜底图，网络图库作为增强项」）：
+//  · 背景图分**两级来源**（2026-10-06 定案）：
 //      album手机相册（用户自己的图，临时路径，不落盘）
 //      builtin  内置压缩兜底图（包内 /images/bg/*.jpg，零网络零白名单，永远能出图）← 默认
-//      lib     网络图库（picsum 100 张，需 downloadFile 白名单，是增强项不是前提）
-//    三级互斥：选相册清图库+内置，选图库/内置清相册。
-//  · 背景加载失败由 quote_card_render 内部处理：网络图失败 → 回落内置兜底图 →
+//    两级互斥：选相册清内置，选内置清相册。
+//
+// ── 为什么没有第三级「网络图库」（2026-10-06 移除）──────────────────────
+//  曾经有picsum 100 张网络图库，但它是**从未真正可用过**的增强项：
+//  canvas createImage() 加载网络图受后台 downloadFile 白名单管辖，而该白名单
+//  至今未配置 → 那一百张图一张都出不来，只是让用户多点一次、白等一次失败。
+//  内置 60 张已覆盖全部需求（480×640 深色调、作者分散、永久可用），故整层删除：
+//  utils/photo_lib.js、onPickPhoto、onToggleNetLib 惰性探测、netAvailable 状态机全没了。
+//  附带收益：applyCardStyle 不再需要判定远程/本地并挂 bgFallback，
+//  首屏与出卡路径上彻底不存在任何网络请求。
+//  · 背景加载失败由 quote_card_render 内部处理：图加载失败 → 回落内置兜底图 →
 //    再失败才 delete model.backgroundImage 回退主题渐变，任何一级都不白卡。
 //
 // ── 持久化取舍 ─────────────────────────────────────────────────────────
@@ -22,7 +30,6 @@
 //  相册临时路径 → **不存**（chooseMedia 的 tempFilePath 会被系统回收，
 //  存下来下次启动就是坏图），只在本次会话内有效。
 
-const photoLib = require('./photo_lib');
 const bgPack = require('./bg_pack');
 const fontKit = require('./font_kit');
 const { handlePrivacyApiFail } = require('./diag.js');
@@ -30,13 +37,14 @@ const { renderCard } = require('./quote_card_render');
 
 const KEY = 'dudu_card_style_v1';
 const PHOTO_MODES = ['gray', 'blur', 'raw'];
-const MODE_LABEL = { gray: '灰度衬底', blur: '虚化', raw: '原图' };
-const PREVIEW_COUNT = 24;   // 网络图库横向滚动只铺前24 张，全库 100 张仍可选（换一张）
+// 命名说明：内置图走引擎蒙版近似，不是真灰度/真高斯模糊（见 BUILTIN_VEIL）。
+// 所以标签用「衬底强弱」如实描述，不用「灰度/虚化」这种承诺了做不到的事。
+const MODE_LABEL = { gray: '深衬底', blur: '中衬底', raw: '淡衬底' };
 
 // 内置包内图没有服务端做灰度/虚化，改用引擎暗色蒙版强度近似三档。
 // 核心目的不是"真的灰度"，而是**白字压在图上必须可读** → 越靠gray 蒙版越厚。
 const BUILTIN_VEIL = { gray: [0.46, 0.68], blur: [0.36, 0.56], raw: [0.24, 0.42] };
-const FALLBACK_ID = 'bg01';   // 网络图加载失败时回落到这张（保证不白卡的最后一层）
+const FALLBACK_ID = 'bg01';   // 背景加载失败时回落到这张（保证不白卡的最后一层）
 
 /** 页面 data 里的风格/背景字段。defaultStyleKey 缺省用文艺（与模板层 DEFAULT_STYLE 对齐）。 */
 function defaults(defaultStyleKey) {
@@ -48,15 +56,7 @@ function defaults(defaultStyleKey) {
     // 背景：内置压缩兜底图（默认来源，零网络零白名单）
     builtinPhotos: bgPack.listAll(),
     bgPhotoId: FALLBACK_ID,
-    bgSource: 'builtin',   // builtin=内置兜底| lib=网络图库 | album=手机相册
-    // 背景：网络图库（增强项，需 downloadFile 白名单）
-    // ⚠️ 刻意置空数组 + 默认收起（netLibOpen=false）：区块展开时才由
-    //    onToggleNetLib 惰性探测并填入。否则用户没配 downloadFile 白名单时，
-    //    首屏会一次发起 24 个注定失败的远程请求（/optimize 修的就是这个）。
-    photos: [],
-    netAvailable: null, // null=未探测 | true=可用 | false=不可用（见 onToggleNetLib）
-    netLibOpen: false,  // 网络图库区块是否展开
-    netProbing: false,  // 探测中
+    bgSource: 'builtin',   // builtin=内置兜底 | album=手机相册 | none=显式取消背景
     photoMode: 'gray',
     photoModeLabel: MODE_LABEL.gray,
     bgAuthor: bgPack.authorOf(FALLBACK_ID),
@@ -71,7 +71,13 @@ function normalizeMode(m) {
 function normalizeSource(s) {
   // none 是显式的「不要背景」（用户点了取消背景）。必须与 builtin 区分：
   // builtin 是兜底默认值，id 为空会回落默认图；none 则真的不设 bgImg。
-  if (s === 'lib' || s === 'album' || s === 'none') return s;
+  //
+  //⚠️ 这里只列两个合法值，少了历史值 'lib'（网络图库，2026-10-06 整层移除）。
+  //    这**不是漏写**：老用户 storage 里存着 bgSource='lib' + 某个 picsum id，
+  //    走 else 分支自动回落 'builtin'，配initCardStyle 的 id 校验换成 bg01，
+  //    迁移零成本、不报错。若日后见到 normalizeSource 少一支，别急着"补全"——
+  //    除非真的重做网络图库，否则那会把废弃值又请回来。
+  if (s === 'album' || s === 'none') return s;
   return 'builtin';
 }
 
@@ -91,9 +97,7 @@ function writeStore(patch) {
 /**
  * 组装 renderCard 的 data：注入 styleKey 与背景三键（bgImg / bgVeil / bgFallback）。
  *
- * 优先级：相册临时图 > 当前来源（内置兜底 / 网络图库）；都没有则不设 bgImg（走主题渐变）。
- * 网络图额外挂 bgFallback（内置兜底图路径）——白名单没配 / 断网 / 图源抖动时，
- * quote_card_render 会自动改用这张内置图，**保证永远能出带背景的卡**。
+ * 优先级：相册临时图 > 内置兜底图；显式取消则不设 bgImg（走主题渐变）。
  *
  * @param {object} base 页面自己的卡片数据（title/body/author/cover…）
  */
@@ -105,30 +109,30 @@ function applyCardStyle(page, base) {
   const mode = normalizeMode(d.photoMode);
   const src = normalizeSource(d.bgSource);
   let bg = '';
+  let isBuiltin = false;
 
   if (d.localBg) {
     bg = d.localBg;                          // 相册图：原图直用，不叠 veil（用户自己的图）
   } else if (src === 'none') {
     bg = '';                                 // 用户显式取消背景 → 走主题渐变
-  } else if (src === 'lib' && photoLib.has(d.bgPhotoId)) {
-    bg = photoLib.urlOf(d.bgPhotoId, { mode });
-    if (!bg) bg = bgPack.pathOf(FALLBACK_ID);  // 未知 id → 兜底
-  } else if (src === 'lib') {
-    bg = bgPack.pathOf(FALLBACK_ID);         // lib 来源但 id 失效 → 回落内置
   } else {
-    // builtin：未知/空 id 一律拦下落回默认内置图
+    // builtin：未知/空 id 一律拦下落回默认内置图。
+    // 老 storage 的 bgSource='lib' 也走这里（normalizeSource 已回落），配下面
+    // 的 id 校验把 picsum id 换成 bg01 —— 迁移路径与普通未知 id 完全一致。
     bg = bgPack.pathOf(d.bgPhotoId) || bgPack.pathOf(FALLBACK_ID);
+    isBuiltin = true;
   }
 
   if (bg) {
     out.bgImg = bg;
-    // 内置包内图没有服务端做灰度/虚化，用引擎蒙版强度近似三档（保白字可读）。
-    // 判定用「是否为 http(s) 绝对地址」而不是前缀字符串——比逐个比对 /images/ 稳。
-    const isRemote = /^https?:\/\//i.test(bg);
-    if (!isRemote) out.bgVeil = BUILTIN_VEIL[mode];
+    // 衬底三档只对内置图生效：内置图没有服务端做灰度/虚化，用引擎蒙版强度近似。
+    // 相册图是用户自己的图，不叠蒙版（叠了等于替用户改作品）。
+    if (isBuiltin) out.bgVeil = BUILTIN_VEIL[mode];
     else delete out.bgVeil;
-    // 网络图挂兜底：加载失败时由渲染层改用内置图
-    if (isRemote) out.bgFallback = bgPack.pathOf(FALLBACK_ID);
+    // 挂内置兜底：相册临时路径也可能失效（用户在系统相册里删了原图），
+    // 加载失败时由渲染层改用内置图，**保证永远能出带背景的卡**。
+    // 内置图自己不需要兜底（它就是兜底），再兜底会自我循环。
+    if (!isBuiltin) out.bgFallback = bgPack.pathOf(FALLBACK_ID);
     else delete out.bgFallback;
   } else {
     delete out.bgImg;
@@ -161,12 +165,13 @@ function repaint(page) {
 
 const cardStyleMethods = {
   /**
-   * onLoad 里调一次：恢复持久化的风格/背景选择，并铺缩略图。
+   * onLoad 里调一次：恢复持久化的风格/背景选择。
    *
-   * 背景恢复的三级净化（防手改 storage / 库更新后旧 ID 失效）：
-   *   bgSource=album → 相册路径本就不落盘，必然为空 → 回落内置兜底
-   *   bgSource=lib    → ID 必须在 photo_lib 内，否则降级为 builtin
+   * 背景恢复的两级净化（防手改 storage / 库更新后旧 ID 失效）：
+   *   bgSource=album  → 相册路径本就不落盘，必然为空 → 回落内置兜底
    *   bgSource=builtin→ ID 必须在 bg_pack 内，否则回落默认内置图
+   *   bgSource='lib'  → 历史废弃值，normalizeSource 已回落 builtin，
+   *                     其 picsum id 不在 bg_pack 内 → 被下面的 id 校验换成 bg01
    * @param {string} [defaultStyleKey] 该页面的默认风格（不传则 literary）
    */
   initCardStyle(defaultStyleKey) {
@@ -177,9 +182,8 @@ const cardStyleMethods = {
 
     let src = normalizeSource(s.bgSource);
     let bgPhotoId = s.bgPhotoId;
-    if (src === 'lib') {
-      if (!photoLib.has(bgPhotoId)) { src = 'builtin'; bgPhotoId = FALLBACK_ID; }
-    } else if (src === 'builtin') {
+    if (src === 'builtin') {
+      //这一支同时兜住两类失效：老 lib 来源带来的 picsum id，和手改的乱值。
       if (!bgPack.has(bgPhotoId)) bgPhotoId = FALLBACK_ID;
     } else {
       bgPhotoId = '';                // album（路径不落盘必然为空）/ none：都无选中图
@@ -191,14 +195,7 @@ const cardStyleMethods = {
       photoModeLabel: MODE_LABEL[photoMode],
       bgSource: src,
       bgPhotoId,
-      bgAuthor: (src === 'lib' && bgPhotoId) ? photoLib.authorOf(bgPhotoId)
-        : (src === 'builtin' && bgPhotoId) ? bgPack.authorOf(bgPhotoId) : '',
-      // photos 不在这里填：折叠机制下缩略图由 onToggleNetLib 探测后才注入。
-      // 若此处无条件填回，等于绕过折叠，首屏又背上 24 个远程请求。
-      // 保留用户上次探测结果（restore 不该重置网络可用性状态）。
-      netLibOpen: false,
-      netAvailable: this.data && this.data.netAvailable !== undefined
-        ? this.data.netAvailable : null
+      bgAuthor: (src === 'builtin' && bgPhotoId) ? bgPack.authorOf(bgPhotoId) : ''
     }));
   },
 
@@ -225,59 +222,41 @@ const cardStyleMethods = {
     repaint(this);
   },
 
-  /** 选网络图库（增强项：需 downloadFile 白名单，失败自动回落内置图）。 */
-  onPickPhoto(e) {
-    const id = e.currentTarget.dataset.id;
-    if (!photoLib.has(id)) return;          // 防dataset 注入任意 URL
-    this.setData({
-      bgPhotoId: id,
-      bgAuthor: photoLib.authorOf(id),
-      bgSource: 'lib',
-      localBg: '',
-      rendered: false
-    });
-    writeStore({ bgSource: 'lib', bgPhotoId: id });
-    repaint(this);
-  },
-
   /**
-   * 换一张：在**当前来源内**循环（内置 16 张 / 网络 100 张各自成环）。
-   * 用户想换风格档位请显式点缩略图，不在这里跨来源跳——避免"想换张内置图
-   * 结果被丢到网络图库，而白名单没配 → 又回落内置"的困惑。
+   * 换一张：在内置图库内循环（60 张成环）。
+   * 曾经按来源分环（内置 60 / 网络 100），网络图库移除后只剩内置一环。
    */
   onShufflePhoto() {
-    const isLib = this.data.bgSource === 'lib';
-    const list = isLib ? photoLib.PHOTOS.map(p => p.id) : bgPack.ids();
+    const list = bgPack.ids();
     if (!list.length) return;
     const cur = list.indexOf(this.data.bgPhotoId);
     const nextId = list[(cur + 1) % list.length];
     this.setData({
       bgPhotoId: nextId,
-      bgAuthor: isLib ? photoLib.authorOf(nextId) : bgPack.authorOf(nextId),
+      bgAuthor: bgPack.authorOf(nextId),
+      bgSource: 'builtin',
       localBg: '',
       rendered: false
     });
-    writeStore({ bgSource: isLib ? 'lib' : 'builtin', bgPhotoId: nextId });
+    writeStore({ bgSource: 'builtin', bgPhotoId: nextId });
     repaint(this);
     wx.showToast({ title: '已换背景', icon: 'none' });
   },
 
-  /** 灰度 → 虚化 → 原图 循环；网络图 query 变了必须重算缩略图 URL。 */
+  /**
+   * 衬底强弱三档循环：深衬底 → 中衬底 → 淡衬底。
+   * 只改内置图的引擎蒙版强度（BUILTIN_VEIL），缩略图 URL 不变，无需重算。
+   */
   onCyclePhotoMode() {
     const next = PHOTO_MODES[(PHOTO_MODES.indexOf(normalizeMode(this.data.photoMode)) + 1) % PHOTO_MODES.length];
     this.setData({
       photoMode: next,
       photoModeLabel: MODE_LABEL[next],
-      // 只在图库已展开且可用时才重算缩略图 URL（query 变了 URL 才变）。
-      // 未展开时保持空数组，避免这里把折叠机制绕过去。
-      photos: (this.data.netLibOpen && this.data.netAvailable)
-        ? photoLib.listAll({ mode: next }).slice(0, PREVIEW_COUNT)
-        : this.data.photos,
       rendered: false
     });
     writeStore({ photoMode: next });
     repaint(this);
-    wx.showToast({ title: '背景：' + MODE_LABEL[next], icon: 'none' });
+    wx.showToast({ title: '衬底：' + MODE_LABEL[next], icon: 'none' });
   },
 
   /** 从手机相册选一张作背景（与内置/图库互斥）。临时路径不持久化。 */
@@ -309,62 +288,10 @@ const cardStyleMethods = {
     this.setData({ bgPhotoId: '', bgAuthor: '', localBg: '', bgSource: 'none', rendered: false });
     writeStore({ bgSource: 'none', bgPhotoId: '' });
     repaint(this);
-  },
-
-  /**
-   * 展开「更多背景（网络图库）」时惰性探测可用性（/optimize）。
-   *
-   * 为什么需要：网络图库区块若无条件渲染，用户没配 downloadFile 白名单时
-   * 会一次发起 24 个注定失败的远程请求 —— 拖慢首屏、刷满错误日志，
-   * 而内置兜底图本来就够用。
-   *
-   * 为什么惰性：探测本身就是一次网络请求，放onLoad 里等于无条件多一次。
-   * 放onToggleNetLib 里只在用户真的要用时才测，且测一次就记住。
-   *
-   * 用 wx.getImageInfo 而非 wx.request：它走与 <image> 完全相同的
-   * downloadFile 通道，探测结果才等价于「图能不能显示」。
-   */
-  onToggleNetLib() {
-    const self = this;
-    const next = !this.data.netLibOpen;
-    if (!next || this.data.netAvailable !== null) {
-      // 折叠，或已探明结果 → 直接切状态，不重复探测
-      this.setData({ netLibOpen: next });
-      return;
-    }
-    this.setData({ netLibOpen: true, netProbing: true });
-    const probe = photoLib.urlOf(photoLib.listAll({ mode: 'gray' })[0].id, { mode: 'gray' });
-    wx.getImageInfo({
-      src: probe,
-      success() { self._setNetAvail(true); },
-      fail() { self._setNetAvail(false); }
-    });
-  },
-
-  _setNetAvail(ok) {
-    this.setData({
-      netAvailable: ok,
-      netProbing: false,
-      // 探测失败：把网络图从渲染树摘掉，避免 24 个 doomed 请求
-      // 探测成功：此刻 photos 还是空数组（折叠期间从未填充），
-      //   必须重新 listAll 填入 —— 直接沿用 this.data.photos 会永远空着。
-      photos: ok
-        ? photoLib.listAll({ mode: this.data.photoMode }).slice(0, PREVIEW_COUNT)
-        : [],
-      bgSource: ok ? this.data.bgSource : 'builtin',
-      bgPhotoId: ok ? this.data.bgPhotoId : FALLBACK_ID,
-      bgAuthor: ok ? this.data.bgAuthor : bgPack.authorOf(FALLBACK_ID),
-      rendered: ok ? this.data.rendered : false
-    });
-    if (!ok) {
-      // 回落内置图必须重绘，否则卡片仍挂着加载失败的空背景
-      writeStore({ bgSource: 'builtin', bgPhotoId: FALLBACK_ID });
-      repaint(this);
-    }
   }
 };
 
 module.exports = {
-  KEY, PHOTO_MODES, MODE_LABEL, PREVIEW_COUNT, BUILTIN_VEIL, FALLBACK_ID,
+  KEY, PHOTO_MODES, MODE_LABEL, BUILTIN_VEIL, FALLBACK_ID,
   defaults, normalizeMode, normalizeSource, applyCardStyle, repaint, cardStyleMethods
 };

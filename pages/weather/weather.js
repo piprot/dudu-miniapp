@@ -173,7 +173,7 @@ const __pageCfg = {
   },
 
   // ── 排版风格 / 背景图 的交互方法来自 cardStyle.cardStyleMethods ──
-  //   onPickStyle · onPickAlbumBg · onPickPhoto · onShufflePhoto
+  //   onPickStyle · onPickBuiltinBg · onPickAlbumBg · onShufflePhoto
   //   onCyclePhotoMode · onClearPhoto（页面底部统一 Object.assign 注入）
   // 原因：节气 / 金句 / 台词书摘三页需要完全相同的一套，复制四份必然漂移。
 
@@ -265,7 +265,7 @@ const __pageCfg = {
   }
 };
 
-// 注入风格/背景交互（onPickStyle / onPickAlbumBg / onPickPhoto /
+// 注入风格/背景交互（onPickStyle / onPickBuiltinBg / onPickAlbumBg /
 //   onShufflePhoto / onCyclePhotoMode / onClearPhoto）
 Object.assign(__pageCfg, cardStyle.cardStyleMethods);
 Object.assign(__pageCfg, privacyPanel.privacyPanelMethods);
