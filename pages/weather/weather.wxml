@@ -83,6 +83,7 @@
     <view class="loc-hint">城市选择来自随包的省市静态表，只在本机使用，不联网、不采集你的位置信息；天气由你手动选择。</view>
   </view>
 
+  <!-- 写一句（可选） -->
   <view class="block">
     <view class="block-title">写一句（可选）</view>
     <textarea class="ta" value="{{note}}" bindinput="onNote" placeholder="如：雨声里，把烦心事都冲走了" maxlength="-1" />
@@ -97,56 +98,30 @@
     <view wx:if="{{cover}}" class="cover-mini">已选本地图片 ✓（不上传服务器）</view>
   </view>
 
-  <!-- 排版风格 + 背景图：与节气/金句/台词书摘三页完全同一块（改一处全站生效） -->
-  <view class="block">
-    <view class="block-title">排版风格</view>
-    <view class="style-row">
-      <view wx:for="{{styleList}}" wx:key="id"
-        class="style-chip {{styleKey === item.id ? 'on' : ''}}"
-        bindtap="onPickStyle" data-key="{{item.id}}">{{item.name}}</view>
-    </view>
-    <view class="loc-hint">风格决定字体族（衬线/黑体/圆体/楷体）、字号、字距、对齐与装饰符号。全部使用系统字体，无需下载、不会闪烁。</view>
-  </view>
-
-  <view class="block">
-    <view class="block-title">背景图（内置 60 张，零网络）</view>
-    <view class="bg-row">
-      <view class="bg-ops">
-        <view class="bg-op" bindtap="onPickAlbumBg">🖼️ 从相册选</view>
-        <view wx:if="{{bgPhotoId || localBg}}" class="bg-op" bindtap="onClearPhoto">✕ 取消背景</view>
-      </view>
-      <view wx:if="{{bgPhotoId}}" class="bg-mode" bindtap="onShufflePhoto">🎲 换一张</view>
-    </view>
-    <scroll-view wx:if="{{!localBg}}" class="bg-scroll" scroll-x="true" show-scrollbar="{{false}}">
-      <view wx:for="{{builtinPhotos}}" wx:key="id"
-        class="bg-item {{bgSource === 'builtin' && bgPhotoId === item.id ? 'on' : ''}}"
-        bindtap="onPickBuiltinBg" data-id="{{item.id}}"
-        aria-label="选用内置背景图，摄影者 {{item.author}}">
-        <image class="bg-thumb" src="{{item.url}}" mode="aspectFill"
-          aria-hidden="true" />
-      </view>
-    </scroll-view>
-    <view wx:if="{{localBg}}" class="bg-picked">已用相册图 ✓（你选的那张）</view>
-    <view wx:if="{{bgPhotoId}}" class="bg-mode" bindtap="onCyclePhotoMode">
-      处理方式：{{photoModeLabel}} ▸ 点击切换
-    </view>
-    <view wx:if="{{bgPhotoId}}" class="bg-credit">背景：{{bgAuthor}} · 来源 picsum（Unsplash）</view>
-    <view class="loc-hint">内置 60 张已随包压缩好，不走网络、不需要服务器域名白名单，永远可用。默认深衬底，文字更易读。</view>
-  </view>
-
+  <!-- 主行动按钮：紧跟内容区。
+       旧序把「生成卡片」夹在 4 个配置 block 之后，用户改完要往上翻才找得到提交键
+       —— 这是 2026-10-06 用户反馈「排版太有问题」里最实质的一条。 -->
   <button class="btn primary gen" bindtap="onGen">生成卡片</button>
-
-  <view class="theme-row">
-    <view wx:for="{{themes}}" wx:key="id"
-      class="theme-chip {{theme === item.id ? 'on' : ''}}"
-      bindtap="onPickTheme" data-id="{{item.id}}"><view class="dot" style="background:{{item.color}}" aria-hidden="true"></view>{{item.name}}</view>
-  </view>
 
   <view class="canvas-wrap">
     <canvas type="2d" id="weatherCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
     <view wx:if="{{!rendered}}" class="canvas-ph">点「生成卡片」后，预览显示在这里</view>
     <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
   </view>
+
+  <!-- 出图设置：默认收起的折叠区（排版风格 / 背景图 / 主题配色）。
+       四页共用 components/card-config，结构只此一份；默认收起是刻意的
+       渐进披露——出图是主任务，调字号配色是次要动作，不该占首屏。 -->
+  <card-config
+    style-list="{{styleList}}" style-key="{{styleKey}}"
+    style-hint="风格决定字体族、字号、字距、对齐与装饰符号。全部用系统字体，不下载、不闪烁。"
+    builtin-photos="{{builtinPhotos}}" bg-source="{{bgSource}}" bg-photo-id="{{bgPhotoId}}"
+    local-bg="{{localBg}}" photo-mode-label="{{photoModeLabel}}" bg-author="{{bgAuthor}}"
+    bg-hint="内置 60 张随包压缩，不走网络、不需服务器域名白名单，永远可用。"
+    themes="{{themes}}" theme="{{theme}}"
+    bind:style="onPickStyle" bind:builtin="onPickBuiltinBg" bind:album="onPickAlbumBg"
+    bind:clearphoto="onClearPhoto" bind:shufflephoto="onShufflePhoto"
+    bind:cyclemode="onCyclePhotoMode" bind:theme="onPickTheme" />
 
   <view class="err" wx:if="{{err}}">{{err}}</view>
   <view class="tip">图片只存在你手机本地，不会上传任何服务器。</view>

@@ -287,7 +287,12 @@ const __pageCfg = {
   },
 
   onPickTheme(e) {
-    const id = e.currentTarget.dataset.id;
+    // ⚠️ 兼容组件上抛（e.detail.id）与页面直绑（e.currentTarget.dataset.id）两种来源。
+    //    背景图/风格已由 card_style_mixin 的 pickVal 统一处理；这个handler 是
+    //    页面自己写的，得自己兼容——否则主题点击会静默失效。
+    const ds = (e && e.detail) || {};
+    const dd = (e && e.currentTarget && e.currentTarget.dataset) || {};
+    const id = ds.id || dd.id;
     if (!id || id === this.data.theme) return;
     this.setData({ theme: id });
     if (this._lastData) {

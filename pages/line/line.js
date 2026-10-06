@@ -55,7 +55,10 @@ const __pageCfg = {
   },
 
   onPickTheme(e) {
-    const id = e.currentTarget.dataset.id;
+    // ⚠️ 兼容组件上抛（e.detail.id）与页面直绑（e.currentTarget.dataset.id）。
+    //    主题行移进 card-config 组件后事件走 e.detail，只读 currentTarget 会静默失效。
+    const id = ((e && e.detail && e.detail.id) ||
+      (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id));
     if (!id || id === this.data.theme) return;
     this.setData({ theme: id });
     if (this._lastData) {

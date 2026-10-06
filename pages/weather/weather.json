@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "天气心情卡",
   "usingComponents": {
-    "privacy-panel": "../../components/privacy-panel/index"
+    "privacy-panel": "../../components/privacy-panel/index",
+    "card-config": "../../components/card-config/index"
   }
 }

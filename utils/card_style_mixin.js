@@ -153,6 +153,31 @@ function applyCardStyle(page, base) {
  *    **不能**看 page.data.rendered —— 各 setter 会把 rendered 置false
  *    以提示"参数已变、需重新生成"，若据此判断就会永远不重绘（2026-10-06 实测踩到）。
  */
+/**
+ * 从事件里取 dataset 字段 —— **同时兼容两种来源**。
+ *
+ * 2026-10-06 踩坑：把四页复制的配置区抽成 components/card-config 后，
+ * 事件从「页面 WXML 直接 bindtap」变成「组件 triggerEvent 上抛」。
+ * 两者的参数位置完全不同：
+ *   · 页面 WXML 直接绑 → e.currentTarget.dataset.xxx
+ *   · 组件 triggerEvent → e.detail.xxx（detail 是上抛时传的对象）
+ * 页面 handler 若仍只读 currentTarget.dataset，会**静默拿到 undefined**：
+ * 点「衬线」没反应、点背景图没高亮，且控制台不报错——最难查的一类断点
+ * （html-to-wechat-mp skill 把这条列为「最高频断点」）。
+ *
+ * 所以取值的唯一入口是本函数，谁都必须走它。
+ * 顺序：先 detail（组件路径），再 currentTarget（页面直绑路径）——
+ * 两者不可能同时有值，detail 优先不会误取。
+ */
+function pickVal(e, field) {
+  if (!e) return '';
+  const d = e.detail;
+  if (d && d[field] != null && d[field] !== '') return d[field];
+  const t = e.currentTarget;
+  if (t && t.dataset && t.dataset[field] != null && t.dataset[field] !== '') return t.dataset[field];
+  return '';
+}
+
 function repaint(page) {
   const o = page && page._cardOpts;
   if (!o) return;
@@ -203,7 +228,7 @@ const cardStyleMethods = {
   },
 
   onPickStyle(e) {
-    const k = e.currentTarget.dataset.key;
+    const k = pickVal(e, 'key');
     if (!fontKit.hasStyle(k) || k === this.data.styleKey) return;
     this.setData({ styleKey: k, rendered: false });
     writeStore({ styleKey: k });
@@ -212,8 +237,8 @@ const cardStyleMethods = {
 
   /** 选内置压缩兜底图（默认来源，零网络零白名单）。 */
   onPickBuiltinBg(e) {
-    const id = e.currentTarget.dataset.id;
-    if (!bgPack.has(id)) return;             // 防dataset 注入任意路径
+    const id = pickVal(e, 'id');
+    if (!bgPack.has(id)) return;             // 防 dataset 注入任意路径
     this.setData({
       bgPhotoId: id,
       bgAuthor: bgPack.authorOf(id),

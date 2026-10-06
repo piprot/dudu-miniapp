@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "台词 / 书摘卡",
   "usingComponents": {
-    "privacy-panel": "../../components/privacy-panel/index"
+    "privacy-panel": "../../components/privacy-panel/index",
+    "card-config": "../../components/card-config/index"
   }
 }

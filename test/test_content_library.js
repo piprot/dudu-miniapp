@@ -28,6 +28,36 @@ function t(name, fn) {
 // 构造本地日期（避开 UTC 偏移导致的跨日问题）
 function d(y, m, day) { return new Date(y, m - 1, day, 10, 0, 0); }
 
+// ── 控件接线守卫的公共读取（2026-10-06 card-config 组件化后新增）────────────
+//
+//背景图/风格/主题这三块控件已从四页 WXML 抽到 components/card-config/。
+// 于是「某页是否接上了背景图库」不能再用`wxml.indexOf('bindtap="onPickBuiltinBg"')`
+// 判定——控件不在页面文件里，判据会假红（这正是本轮踩的坑）。
+//
+// 正确判据是**事件链路是否通到页面 handler**，两种合法形态都要认：
+//   A. 页面直绑：页面 WXML 里 bindtap="onPickBuiltinBg"
+//   B. 组件上抛：页面 WXML 里 bind:builtin="onPickBuiltinBg"，且card-config
+//      组件 WXML 里确实有 bindtap="onPickBuiltinBg" 的控件
+// 只认 A 会假红，只认 B 会在组件化回退时假绿。
+function cardConfigWxml() {
+  const f = path.join(__dirname, '..', 'components', 'card-config', 'index.wxml');
+  return fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : '';
+}
+
+// 该 handler 是否真的能收到事件（A 或 B 任一形态成立）
+function hasWired(wxml, handler) {
+  // A. 页面直绑
+  if (wxml.indexOf('bindtap="' + handler + '"') >= 0) return true;
+  // B. 组件上抛：页面里 bind:<任意事件名>="handler"
+  if (new RegExp('bind:[a-z]+="' + handler + '"').test(wxml)) return true;
+  return false;
+}
+
+// 页面引用的组件是否真的注册并渲染（防「删了 card-config 但WXML 还在引用」）
+function usesCardConfig(wxml) {
+  return /<card-config\b/.test(wxml);
+}
+
 const WEATHER_KEYS = ['sunny', 'cloudy', 'rain', 'snow', 'wind', 'fog', 'thunder', 'night'];
 const MOOD_KEYS = ['happy', 'calm', 'tired', 'sad', 'excited', 'anxious', 'grateful', 'lonely'];
 
@@ -289,12 +319,30 @@ t('接线：四页均已接上背景图库（选图/切档位/换一张/取消/�
     assert.ok(/cardStyle\.defaults\(/.test(js), p + '.js data 未套用 card_style 字段');
     const wxml = fs.readFileSync(
       path.join(__dirname, '..', 'pages', p, p + '.wxml'), 'utf8');
-    for (const b of ['bindtap="onPickBuiltinBg"',
-      'bindtap="onCyclePhotoMode"',
-      'bindtap="onShufflePhoto"', 'bindtap="onClearPhoto"',
-      'bindtap="onPickAlbumBg"', 'bindtap="onPickStyle"', 'class="bg-scroll"',
-      '{{builtinPhotos}}']) {
-      assert.ok(wxml.indexOf(b) >= 0, p + '.wxml 缺 ' + b);
+    // 2026-10-06：控件抽到 card-config 后，判据从「页面 WXML 里有这个字面串」
+    // 升级为「这个 handler 能收到事件」（页面直绑 or 组件上抛都算）。
+    // 同时要求页面确实引用了 card-config，否则上面的宽松判定会假绿。
+    if (usesCardConfig(wxml)) {
+      const cc = cardConfigWxml();
+      assert.ok(cc.length > 0, '页面引用了 <card-config> 但组件 WXML 不存在');
+      for (const b of ['bindtap="onPickBuiltinBg"', 'bindtap="onCyclePhotoMode"',
+        'bindtap="onShufflePhoto"', 'bindtap="onClearPhoto"',
+        'bindtap="onPickAlbumBg"', 'bindtap="onPickStyle"',
+        'class="bg-scroll"', '{{builtinPhotos}}']) {
+        assert.ok(cc.indexOf(b) >= 0, 'card-config/index.wxml 缺 ' + b);
+      }
+      for (const h of ['onPickBuiltinBg', 'onCyclePhotoMode', 'onShufflePhoto',
+        'onClearPhoto', 'onPickAlbumBg', 'onPickStyle']) {
+        assert.ok(hasWired(wxml, h), p + '.wxml 未把 ' + h + ' 接到 card-config 上');
+      }
+    } else {
+      for (const b of ['bindtap="onPickBuiltinBg"',
+        'bindtap="onCyclePhotoMode"',
+        'bindtap="onShufflePhoto"', 'bindtap="onClearPhoto"',
+        'bindtap="onPickAlbumBg"', 'bindtap="onPickStyle"', 'class="bg-scroll"',
+        '{{builtinPhotos}}']) {
+        assert.ok(wxml.indexOf(b) >= 0, p + '.wxml 缺 ' + b);
+      }
     }
   }
 });
@@ -640,9 +688,11 @@ t('守卫：网络图库已整层移除，不得复活（首屏与出卡零网�
       'netLibOpen', 'netAvailable', 'netProbing', 'downloadFile']) {
       assert.ok(wxml.indexOf(k) < 0, pg + '.wxml 仍残留「' + k + '」');
     }
-    // 内置图库必须还在（不能把整块背景功能一起删掉）
-    assert.ok(/bindtap="onPickBuiltinBg"/.test(wxml), pg + '.wxml 丢了内置图库选择');
-    assert.ok(wxml.indexOf('builtinPhotos') > 0, pg + '.wxml 丢了内置图库清单');
+    // 内置图库必须还在（不能把整块背景功能一起删掉）。
+    // 判据同样是「事件链路通」：控件在 card-config 里也算数。
+    assert.ok(hasWired(wxml, 'onPickBuiltinBg'), pg + '.wxml 丢了内置图库选择');
+    const listSrc = usesCardConfig(wxml) ? cardConfigWxml() : wxml;
+    assert.ok(listSrc.indexOf('builtinPhotos') > 0, pg + '.wxml 丢了内置图库清单');
   });
   // ④ 样式表不得留孤儿类
   const appWxss = fs.readFileSync(

@@ -1,0 +1,62 @@
+<!-- components/card-config/index.wxml -->
+<!-- 卡片出图设置：默认收起的折叠区。结构原样搬自四页各自的复制品，现只此一份。 -->
+<view class="cc">
+  <!-- 标题栏：既是折叠开关，也是「出图设置」这个概念的锚点 -->
+  <view class="cc-head" bindtap="onToggle">
+    <text class="cc-head-t">出图设置</text>
+    <text class="cc-head-s">{{open ? '字体 · 背景 · 配色' : '字体 · 背景 · 配色（默认简装，用到再改）'}}</text>
+    <text class="cc-caret {{open ? 'up' : ''}}"></text>
+  </view>
+
+  <view wx:if="{{open}}" class="cc-body">
+    <!-- ① 排版风格 -->
+    <view class="cc-sec">
+      <view class="cc-sec-t">排版风格</view>
+      <view class="style-row">
+        <view wx:for="{{styleList}}" wx:key="id"
+          class="style-chip {{styleKey === item.id ? 'on' : ''}}"
+          bindtap="onPickStyle" data-key="{{item.id}}">{{item.name}}</view>
+      </view>
+      <view class="cc-hint">{{styleHint}}</view>
+    </view>
+
+    <!-- ② 背景图 -->
+    <view class="cc-sec">
+      <view class="cc-sec-t">背景图</view>
+      <view class="bg-row">
+        <view class="bg-ops">
+          <view class="bg-op" bindtap="onPickAlbumBg">相册选图</view>
+          <view wx:if="{{bgPhotoId || localBg}}" class="bg-op" bindtap="onClearPhoto">取消背景</view>
+        </view>
+        <view wx:if="{{bgPhotoId}}" class="bg-mode" bindtap="onShufflePhoto">换一张</view>
+      </view>
+
+      <scroll-view wx:if="{{!localBg}}" class="bg-scroll" scroll-x="true" show-scrollbar="{{false}}">
+        <view wx:for="{{builtinPhotos}}" wx:key="id"
+          class="bg-item {{bgSource === 'builtin' && bgPhotoId === item.id ? 'on' : ''}}"
+          bindtap="onPickBuiltinBg" data-id="{{item.id}}"
+          aria-label="选用内置背景图，摄影者 {{item.author}}">
+          <image class="bg-thumb" src="{{item.url}}" mode="aspectFill" aria-hidden="true" />
+        </view>
+      </scroll-view>
+      <view wx:if="{{localBg}}" class="bg-picked">已用你选的那张 ✓</view>
+      <view wx:if="{{bgPhotoId}}" class="bg-mode" bindtap="onCyclePhotoMode">
+        处理方式：{{photoModeLabel}} · 点此切换
+      </view>
+      <view wx:if="{{bgPhotoId}}" class="bg-credit">{{bgAuthor}}</view>
+      <view class="cc-hint">{{bgHint}}</view>
+    </view>
+
+    <!-- ③ 主题配色 -->
+    <view wx:if="{{showTheme}}" class="cc-sec">
+      <view class="cc-sec-t">主题配色</view>
+      <view class="theme-row">
+        <view wx:for="{{themes}}" wx:key="id"
+          class="theme-chip {{theme === item.id ? 'on' : ''}}"
+          bindtap="onPickTheme" data-id="{{item.id}}">
+          <view class="dot" style="background:{{item.color}}" aria-hidden="true"></view>{{item.name}}
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

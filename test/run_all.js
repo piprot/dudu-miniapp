@@ -72,6 +72,7 @@ const SUITES = [
   'test/test_cat_picker.js',
   'test/test_picker_wiring.js',
   'test/test_add_mine.js',
+  'test/test_card_config_wiring.js',
   'test/test_history.js',
   'test/test_poster_page.js',
   // ── 2026-10-04 隐私错误分类（errno 精确判定，防「用户拒绝」被误当成「后台没配」）──
