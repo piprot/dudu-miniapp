@@ -70,6 +70,7 @@
 .group-caret.open { transform: rotate(90deg); }
 
 .group-body { border-top: 1rpx solid var(--border-soft); padding: 6rpx 0; }
+.group-more { text-align: center; font-size: 24rpx; color: var(--primary-deep); padding: 22rpx 0; border-top: 1rpx solid var(--border-soft); }
 .item { border-bottom: 1rpx solid var(--border-soft); }
 .item:last-child { border-bottom: none; }
 .item-head { display: flex; align-items: center; padding: 20rpx 22rpx; }

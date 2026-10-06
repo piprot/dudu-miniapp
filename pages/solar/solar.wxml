@@ -52,7 +52,7 @@
       </view>
 
       <view class="group-body" wx:if="{{item.open}}">
-        <view class="item" wx:for="{{item.items}}" wx:for-item="it" wx:key="uid">
+        <view class="item" wx:for="{{item.items}}" wx:for-item="it" wx:for-index="idx" wx:key="uid" wx:if="{{idx < item.limit}}">
           <view class="item-head" bindtap="onToggleItem" data-key="{{item.key}}" data-uid="{{it.uid}}">
             <view class="item-main">
               <view class="item-name">{{it.name}} · {{it.tag}}</view>
@@ -65,6 +65,11 @@
             <view class="item-text">{{it.text}}</view>
             <button class="btn primary item-cta" bindtap="onPickItem" data-name="{{it.name}}" data-text="{{it.text}}">🖼️ 成卡（-5 积分）</button>
           </view>
+        </view>
+
+        <!-- 默认只渲染 48 条（库里仍是 100+ 条），点这里看全部 -->
+        <view class="group-more" wx:if="{{item.items.length > item.limit}}" bindtap="onShowMore" data-key="{{item.key}}">
+          展开更多（共 {{item.items.length}} 条，已显示 {{item.limit}} 条）
         </view>
       </view>
     </view>

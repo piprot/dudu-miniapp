@@ -34,9 +34,9 @@ const __pageCfg = {
     // 用户要滚很久才看到想找的那一条（认知负荷 8 项里的「渐进披露」不通过）。
     // 现在：第一层只显示 3 个分组头（含条目数），第二层才是条目，且默认全收起。
     groups: [
-      { key: 'term', name: '二十四节气', icon: '🌾', desc: '东方节气 · 物候与时令', open: false, items: [] },
-      { key: 'lunar', name: '农历传统节日', icon: '🏮', desc: '按真实农历日期推算', open: false, items: [] },
-      { key: 'western', name: '西方节日', icon: '🎄', desc: '公历固定日期', open: false, items: [] }
+      { key: 'term', name: '二十四节气', icon: '🌾', desc: '东方节气 · 物候与时令', open: false, items: [], limit: 48 },
+      { key: 'lunar', name: '农历传统节日', icon: '🏮', desc: '按真实农历日期推算', open: false, items: [], limit: 48 },
+      { key: 'western', name: '西方节日', icon: '🎄', desc: '公历固定日期', open: false, items: [], limit: 48 }
     ],
     sel: { name: '', text: '' },
     todayTap: 0,          // 「换一条」点击次数
@@ -113,6 +113,14 @@ const __pageCfg = {
       const items = g.items.map(it => (it.uid === uid ? Object.assign({}, it, { open: !it.open }) : it));
       return Object.assign({}, g, { items });
     });
+    this.setData({ groups });
+  },
+
+  // 「展开更多」：把该组的渲染上限放开到全库（数据一直在，只是默认不铺开）
+  onShowMore(e) {
+    const key = e.currentTarget.dataset.key;
+    const groups = this.data.groups.map(g =>
+      (g.key === key ? Object.assign({}, g, { limit: g.items.length }) : g));
     this.setData({ groups });
   },
 

@@ -87,6 +87,24 @@ t('buildGroups 委托 solar_browse，每组 ≥100 条文案（纯中文、uid �
   }
 });
 
+t('每组默认只渲染 48 条（库里仍是 100+ 条），并带「展开更多」看全部', () => {
+  const { buildGroups, DEFAULT_LIMIT } = require(path.join(ROOT, 'utils', 'solar_browse.js'));
+  assert.strictEqual(DEFAULT_LIMIT, 48, 'DEFAULT_LIMIT 应为 48（用户要求每组显示 48 条）');
+  const groups = buildGroups();
+  for (const g of groups) {
+    assert.strictEqual(g.limit, 48, `分组 ${g.key} 默认 limit 应为 48，实际 ${g.limit}`);
+    assert.ok(g.items.length > g.limit,
+      `分组 ${g.key} 数据仅 ${g.items.length} 条，未超过 48，「展开更多」就没有意义`);
+  }
+  const js = rd(ROOT, 'pages', 'solar', 'solar.js');
+  assert.ok(/onShowMore/.test(js), '缺少 onShowMore（点「展开更多」应放开渲染上限）');
+  const wxml = rd(ROOT, 'pages', 'solar', 'solar.wxml');
+  assert.ok(/wx:for-index="idx"/.test(wxml), '条目循环未用 wx:for-index="idx"（无法按 limit 截断）');
+  assert.ok(/wx:if="\{\{idx < item\.limit\}\}"/.test(wxml),
+    '条目未按 limit 截断渲染（会一次性铺开 100+ 条，滚动成本过高）');
+  assert.ok(/onShowMore/.test(wxml), 'wxml 缺「展开更多」入口');
+});
+
 t('今日概览接上真实历法：公历 + 农历 + 干支生肖 + 今日节日', () => {
   const js = rd(ROOT, 'pages', 'solar', 'solar.js');
   const body = funcBody(js, 'refreshToday');
