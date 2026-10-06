@@ -1,7 +1,7 @@
-// pages/weather/weather.js —— 天气心情卡（2026-10-06 新增 · 免费本地工具，零 AI）
+// pages/weather/weather.js —— 天气心情卡（2026-10-06 新增 · 纯本地静态库，零 AI）
 // 参照「天气星语」剥离星座/占卜风险后的纯本地版本：天气 + 心情 → 图文卡。
 //   ① 选天气 ② 选心情 ③ 选城市（可选）④ 写一句（可选）⑤ 选本地图（可选）⑥ 一键成卡。
-// 全程本地；不调用 utils/charge（个人主体合规）。
+// 2026-10-06 起启用积分：每次成卡扣 5 分（charge('weatherCard')，单价见 config.POINTS.cost）。
 //
 // 城市方案（2026-10-06 定案）：省市级联 picker 选到「市」+ 最近使用快捷区。
 //   不使用 wx.getLocation —— 它只回经纬度，拿不到城市名；变城市名必须走逆地理编码
@@ -21,6 +21,7 @@ const regionStore = require('../../utils/region_store');
 const cardStyle = require('../../utils/card_style_mixin');  // 排版风格 + 背景图（四页共用）
 const catPicker = require('../../utils/cat_picker_mixin.js'); // 分层选择器（大类→小类 + 常用前置）
 const privacyPanel = require('../../utils/privacy_panel.js');
+const { charge } = require('../../utils/charge.js');
 
 const WEATHER = [
   { key: 'sunny', name: '晴', icon: '☀️' },
@@ -269,8 +270,14 @@ const __pageCfg = {
     this._cardOpts = { canvasId: '#weatherCanvas', type, theme: this.data.theme, data };
     const self = this;
     this.setData({ err: '', autoText: note ? '' : auto });
-    renderCard(this, { canvasId: '#weatherCanvas', type, theme: this.data.theme, data }).catch(err => {
-      self.setData({ err: (err && err.message) || '生成失败' });
+    // ⚠️ 扣费在前、渲染在后：积分不足时**不产出**（charge 会 reject 并弹引导）。
+    //    「换一条」也会走onGen → 同样扣 5 分（用户拍板「每次成卡扣 5 积分」）。
+    //    改价只动 utils/config.js 的 POINTS.cost.weatherCard，云函数 GEN_COST 同名同值。
+    charge('weatherCard', { label: '天气心情卡' }).then(() => {
+      renderCard(self, { canvasId: '#weatherCanvas', type, theme: self.data.theme, data })
+        .catch(err => { self.setData({ err: (err && err.message) || '生成失败' }); });
+    }).catch(() => {
+      self.setData({ err: '' });   // charge 已弹积分不足引导，不重复提示
     });
   },
 

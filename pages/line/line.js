@@ -1,11 +1,13 @@
-// pages/line/line.js —— 台词 / 书摘卡（2026-10-06 新增 · 免费本地工具，零 AI）
+// pages/line/line.js —— 台词 / 书摘卡（2026-10-06 新增 · 纯本地静态库，零 AI）
 // 参照「随身文案库」的「来源分类」思路：影视台词 / 书本摘录 / 名言 → 金句卡。
 //   ① 选类型 ② 粘贴文本 + 出处 ③ 一键成卡（金句卡）。
-// 全程本地；不调用 utils/charge（个人主体合规）。
+// 2026-10-06 起启用积分：每次成卡扣 5 分（charge('lineCard')，单价见 config.POINTS.cost）。
+// 数据仍全程本地，不上传服务器。
 const { renderCard, saveCanvas } = require('../../utils/quote_card_render');
 const { THEME_LIST } = require('../../utils/themes/index.js');
 const cardStyle = require('../../utils/card_style_mixin');  // 排版风格 + 背景图（四页共用）
 const privacyPanel = require('../../utils/privacy_panel.js');
+const { charge } = require('../../utils/charge.js');
 
 const KINDS = [
   { key: 'line', name: '台词' },
@@ -49,8 +51,14 @@ const __pageCfg = {
     this._cardOpts = { canvasId: '#lineCanvas', type: 'quote', theme: this.data.theme, data };
     const self = this;
     this.setData({ err: '' });
-    renderCard(this, { canvasId: '#lineCanvas', type: 'quote', theme: this.data.theme, data }).catch(err => {
-      self.setData({ err: (err && err.message) || '生成失败' });
+    // ⚠️ 扣费在前、渲染在后：积分不足时**不产出**（charge 会 reject）。
+    //    改价只动 utils/config.js 的 POINTS.cost.lineCard，云函数 GEN_COST 同名同值。
+    charge('lineCard', { label: '台词书摘卡' }).then(() => {
+      renderCard(self, { canvasId: '#lineCanvas', type: 'quote', theme: self.data.theme, data })
+        .catch(err => { self.setData({ err: (err && err.message) || '生成失败' }); });
+    }).catch(() => {
+      // charge 已弹「积分不足」引导；这里只还原错误位，不重复提示
+      self.setData({ err: '' });
     });
   },
 

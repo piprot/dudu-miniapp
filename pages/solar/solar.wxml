@@ -1,47 +1,76 @@
 <view class="page">
   <view class="hd">
-    <view class="hd-title">🗓️ 节气·今日文案</view>
-    <view class="hd-sub">节气 / 节日应景文案成卡（纯本地静态库，零 AI）</view>
+    <view class="hd-title">🗓️ 节气·节日文案</view>
+    <view class="hd-sub">东方 24 节气 + 真实农历（干支生肖）+ 西方节日，纯本地静态库，零 AI</view>
   </view>
 
+  <!-- 今日概览：公历 + 农历 + 干支 + 生肖。先让人知道「今天是哪天」 -->
   <view class="today-card">
-    <view class="today-badge" wx:if="{{today.name}}">{{today.name}}</view>
+    <view class="almanac">
+      <view class="almanac-row">
+        <text class="almanac-label">公历</text>
+        <text class="almanac-val">{{todayLabel}}</text>
+      </view>
+      <view class="almanac-row">
+        <text class="almanac-label">农历</text>
+        <text class="almanac-val">{{lunarText}}</text>
+      </view>
+      <view class="almanac-row" wx:if="{{ganzhi}}">
+        <text class="almanac-label">干支生肖</text>
+        <text class="almanac-val">{{ganzhi}}年 · {{zodiac}}</text>
+      </view>
+    </view>
+
+    <view wx:if="{{festivalName}}" class="today-badge">今日 · {{festivalName}}</view>
     <view class="today-text">{{today.text}}</view>
     <view class="today-acts">
       <button class="btn ghost" bindtap="onGenToday">🖼️ 生成今日卡</button>
       <button wx:if="{{today.type === 'normal'}}" class="btn ghost" bindtap="onShuffleToday">🔄 换一条</button>
-      <button class="btn ghost" bindtap="onSaveToVault">💾 存收藏馆</button>
+      <button class="btn ghost" bindtap="onSaveToVault">💾 存金句馆</button>
     </view>
   </view>
 
-  <view class="tabs">
-    <view class="tab {{tab === 'term' ? 'on' : ''}}" bindtap="switchTab" data-tab="term">二十四节气</view>
-    <view class="tab {{tab === 'festival' ? 'on' : ''}}" bindtap="switchTab" data-tab="festival">常用节日</view>
-  </view>
-
-  <view class="list">
-    <view wx:if="{{tab === 'term'}}" wx:for="{{termList}}" wx:key="name" class="item" bindtap="onPickTerm" data-name="{{item.name}}" data-text="{{item.text}}">
-      <view class="item-name">{{item.name}}</view>
-      <view class="item-date">{{item.date}}</view>
-      <view class="item-text">{{item.text}}</view>
-    </view>
-    <view wx:if="{{tab === 'festival'}}" wx:for="{{festivalList}}" wx:key="name" class="item" bindtap="onPickFestival" data-name="{{item.name}}" data-text="{{item.text}}">
-      <view class="item-name">{{item.name}}</view>
-      <view class="item-date">{{item.date}}</view>
-      <view class="item-text">{{item.text}}</view>
-    </view>
-  </view>
-
-
+  <!-- 预览：紧跟主流程（先看到结果，再决定要不要调样式） -->
   <view class="canvas-wrap">
     <canvas type="2d" id="solarCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
-    <view wx:if="{{!rendered}}" class="canvas-ph">点「生成今日卡」或任一条目，预览显示在这里</view>
+    <view wx:if="{{!rendered}}" class="canvas-ph">点「生成今日卡」，或展开下面任一条目，预览显示在这里</view>
     <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
   </view>
 
+  <!-- 分层浏览：第一层只显示 3 个分组头（默认收起），点开才看到条目 -->
+  <view class="groups">
+    <view class="browse-tip">按层次浏览 · 点分组展开，再点条目看成卡文案</view>
+
+    <view class="group" wx:for="{{groups}}" wx:key="key">
+      <view class="group-head" bindtap="onToggleGroup" data-key="{{item.key}}">
+        <text class="group-icon">{{item.icon}}</text>
+        <view class="group-meta">
+          <view class="group-name">{{item.name}}</view>
+          <view class="group-desc">{{item.desc}} · {{item.items.length}} 条</view>
+        </view>
+        <text class="group-caret {{item.open ? 'open' : ''}}">▸</text>
+      </view>
+
+      <view class="group-body" wx:if="{{item.open}}">
+        <view class="item" wx:for="{{item.items}}" wx:for-item="it" wx:key="name">
+          <view class="item-head" bindtap="onToggleItem" data-key="{{item.key}}" data-name="{{it.name}}">
+            <view class="item-main">
+              <view class="item-name">{{it.name}}</view>
+              <view class="item-date">{{it.date}}</view>
+            </view>
+            <text class="item-caret {{it.open ? 'open' : ''}}">▸</text>
+          </view>
+          <view class="item-detail" wx:if="{{it.open}}">
+            <view class="item-text">{{it.text}}</view>
+            <button class="btn primary item-cta" bindtap="onPickItem" data-name="{{it.name}}" data-text="{{it.text}}">🖼️ 成卡（-5 积分）</button>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
   <!-- 出图设置：默认收起的折叠区（排版风格 / 背景图 / 主题配色）。
-       四页共用 components/card-config，结构只此一份。
-       放在预览之后：用户先看到结果，再决定要不要调样式（渐进披露）。 -->
+       四页共用 components/card-config，结构只此一份。 -->
   <card-config
     style-list="{{styleList}}" style-key="{{styleKey}}"
     style-hint="风格决定字体族、字号、字距、对齐与装饰符号。全部用系统字体，不下载、不闪烁。"
@@ -54,7 +83,7 @@
     bind:cyclemode="onCyclePhotoMode" bind:theme="onPickTheme" />
 
   <view class="err" wx:if="{{err}}">{{err}}</view>
-  <view class="tip">文案来自小程序内置节气/节日库，仅保存在你手机本地，不上传服务器。</view>
+  <view class="tip">农历与节日来自内置历法表（1900–2100 民用农历），文案与图片仅保存在你手机本地，不上传服务器。每次成卡扣 5 积分。</view>
 </view>
 
 <privacy-panel privacy-show="{{privacyShow}}" />

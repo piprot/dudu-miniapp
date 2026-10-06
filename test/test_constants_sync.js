@@ -208,6 +208,64 @@ t('卡片制作经 charge() 扣费，action 与 config 对齐', () => {
     'config.POINTS.cost.cardGen 缺失或 <= 0');
 });
 
+// 8.5) 5 个合规模块的积分档位：前后端必须同值，且五页都真的调 charge
+//真踩过（2026-10-02）：云函数 spend 校验 delta !== GEN_COST[reason] 会直接拒单，
+//     前端只表现为「积分扣除失败，请重试」，极难定位——因为前端 charge 本身没报错。
+//     所以这 5 个档位必须**同时**出现在前端 config 与云函数 GEN_COST，且值相同。
+t('5 个合规模块档位：前后端同名同值，且五页都经 charge() 扣费', () => {
+  const cfgCost = (config.POINTS && config.POINTS.cost) || {};
+  const cfSrc = fs.readFileSync(path.join(ROOT, 'cloudfunctions', 'points', 'index.js'), 'utf8');
+  // 只读源码文本、不 require：云函数顶层依赖 wx-server-sdk，本仓没装
+  const genBlock = (cfSrc.match(/const GEN_COST = \{([\s\S]*?)\n\};/) || ['', ''])[1];
+
+  const MAP = {
+    quotes: 'quoteCard',
+    spark: 'sparkCard',
+    weather: 'weatherCard',
+    solar: 'solarCard',
+    line: 'lineCard'
+  };
+  Object.keys(MAP).forEach(page => {
+    const action = MAP[page];
+    // ① 前端 config 有该档位且 = 5
+    assert.strictEqual(cfgCost[action], 5,
+      'config.POINTS.cost.' + action + ' 应为 5，实际 ' + cfgCost[action]);
+    // ② 云函数 GEN_COST 有同名同值（缺一即 spend拒单）
+    const m = genBlock.match(new RegExp(action + '\\s*:\\s*(\\d+)'));
+    assert.ok(m, '云函数 GEN_COST 缺 ' + action + ' —— spend 会以「扣费成本不符」拒单');
+    assert.strictEqual(Number(m[1]), 5,
+      '云函数 GEN_COST.' + action + ' 应为 5，实际 ' + m[1] + '（与前端不一致）');
+    // ③ 页面真的调了 charge
+    const js = fs.readFileSync(path.join(ROOT, 'pages', page, page + '.js'), 'utf8');
+    assert.ok(new RegExp("charge\\(\\s*'" + action + "'").test(js),
+      page + '.js 未调用 charge(\'' + action + '\')');
+  });
+  // ④ 反向：云函数有、前端 config **完全没有**的档位（防灰档位白送积分）。
+  //    注意不能要求「全部相等」——GEN_COST 里还有 momentsGen/cardGen 等 20 分档位，
+  //    它们在前端 config 里当然存在，只是值不是 5。
+  const serverEntries = (genBlock.match(/(\w+)\s*:\s*(\d+)/g) || [])
+    .map(s => { const p = s.split(':'); return { name: p[0].trim(), cost: Number(p[1]) }; });
+  assert.ok(serverEntries.length >= 10, 'GEN_COST 只解析到 ' + serverEntries.length + ' 档（应 ≥10）');
+  serverEntries.forEach(e => {
+    assert.ok(typeof cfgCost[e.name] === 'number' && cfgCost[e.name] > 0,
+      '云函数 GEN_COST 有 ' + e.name + '（' + e.cost + ' 分）但前端 config.POINTS.cost 缺失该 action'
+      + ' —— 前端算不出正确 delta，spend 必拒');
+    assert.strictEqual(cfgCost[e.name], e.cost,
+      e.name + ' 前后端不一致：前端 ' + cfgCost[e.name] + ' / 云函数 ' + e.cost);
+  });
+});
+
+t('5 个合规模块页面注释不得再声称「不调用 charge」（防与实现脱钩）', () => {
+  // 2026-10-06：这 5 页原本注释写「不调用 utils/charge（个人主体合规）」，
+  // 启用积分后若忘改，注释会与实现矛盾，误导后来人以为没扣费。
+  ['quotes', 'spark', 'weather', 'solar', 'line'].forEach(page => {
+    const js = fs.readFileSync(path.join(ROOT, 'pages', page, page + '.js'), 'utf8');
+    const head = js.split('\n').slice(0, 12).join('\n');
+    assert.ok(!/不调用\s*utils\/charge/.test(head),
+      page + '.js 头部注释仍写「不调用 utils/charge」，与实际扣费矛盾');
+  });
+});
+
 // 9) productId 的数字后缀必须等于到账积分数
 //    真踩过：档位从"¥50→2000 积分"改成"¥50→2500 积分"时，若只改 amount 不改 ID，
 //    就会留下 `points_2000` 实发 2500 的档位 —— 云函数与 config 完全一致、价格也对，

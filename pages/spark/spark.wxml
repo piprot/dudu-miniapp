@@ -10,6 +10,23 @@
     <view class="q-cat" wx:if="{{quote.c}}">#{{quote.c}}</view>
   </view>
 
+  <!-- 今日应景：农历/干支生肖 + 节气或节日文案（2026-10-06 从节气页并入此处）。
+       层级刻意压在主金句**下方**且用更浅的字色——主金句是主体，应景是补充。 -->
+  <view class="almanac" wx:if="{{almanacText || todayName}}">
+    <view class="almanac-row" wx:if="{{almanacText}}">
+      <text class="almanac-label">农历</text>
+      <text class="almanac-val">{{almanacText}}</text>
+    </view>
+    <view class="almanac-row" wx:if="{{ganzhiZodiac}}">
+      <text class="almanac-label">干支生肖</text>
+      <text class="almanac-val">{{ganzhiZodiac}}</text>
+    </view>
+    <view class="today-fest" wx:if="{{todayName}}">
+      <text class="fest-badge">今日 · {{todayName}}</text>
+      <view class="fest-text">{{todayText}}</view>
+    </view>
+  </view>
+
   <view class="acts">
     <button class="btn ghost" bindtap="onShuffle">🎲 换一句</button>
     <button class="btn ghost" bindtap="onSaveToVault">💾 存金句馆</button>

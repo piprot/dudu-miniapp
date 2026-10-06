@@ -1,7 +1,8 @@
-// pages/quotes/quotes.js —— 金句收藏馆（2026-10-06 新增 · 免费本地工具，零 AI）
+// pages/quotes/quotes.js —— 金句收藏馆（2026-10-06 新增 · 纯本地静态库，零 AI）
 // 仿「随身文案库」类小程序的个人语料库：本地收藏金句/文案，支持
 //   标签分类 · 关键词搜索 · 复制 · 增删改 · 一键成卡（金句卡）。
-// 全程 wx.storage 本地保存，不调用 utils/charge（个人主体合规：纯本地文字处理）。
+// 2026-10-06 起启用积分：每次成卡扣 5 分（charge('quoteCard')，单价见 config.POINTS.cost）。
+// 语料仍全程 wx.storage 本地保存，不上传服务器。
 const store = require('../../utils/quotes_store');
 const { renderCard, saveCanvas } = require('../../utils/quote_card_render');
 const { THEME_LIST } = require('../../utils/themes/index.js');
@@ -10,6 +11,7 @@ const { CATEGORY_NAMES } = require('../../utils/content_quotes');
 const cardStyle = require('../../utils/card_style_mixin');  // 排版风格 + 背景图（四页共用）
 const catPicker = require('../../utils/cat_picker_mixin.js'); // 分层选择器（大类→小类下钻 + 常用前置）
 const privacyPanel = require('../../utils/privacy_panel.js'); // 隐私授权面板：同意按钮须用 open-type=agreePrivacyAuthorization
+const { charge } = require('../../utils/charge.js');
 
 // 常用分类：进页最常点的四个。**必须是真实高频**，不是凑数——
 // 常用区的作用是让用户一步到位，若放不相关的项反而误导（用户会点「人生」但其实要「职场」）。
@@ -126,19 +128,28 @@ const __pageCfg = {
   },
 
   // 金句卡统一渲染出口：注入风格 + 背景，并记录 _cardOpts 供切主题/改风格时原样重绘。
+  //
+  // ⚠️ 扣费也收在这里（唯一出口），这样 onMakeCard / onMakeTodayCard / 编辑后重渲染
+  //    三条入口**都**会自动扣 5 分，不会漏。改价只动 config.POINTS.cost.quoteCard。
+  //    注意：切主题/改风格走 mixin.repaint，不经过本函数，**不重复扣费**（只重绘已出的卡）。
   renderQuote(base) {
-    this._lastQuote = base;
-    const data = cardStyle.applyCardStyle(this, base);
-    this._cardOpts = { canvasId: '#quotesCanvas', type: 'quote', theme: this.data.theme, data };
     const self = this;
-    this.setData({ err: '' });
-    return renderCard(this, {
-      canvasId: '#quotesCanvas',
-      type: 'quote',
-      theme: this.data.theme,
-      data
-    }).catch(err => {
-      self.setData({ err: (err && err.message) || '生成失败' });
+    return charge('quoteCard', { label: '金句卡' }).then(() => {
+      this._lastQuote = base;
+      const data = cardStyle.applyCardStyle(this, base);
+      this._cardOpts = { canvasId: '#quotesCanvas', type: 'quote', theme: this.data.theme, data };
+      this.setData({ err: '' });
+      return renderCard(this, {
+        canvasId: '#quotesCanvas',
+        type: 'quote',
+        theme: this.data.theme,
+        data
+      }).catch(err => {
+        self.setData({ err: (err && err.message) || '生成失败' });
+      });
+    }).catch(() => {
+      // charge 已弹「积分不足」引导；不产出、不重复提示
+      self.setData({ err: '' });
     });
   },
 
