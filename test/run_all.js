@@ -71,6 +71,7 @@ const SUITES = [
   'test/test_poster.js',
   'test/test_cat_picker.js',
   'test/test_picker_wiring.js',
+  'test/test_add_mine.js',
   'test/test_history.js',
   'test/test_poster_page.js',
   // ── 2026-10-04 隐私错误分类（errno 精确判定，防「用户拒绝」被误当成「后台没配」）──
@@ -138,8 +139,15 @@ async function runSuite(rel) {
   }
   const out = captured.join('');
   const m = out.match(/结果：([^\n─═]*)/);
-  const line = m ? m[1].trim() : (threw ? '执行异常' : '无条件失败');
   const code = typeof process.exitCode === 'number' ? process.exitCode : (threw ? 1 : 0);
+  // ⚠️ 部分套件（如 test_frontend_guards）只打 ✓/✗ 行、不打印「结果：」行。
+  //   原先这里一律显示「无条件失败」，但退出码为 0 仍标 ✓ —— 汇总表里出现
+  //   「无条件失败」字样却带 ✓，会被误读成测试炸了（2026-10-06 实测遇到）。
+  //   改成：有结果行用结果；没有但退出码 0 → 「通过」；都没有才算真失败。
+  let line;
+  if (m) line = m[1].trim();
+  else if (!threw && code === 0) line = '通过（无结果行，按退出码判定）';
+  else line = threw ? '执行异常' : '无条件失败';
   process.exitCode = origExitCode; // 还原，交给 run_all 汇总
   const fm = line.match(/(\d+)\s*(?:FAIL|失败)/);
   const fails = fm ? Number(fm[1]) : (code === 0 ? 0 : 1);

@@ -1,0 +1,37 @@
+<!-- components/add-mine/index.wxml -->
+<!-- 「添加到我的小程序」入口按钮 + 指向右上角胶囊的引导浮层 -->
+<view wx:if="{{show}}" class="am-root">
+  <!-- ① 入口按钮：已收藏后文案改成「已添加 ✓」，但仍可点击重看引导（用户可能想看在哪） -->
+  <view class="am-btn {{added ? 'am-btn-done' : ''}}" bindtap="onTapBtn">
+    <text class="am-btn-ico">{{added ? '✓' : '⭐'}}</text>
+    <text class="am-btn-label">{{added ? '已添加到我的小程序' : label}}</text>
+  </view>
+
+  <!-- ② 引导浮层：箭头指向右上角胶囊。
+       panelOpen 是组件内部状态，show 是页面总开关，两者都要为真才显示。
+       catchtouchmove 防止穿透滚动；catchtap="noop" 防止点面板内容被遮罩的 bindtap 关掉。 -->
+  <view wx:if="{{show && panelOpen}}" class="am-mask" catchtouchmove="noop" bindtap="onMaskTap">
+    <view class="am-arrow" style="{{capsule ? 'top:' + (capsule.top + capsule.width / 2) + 'px; right:' + (windowWidth - capsule.right + 10) + 'px' : ''}}"></view>
+
+    <view class="am-panel" catchtap="noop">
+      <view class="am-panel-t">加到「我的小程序」</view>
+      <view class="am-panel-d">{{text}}</view>
+
+      <!-- 步骤图示：1 点右上角胶囊 → 2 选收藏。纯 CSS 画，不依赖图片资源 -->
+      <view class="am-steps">
+        <view class="am-step">
+          <view class="am-step-cap">①</view>
+          <view class="am-step-tx">点右上角<br />··· 菜单</view>
+        </view>
+        <view class="am-step-arrow">→</view>
+        <view class="am-step">
+          <view class="am-step-cap">②</view>
+          <view class="am-step-tx">选择<br />「收藏」</view>
+        </view>
+      </view>
+
+      <view class="am-ok" bindtap="onClose">知道了</view>
+      <view class="am-fine">在微信首页下拉「我的小程序」也能找到</view>
+    </view>
+  </view>
+</view>

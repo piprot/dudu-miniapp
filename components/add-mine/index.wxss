@@ -1,0 +1,92 @@
+/* components/add-mine/index.wxss */
+.am-root { }
+
+/* ── 入口按钮 ──
+   不做成花哨的渐变强调条：那类按钮在首页会和工具卡抢注意力。
+   低饱和描边 + 主色字，安静但可点；已收藏后转灰，一眼看出「不用再加了」。 */
+.am-btn {
+  display: flex; align-items: center; justify-content: center;
+  gap: 8rpx;
+  padding: 18rpx 28rpx;
+  margin: 16rpx 0 8rpx;
+  background: var(--bg-surface-1);
+  border: 1rpx dashed var(--primary);
+  border-radius: var(--r-pill);
+  font-size: 25rpx;
+  color: var(--primary-deep);
+}
+.am-btn-ico { font-size: 24rpx; }
+.am-btn-done {
+  background: var(--bg-surface-4);
+  border-color: var(--border);
+  color: var(--text-tertiary);
+}
+
+/* ── 引导浮层 ── */
+.am-mask {
+  position: fixed; left: 0; right: 0; top: 0; bottom: 0;
+  background: rgba(20, 18, 15, 0.55);
+  z-index: 900;
+}
+
+/* 指向右上角胶囊的箭头。
+   top/right 由 JS 实测 getMenuButtonBoundingClientRect 后内联覆盖；
+   拿不到测量值时用下面的兜底位置（顶部偏上、贴右），指向大致对即可。 */
+.am-arrow {
+  position: absolute;
+  top: 76rpx;
+  right: 16rpx;
+  width: 0; height: 0;
+  border-left: 16rpx solid transparent;
+  border-right: 16rpx solid transparent;
+  border-top: 22rpx solid #fff;
+  filter: drop-shadow(0 -2rpx 4rpx rgba(0, 0, 0, 0.2));
+}
+
+.am-panel {
+  position: absolute;
+  left: 48rpx; right: 48rpx;
+  top: 42%;              /* 视觉重心偏上，别压到真机底部安全区 */
+  background: var(--bg-card);
+  border-radius: var(--r-lg, 24rpx);
+  padding: 36rpx 32rpx 28rpx;
+  box-shadow: 0 12rpx 48rpx rgba(0, 0, 0, 0.18);
+}
+.am-panel-t {
+  font-size: 32rpx; font-weight: 600;
+  color: var(--text-title); margin-bottom: 12rpx;
+}
+.am-panel-d {
+  font-size: 25rpx; line-height: 1.6;
+  color: var(--text-sub); margin-bottom: 28rpx;
+}
+
+/* 步骤图示：① 点胶囊 → ② 选收藏。纯 CSS，不占包体。 */
+.am-steps {
+  display: flex; align-items: center; justify-content: center;
+  gap: 20rpx;
+  background: var(--bg-surface-1);
+  border-radius: var(--r-md);
+  padding: 24rpx 16rpx;
+  margin-bottom: 28rpx;
+}
+.am-step { display: flex; align-items: center; gap: 12rpx; }
+.am-step-cap {
+  width: 44rpx; height: 44rpx; border-radius: 50%;
+  background: var(--primary); color: #fff;
+  font-size: 24rpx; text-align: center; line-height: 44rpx;
+  flex-shrink: 0;
+}
+.am-step-tx { font-size: 23rpx; line-height: 1.45; color: var(--text-body); }
+.am-step-arrow { font-size: 30rpx; color: var(--text-tertiary); }
+
+.am-ok {
+  height: 84rpx; line-height: 84rpx; text-align: center;
+  background: var(--primary); color: #fff;
+  border-radius: var(--r-pill);
+  font-size: 28rpx;
+}
+.am-fine {
+  margin-top: 18rpx; text-align: center;
+  font-size: 21rpx; color: var(--text-tertiary);
+}
