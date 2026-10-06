@@ -9,7 +9,8 @@ const TOOL_ORDER_KEY = 'dudu_tool_order_v1';
 const TOOL_DEFS = [
   { key: 'gen', cls: 'accent', title: '✍️ 文案工具箱', desc: '模板匹配 · 防折叠 · 知识库金句 · 我的素材' },
   { key: 'card', cls: 'card2', title: '🎴 卡片制作 / 日签', desc: '选模板填文字，一键制作卡片 · 可配本地图' },
-  { key: 'poster', cls: 'poster', title: '🖼️ 海报长图制作', desc: '一句话制作长图 · 仅保存到本机相册' }
+  { key: 'poster', cls: 'poster', title: '🖼️ 海报长图制作', desc: '一句话制作长图 · 仅保存到本机相册' },
+  { key: 'comic', cls: 'comic', title: '🎬 分镜编辑器', desc: '文字写分镜，一键渲染多格漫画 · 纯本地零 AI' }
 ];
 
 const __pageCfg = {
@@ -113,7 +114,7 @@ const __pageCfg = {
   // 统一的工具卡点击入口（排序后绑定跟卡走，按 key 分发）。
   onTapTool(e) {
     const key = e.currentTarget.dataset.key;
-    const routes = { gen: '/pages/gen/gen', card: '/pages/card/card', poster: '/pages/poster/poster' };
+    const routes = { gen: '/pages/gen/gen', card: '/pages/card/card', poster: '/pages/poster/poster', comic: '/pages/comic/comic' };
     if (routes[key]) {
       wx.navigateTo({
         url: routes[key],

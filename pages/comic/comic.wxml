@@ -1,0 +1,60 @@
+<view class="page">
+  <view class="hd">
+    <view class="hd-title">🎬 画面感分镜编辑器</view>
+    <view class="hd-sub">用文字写分镜，一键渲染成多格漫画 · 全程本地完成，零 AI</view>
+  </view>
+
+  <!-- 脚本输入 -->
+  <view class="form">
+    <view class="field-head">
+      <view class="label">分镜脚本</view>
+      <view class="count">已识别 {{panelCount}} 格</view>
+    </view>
+    <textarea class="ta script" value="{{script}}" bindinput="onScriptInput"
+      placeholder="# 标题&#10;【分镜标签】&#10;场景：哪里&#10;情绪：忧伤/欢乐…&#10;旁白：叙述&#10;角色：对白" maxlength="-1" />
+    <view class="row">
+      <button class="btn ghost" bindtap="onLoadSample">载入示例</button>
+      <button class="btn ghost" bindtap="onClearScript">清空</button>
+    </view>
+    <view class="hint">标记说明：# 标题 · 【】分隔每一格 · 场景/情绪/旁白+冒号 · 角色名+冒号=对白。空行忽略。</view>
+
+    <view class="help-toggle" bindtap="onToggleHelp">{{showHelp ? '收起说明' : '怎么写分镜'}}</view>
+    <view class="help" wx:if="{{showHelp}}">
+      <view class="help-line">① 第一行 # 后面写整篇标题（可省略）。</view>
+      <view class="help-line">② 用 【第一格】 或连续三个 - 切分每一格；不写则全文算第一格。</view>
+      <view class="help-line">③ 每格内可用：场景：地点 / 情绪：忧伤·欢乐·温馨·紧张 / 旁白：叙述 / 角色名：对白。</view>
+      <view class="help-line">④ 情绪决定这一格的边框与底色氛围；角色名+冒号自动变成对话气泡。</view>
+      <view class="help-line">⑤ 选主题与列数 → 点「生成分镜」→「保存到相册」。内容只存在你手机本地。</view>
+    </view>
+  </view>
+
+  <!-- 主题选择（6 套数据化主题，comic_render 自动读取配色） -->
+  <view class="theme-row">
+    <view wx:for="{{themes}}" wx:key="id"
+      class="theme-chip {{theme === item.id ? 'on' : ''}}"
+      bindtap="onPickTheme" data-id="{{item.id}}"><view class="dot" style="background:{{item.color}}"></view>{{item.name}}</view>
+  </view>
+
+  <!-- 列数 -->
+  <view class="seg-row">
+    <view class="seg-label">每行列数</view>
+    <view class="seg">
+      <view class="seg-item {{cols === 2 ? 'on' : ''}}" bindtap="onPickCols" data-cols="2">2 列</view>
+      <view class="seg-item {{cols === 3 ? 'on' : ''}}" bindtap="onPickCols" data-cols="3">3 列</view>
+    </view>
+  </view>
+
+  <button class="btn primary gen" bindtap="onGenComic">生成分镜（{{comicCost}} 积分）</button>
+  <view class="err" wx:if="{{err}}">{{err}}</view>
+
+  <view class="canvas-wrap">
+    <canvas type="2d" id="comicCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
+    <view wx:if="{{!rendered}}" class="canvas-ph">点「生成分镜」后，多格分镜会显示在这里</view>
+    <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
+  </view>
+
+  <view class="tip">分镜保存在你手机本地相册，不上传任何服务器。</view>
+</view>
+
+<!-- 隐私授权面板：同意按钮必须是 open-type="agreePrivacyAuthorization"，见组件注释 -->
+<privacy-panel privacy-show="{{privacyShow}}" />

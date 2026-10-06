@@ -131,5 +131,9 @@
   background: linear-gradient(135deg, #f3fff0 0%, #ddf5d8 100%);
   border-left-color: #4caf7d;
 }
+.tool-card.comic {
+  background: linear-gradient(135deg, #eef4fb 0%, #d9e8f6 100%);
+  border-left-color: var(--accent-blue);
+}
 .tool-title { font-size: 32rpx; font-weight: 700; color: #4a3b28; }
 .tool-desc { font-size: 24rpx; color: #9a8b74; margin-top: 8rpx; line-height: 1.6; }

@@ -6,7 +6,8 @@
     "pages/order/order",
     "pages/gen/gen",
     "pages/card/card",
-    "pages/poster/poster"
+    "pages/poster/poster",
+    "pages/comic/comic"
   ],
   "window": {
     "navigationBarBackgroundColor": "#1a1a1a",

@@ -37,10 +37,15 @@ Page({
     //    之前写成「生成朋友圈文案 −20 / 换一批 −15」已误导（那入口早不存在）；现在按 config 动态拼，避免再写死。
     const c = POINTS.cost || {};
     const redeemCost = (POINTS.redeem && POINTS.redeem[0] && POINTS.redeem[0].cost) || 200;
+    // ⚠️ 必须与 config.POINTS.cost 的真实计费出口完全一致：此刻有 5 个产出型工具
+    //    （套模板 / 排版优化 / 制作卡片 / 制作海报 / 生成分镜），少写一项就会让用户在
+    //    积分页看到的「花费出口」与实际扣费对不上（此前漏列了 posterGen 与 comicGen）。
     const spendOutlets = [
       '套模板出文案 −' + (c.momentsGen || 20),
       '排版优化 −' + (c.optFormat || 2) + '/次',
-      '制作卡片 −' + (c.cardGen || 20)
+      '制作卡片 −' + (c.cardGen || 20),
+      '制作海报 −' + (c.posterGen || 20),
+      '生成分镜 −' + (c.comicGen || 20)
     ];
     this.setData({
       redeem: POINTS.redeem || [],
