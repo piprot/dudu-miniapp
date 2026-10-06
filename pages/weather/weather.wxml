@@ -95,8 +95,10 @@
     <scroll-view wx:if="{{!localBg}}" class="bg-scroll" scroll-x="true" show-scrollbar="{{false}}">
       <view wx:for="{{builtinPhotos}}" wx:key="id"
         class="bg-item {{bgSource === 'builtin' && bgPhotoId === item.id ? 'on' : ''}}"
-        bindtap="onPickBuiltinBg" data-id="{{item.id}}">
-        <image class="bg-thumb" src="{{item.url}}" mode="aspectFill" />
+        bindtap="onPickBuiltinBg" data-id="{{item.id}}"
+        aria-label="选用内置背景图，摄影者 {{item.author}}">
+        <image class="bg-thumb" src="{{item.url}}" mode="aspectFill"
+          aria-hidden="true" />
       </view>
     </scroll-view>
     <view wx:if="{{localBg}}" class="bg-picked">已用相册图 ✓（你选的那张）</view>
@@ -112,8 +114,10 @@
     <scroll-view wx:if="{{!localBg}}" class="bg-scroll" scroll-x="true" show-scrollbar="{{false}}">
       <view wx:for="{{photos}}" wx:key="id"
         class="bg-item {{bgSource === 'lib' && bgPhotoId === item.id ? 'on' : ''}}"
-        bindtap="onPickPhoto" data-id="{{item.id}}">
-        <image class="bg-thumb" src="{{item.url}}" mode="aspectFill" />
+        bindtap="onPickPhoto" data-id="{{item.id}}"
+        aria-label="选用网络背景图，摄影者 {{item.author}}">
+        <image class="bg-thumb" src="{{item.url}}" mode="aspectFill"
+          aria-hidden="true" />
       </view>
     </scroll-view>
     <view wx:if="{{bgSource === 'lib'}}" class="bg-picked">正在用网络图库 ✓</view>
@@ -125,7 +129,7 @@
   <view class="theme-row">
     <view wx:for="{{themes}}" wx:key="id"
       class="theme-chip {{theme === item.id ? 'on' : ''}}"
-      bindtap="onPickTheme" data-id="{{item.id}}"><view class="dot" style="background:{{item.color}}"></view>{{item.name}}</view>
+      bindtap="onPickTheme" data-id="{{item.id}}"><view class="dot" style="background:{{item.color}}" aria-hidden="true"></view>{{item.name}}</view>
   </view>
 
   <view class="canvas-wrap">

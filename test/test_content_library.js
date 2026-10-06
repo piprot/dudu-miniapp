@@ -498,6 +498,103 @@ t('守卫：设计令牌必须被真正使用（禁止大面积硬编码色值�
     + ' / 硬编码 ' + hardRefs + '），阈值 60%');
 });
 
+t('守卫：所有可交互元素与图片都必须有可访问名称（/harden）', () => {
+  // 2026-10-06 /harden 审计：118 个可交互元素、11 个 <image>，
+  // 其中 aria-label 与 alt **一个都没有** —— 读屏用户完全不知道控件是干什么的。
+  //
+  // ⚠️ 本守卫的判定刻意**不是**「每个 bindtap 都必须有 aria-label」——
+  // 那是错的。实测 118 个里109 个靠可见文字即可播报（`成卡` `＋ 收藏金句`
+  // `#{{item.tag}}` `{{item.name}}` 等），硬塞 aria-label 会让读屏**重复播报**
+  // （违反 WCAG 2.5.3 Label in Name）。
+  // 真正缺口只有两类：① <image> ② 子树里完全没有文字的控件。
+  //
+  // 判定必须**递归整棵子树**：第一版扫描器只看标签直接文本，
+  // 漏掉了 `<view><text>{{item.name}}</text></view>` 这类嵌套结构，
+  // 误报 19 处（首页积分条、weather 的 cell、card 的 type 全是假警报）。
+  const root = path.join(__dirname, '..');
+  function walk(dir, acc) {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.name === 'node_modules' || e.name === '.git') continue;
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p, acc);
+      else if (e.name.endsWith('.wxml')) acc.push(p);
+    }
+    return acc;
+  }
+  const files = walk(root, []);
+
+  const EMOJI_ONLY = /^[\u{1F300}-\u{1FAFF}\u2600-\u27BF\s]*$/u;
+  const imgTotal = [];
+  const noName = [];
+
+  files.forEach(f => {
+    const src = fs.readFileSync(f, 'utf8');
+    const rel = path.relative(root, f).replace(/\\/g, '/');
+
+    // ① <image> 必须带 aria-label 或 aria-hidden（二者必居其一）
+    const imgs = src.match(/<image\b[^>]*?(?:\/>|>)/gs) || [];
+    imgs.forEach(tag => {
+      imgTotal.push(rel);
+      if (!/\baria-(label|hidden)\s*=/.test(tag)) {
+        noName.push(rel + ' <image> 缺 aria-label/aria-hidden: ' + tag.slice(0, 50));
+      }
+    });
+
+    // ② 可交互元素：递归子树，确认有可播报文字或已有 aria
+    //    边界推进用「找下一个开标签与下一个闭标签，谁在前走谁」，
+    //    不用两个 lastIndex 独立推进的写法 —— 那种写法会让 openRe
+    //    在 closeRe 走过之后仍从旧位置续搜，子树边界算错，
+    //    把 `<view ...>{{item.name}}</view>` 误判成「无文字」
+    //    （第一版栽在这：card/gen/reader 共 10+ 处假警报）。
+    const openRe = /<([a-zA-Z][\w-]*)\b[^>]*?(\/?)>/g;
+    const closeRe = /<\/([a-zA-Z][\w-]*)\s*>/g;
+    const tagRe2 = /<(view|text|button|navigator)\b([^>]*)>/g;
+    let m3;
+    while ((m3 = tagRe2.exec(src)) !== null) {
+      const attrs = m3[2];
+      if (!/\b(bind|catch)(tap|change|input|confirm|longpress|chooseavatar)\s*=/.test(attrs)) continue;
+      if (/\baria-label\s*=/.test(attrs)) continue;
+      const line = src.slice(0, m3.index).split('\n').length;
+
+      let depth = 1;
+      let pos = m3.index + m3[0].length;
+      while (depth > 0 && pos < src.length) {
+        openRe.lastIndex = pos;
+        closeRe.lastIndex = pos;
+        const no = openRe.exec(src);
+        const nc = closeRe.exec(src);
+        if (!nc) break;
+        if (no && no.index < nc.index) {
+          pos = no.index + no[0].length;
+          if (no[2] !== '/') depth++;
+        } else {
+          pos = nc.index + nc[0].length;
+          depth--;
+        }
+      }
+      // 元素**自身**的直接文本（开标签之后、任何子标签之前）也算可播报内容。
+      // 漏这一步会把 `<view ...>{{showHelp ? '收起说明' : '怎么用'}}</view>`
+      // 判成无文字 —— 它的文字就在开标签正后方，不在任何 `>...<` 之间。
+      const afterOpen = src.slice(m3.index + m3[0].length);
+      const lead = (afterOpen.match(/^[^<]+/) || [''])[0].trim();
+      const subtree = depth === 0
+        ? src.slice(m3.index + m3[0].length, pos - (src.slice(pos).match(/^<\/[\w-]+>/) || [''])[0].length)
+        : '';
+      const texts = [lead]
+        .concat((subtree.match(/>([^<>]+)</g) || []).map(s => s.slice(1, -1).trim()))
+        .filter(s => s && !EMOJI_ONLY.test(s));
+      if (texts.length === 0) {
+        noName.push(rel + ':' + line + ' 可交互元素子树内无任何文字，且无 aria-label');
+      }
+    }
+  });
+
+  assert.strictEqual(noName.length, 0,
+    '以下元素缺可访问名称（读屏无法播报）：\n    - ' + noName.join('\n    - '));
+  assert.ok(imgTotal.length >= 11,
+    '扫描到的 <image> 数量异常少（' + imgTotal.length + '），扫描逻辑可能失效');
+});
+
 t('守卫：不得引入包内字体文件（主包 2MB 上限 + canvas 不支持）', () => {
   // 2026-10-06 定案：字体走系统族，不落地字体文件。原因：
   //   ① 主包 2MB，完整中文字体 10MB+；② loadFontFace 不读包内路径；

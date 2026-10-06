@@ -12,6 +12,7 @@
   <image wx:if="{{subReady}}" wx:for="{{panels}}" wx:key="*this"
          class="panel" src="{{item}}" mode="widthFix"
          binderror="onPanelError" bindload="onPanelLoad"
+         aria-label="漫画第 {{index + 1}} 格画面"
          show-menu-by-longpress="{{true}}" />
 </view>
 

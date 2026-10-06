@@ -21,7 +21,8 @@
     <!-- bindtap 与 open-type 可共存：chooseAvatar 成功会先触发 bindchooseavatar，
          若超时没触发就说明被拦了（多为隐私协议未声明「微信昵称、头像」）→ 给一次可读的说明 -->
     <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar" bindtap="onAvatarTap">
-      <image class="avatar-img" wx:if="{{avatar}}" src="{{avatar}}" mode="aspectFill" />
+      <image class="avatar-img" wx:if="{{avatar}}" src="{{avatar}}" mode="aspectFill"
+        aria-label="你的微信头像" />
       <view class="avatar-ph" wx:else>+</view>
     </button>
     <view class="profile-right">
