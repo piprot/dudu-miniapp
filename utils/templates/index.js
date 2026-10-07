@@ -36,6 +36,12 @@ const CARD_TYPES = {
 const W = 340;   // 卡片逻辑宽
 const PAD = 20;  // 内边距
 
+// 节日/日签卡的「日期·星期」标题字号（2026-10-07 用户拍板：金句才是主体，日期退为元信息）。
+// 15px：与正文 20px 拉开明显层次，又不会小到看不清。
+const DATE_LABEL_SIZE = 15;
+// 节日/日签卡金句正文字号（同上口径，比日期大5px 撑起主体感）。
+const DATE_BODY_SIZE = 20;
+
 function countLines(text, width, fontPx, measure, clamp) {
   return Math.min(wrapText(String(text || ''), width, measure, fontPx).length, clamp);
 }
@@ -127,8 +133,13 @@ const PHOTO_SHADOW = (fontPx) => ({
   // ── 标题（公告卡带主色左竖条）──
   if (d.title) {
     const tw = type === 'notice' ? innerW - 14 : innerW;
-    const tFs = styleOn ? S.titleSize : 20;
-    const tLh = styleOn ? Math.round(tFs * 1.4) : 28;
+    // 2026-10-07 用户反馈「正文（金句）字号要大于日期星期」→ dailysign 特判：
+    // 节日/日签卡的标题是「10月7日·星期二」这类**元信息**，金句才是主体，
+    // 故标题降为小号元信息（DATE_SIZE），正文升为 hero 大字号（见下方 body 分支）。
+    // 其他类型标题仍是主体，沿用风格 titleSize。
+    const isDateLabel = (type === 'dailysign');
+    const tFs = isDateLabel ? DATE_LABEL_SIZE : (styleOn ? S.titleSize : 20);
+    const tLh = Math.round(tFs * 1.4);
     const tLines = countLines(d.title, tw, tFs, measure, 2);
     // 2026-10-07 用户反馈「所有卡片左下角竖线都去掉」→ 标题左竖条**全类型**取消。
     // 旧逻辑：type==='notice' || (styleOn && S.showBar) 会给 notice / 现代风卡片加一根
@@ -140,7 +151,9 @@ const PHOTO_SHADOW = (fontPx) => ({
         lineHeight: tLh, lineClamp: 2, fontFamily: titleFont,
         letterSpacing: styleOn ? S.titleSpacing : 0, textAlign: 'left' });
     } else {
-      txt(d.title, { left: PAD, top: y, width: tw, color: ink, fontSize: tFs, fontWeight: 'bold',
+      // 日期元信息用弱色（sub），避免与金句主体抢眼；weight 也降一档。
+      txt(d.title, { left: PAD, top: y, width: tw, color: isDateLabel ? sub : ink,
+        fontSize: tFs, fontWeight: isDateLabel ? 'normal' : 'bold',
         lineHeight: tLh, lineClamp: 2, fontFamily: titleFont,
         letterSpacing: styleOn ? S.titleSpacing : 0,
         textAlign: type === 'dailysign' && !styleOn ? 'center' : titleAlign });
@@ -181,14 +194,19 @@ const PHOTO_SHADOW = (fontPx) => ({
   // 否则卡面会变成「一堆小字+ 一句平铺的正文」，看着没有重点。
   if (d.body) {
     const hero = !!d.hero;
-    const fs = styleOn ? (hero ? S.bodySize + 3 : S.bodySize)
-      : (hero ? 20 : (isQuote ? 17 : (type === 'recommend' ? 15 : 14)));
-    const lh = styleOn ? (hero ? S.bodyLineHeight + 4 : S.bodyLineHeight)
-      : (hero ? 34 : (isQuote ? 30 : (type === 'recommend' ? 26 : 24)));
+    // dailysign（金句卡/节日卡）：金句是主体，字号恒为 DATE_BODY_SIZE(20)，
+    // 必须大于上面的日期标题（DATE_LABEL_SIZE 15）——2026-10-07 用户拍板。
+    // 其余类型沿用风格 bodySize / hero 抬升档。
+    const fs = (type === 'dailysign') ? DATE_BODY_SIZE
+      : (styleOn ? (hero ? S.bodySize + 3 : S.bodySize)
+        : (hero ? 20 : (isQuote ? 17 : (type === 'recommend' ? 15 : 14))));
+    const lh = (type === 'dailysign') ? Math.round(DATE_BODY_SIZE * 1.75)
+      : (styleOn ? (hero ? S.bodyLineHeight + 4 : S.bodyLineHeight)
+        : (hero ? 34 : (isQuote ? 30 : (type === 'recommend' ? 26 : 24))));
     const clamp = isQuote ? 6 : 8;
     txt(d.body, { left: PAD, top: y, width: innerW, color: ink,
       fontSize: fs, lineHeight: lh, lineClamp: clamp,
-      fontWeight: hero && !styleOn ? 'bold' : undefined,
+      fontWeight: (hero && !styleOn) || type === 'dailysign' ? 'bold' : undefined,
       fontFamily: bodyFont, letterSpacing: styleOn ? S.bodySpacing : 0,
       textAlign: type === 'dailysign' && !styleOn ? 'center' : bodyAlign });
     y += countLines(d.body, innerW, fs, measure, clamp) * lh + 12;
