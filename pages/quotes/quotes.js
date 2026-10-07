@@ -116,18 +116,21 @@ const __pageCfg = {
     this.setData({
       tags: store.allTags(),
       count: all.length,
-      todayPick: this.pickToday(all)
+      todayPick: this.pickToday(all, this.data.filterKind)
     });
     // 分组依赖库里的标签集合，收藏/删标签后必须重建，
     // 否则会出现「新建的标签在分类下选不到」。
     if (this.data.pgGroups && this.data.pgGroups.length) this.rebuildPickerGroups();
   },
 
-  // 「今日推荐」：按日期从全库里稳定轮换一条，同一天不变、跨天必变。
-  pickToday(all) {
-    const pool = (all && all.length) ? all : [];
+  // 「今日推荐」：按日期从「当前来源类型(kind)」的池子里稳定轮换一条，
+  // 同一天不变、跨天必变；切换来源类型时池子也跟着变 → 既是「每天轮换」也是「切种类变」。
+  // salt 带 kind，保证各来源的今日轮换彼此独立。
+  pickToday(all, kind) {
+    let pool = (all && all.length) ? all : [];
+    if (kind) pool = pool.filter(q => store.normKind(q.kind) === store.normKind(kind));
     if (!pool.length) return null;
-    const q = pickDaily(pool, new Date(), 'quotes:today');
+    const q = pickDaily(pool, new Date(), 'quotes:today:' + (kind || 'all'));
     return q ? { id: q.id, text: q.text, source: q.source || '' } : null;
   },
 

@@ -163,10 +163,33 @@ t('种子金句：≥48 条、id 唯一、6 分类齐全', () => {
   assert.ok(cq.SEED_QUOTES.length >= 48, '仅 ' + cq.SEED_QUOTES.length + ' 条');
   const ids = new Set(cq.SEED_QUOTES.map(q => q.id));
   assert.strictEqual(ids.size, cq.SEED_QUOTES.length, 'seed id 必须唯一');
-  const cats = new Set(cq.SEED_QUOTES.map(q => q.category));
+  // 紧凑格式下 category 不冗余存储，从 id 反解：q_seed_<category>_<kind>_<NN>
+  const cats = new Set(cq.SEED_QUOTES.map(q => q.id.split('_')[2]));
   assert.strictEqual(cats.size, 6, '分类数应 6，实际 ' + cats.size);
   Object.keys(cq.CATEGORY_NAMES).forEach(k => {
     assert.ok(cats.has(k), '缺少分类 ' + k);
+  });
+});
+
+t('种子金句：每来源类型 ≥60 条（用户要求「切来源类型句子要变」的库存底线）', () => {
+  // kind 由 id 反解：q_seed_<category>_<kind>_<NN> → split('_')[3]
+  const byKind = {};
+  cq.SEED_QUOTES.forEach(q => {
+    const k = q.id.split('_')[3];
+    (byKind[k] = byKind[k] || []).push(q);
+  });
+  // 7 种来源： quote/line/book/famous/daily/solar/festival
+  ['quote', 'line', 'book', 'famous', 'daily', 'solar', 'festival'].forEach(kind => {
+    assert.ok(byKind[kind] && byKind[kind].length >= 60,
+      '来源类型 ' + kind + ' 仅 ' + (byKind[kind] ? byKind[kind].length : 0) + ' 条（应 ≥60）');
+  });
+  // 每来源类型内部文本唯一（否则「换一条」换不出新句）
+  Object.keys(byKind).forEach(kind => {
+    const seen = new Set();
+    byKind[kind].forEach(q => {
+      assert.ok(!seen.has(q.text), kind + ' 内部重复文案: ' + q.text);
+      seen.add(q.text);
+    });
   });
 });
 
@@ -779,7 +802,7 @@ t('守卫：不得引入包内字体文件（主包 2MB 上限 + canvas 不支�
   }
 });
 
-t('接线：seedIfEmpty 幂等（三道闸：flag / 非空库 / text 去重）', () => {
+t('接线：seedIfEmpty 幂等（版本闸 + text 去重，用户数据不丢）', () => {
   // 注入内存版 wx storage，模拟「首次进入」
   const mem = {};
   global.wx = {
@@ -791,21 +814,32 @@ t('接线：seedIfEmpty 幂等（三道闸：flag / 非空库 / text 去重）',
   delete require.cache[require.resolve('../utils/content_quotes')];
   const store = require('../utils/quotes_store');
 
+  // ① 首次进入：灌满种子库
   const r1 = store.seedIfEmpty();
   assert.strictEqual(r1.seeded, true, '首次应灌种子');
   assert.strictEqual(r1.count, cq.SEED_QUOTES.length, '应灌入 ' + cq.SEED_QUOTES.length + ' 条');
   assert.strictEqual(store.listQuotes().length, cq.SEED_QUOTES.length, '库内条数应等于种子数');
+  // 版本闸应已写入（下次进入走幂等分支）
+  assert.strictEqual(mem['dudu_quotes_seed_ver'], 3, '版本闸未写入');
 
-  // 第二次：flag 已置位 → 不再灌
+  // ② 二次进入：版本闸已置，addQuote 按 text 去重 → 库内条数不增长（幂等）
+  //   注意：count 是「addQuote 返回非空的条数」（已存在也返回 exist），
+  //   故不能断言 count===0；幂等的正确判据是「库大小不变」。
+  const before2 = store.listQuotes().length;
   const r2 = store.seedIfEmpty();
-  assert.strictEqual(r2.seeded, false, '二次不应重复灌');
+  assert.strictEqual(r2.seeded, true, '二次仍走灌入流程（幂等不报错）');
+  assert.strictEqual(store.listQuotes().length, before2, '二次不应重复灌（条数不变）');
   assert.strictEqual(store.listQuotes().length, cq.SEED_QUOTES.length, '条数不应变化');
 
-  // 模拟「用户自己收藏过」：清 flag 但库非空 → 仍不覆盖
-  delete mem[store.SEED_FLAG_KEY];
+  // ③ 用户自建条目必须保留：造一条随机 id 用户金句，清版本闸重播，用户条仍在
+  store.addQuote({ text: '用户自己写的专属金句，不能丢', tags: '我的' });
+  const before = store.listQuotes().length;
+  assert.strictEqual(before, cq.SEED_QUOTES.length + 1, '用户自建条应已入库');
+  delete mem['dudu_quotes_seed_ver']; // 模拟版本号漂移 → 触发重播清理旧种子
   const r3 = store.seedIfEmpty();
-  assert.strictEqual(r3.seeded, false, '库非空时不应覆盖用户数据');
-  assert.strictEqual(store.listQuotes().length, cq.SEED_QUOTES.length);
+  const after = store.listQuotes();
+  assert.ok(after.some(q => q.text === '用户自己写的专属金句，不能丢'), '用户自建条被重播清掉（违规）');
+  assert.strictEqual(after.length, cq.SEED_QUOTES.length + 1, '重播后条数应 = 种子 + 用户条');
 
   delete global.wx;
 });

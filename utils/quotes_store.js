@@ -16,7 +16,11 @@
 const { SEED_QUOTES } = require('./content_quotes');
 
 const KEY = 'dudu_quotes_v1';
-const SEED_FLAG_KEY = 'dudu_quotes_seeded_v1';
+// 种子库版本：版本号变更 → 清掉旧内置种子（q_seed_ 前缀）并重新播种，
+// 用户手动新增的条目（随机 id，非 q_seed_）保留不动。这样「存量用户升级」也能
+// 拿到干净的新种子库，不必依赖脆弱的文本回填迁移。
+const SEED_VER_KEY = 'dudu_quotes_seed_ver';
+const SEED_VERSION = 3; // 2026-10-07：每来源类型 ≥60 条，紧凑格式下 kind 由 id 反解
 
 function readAll() {
   try { return wx.getStorageSync(KEY) || []; } catch (e) { return []; }
@@ -160,70 +164,44 @@ function exportAll() {
 }
 
 // 首次使用时注入种子金句（运营可用的「开箱即看」内容库）。
-// ⚠️ 幂等三道闸：
-//   ① flag 已置位 → 直接返回（老用户不会重复灌）
-//   ② 库非空 → 只置 flag，不覆盖用户自己收藏的内容
-//   ③ addQuote 内部按 text 去重 → 即便前两道失效也不会产生重复条目
+// ⚠️ 幂等：
+//   ① 版本号相同 → 直接进入播种；addQuote 内部按 text 去重，重复调用不产生重复条目。
+//   ② 版本号变更 → 清掉旧内置种子（q_seed_ 前缀），重新播种；用户自建（随机 id）保留。
+//   ③ 每条种子必须传 id + kind：主题分类靠 id 前缀（`q_seed_<category>_`），来源筛选靠 kind 字段。
 // 返回 { seeded: Boolean, count: Number }
 function seedIfEmpty() {
   try {
-    // 2026-10-07 修复：老用户已播过种（SEED_FLAG_KEY 已置位），但当时 addQuote 不支持传 id，
-    // 48 条种子拿到的都是随机 id（q_<时间戳>_xxx），于是「按主题分类」永远筛不到东西。
-    // 这里做一次**幂等迁移**：按文本把既有种子回填成固定 id q_seed_<category>_<n>。
-    if (wx.getStorageSync(SEED_FLAG_KEY)) {
-      const fixed = backfillSeedIds();
-      return { seeded: false, count: 0, migrated: fixed };
-    }
-    const list = readAll();
-    if (list.length) {
-      wx.setStorageSync(SEED_FLAG_KEY, 1);
-      const fixed = backfillSeedIds();
-      return { seeded: false, count: 0, migrated: fixed };
+    const ver = wx.getStorageSync(SEED_VER_KEY);
+    let list = readAll();
+    // 版本升级：清掉旧内置种子重播（2026-10-07 用户反馈「切来源类型句子不变」——
+    // 旧版 48 条种子全无 kind，全回落 quote，其余 6 类空 → 行为异常。升级重播彻底修好）。
+    // ⚠️ 按**种子文本**清除，不按 id 前缀：v1.1.54 之前播种的种子是随机 id（q_<时间戳>_xxx），
+    // 只清 q_seed_ 前缀会漏掉它们，导致旧随机 id 种子残留、主题分类前缀匹配不上。
+    // 按文本清则无论旧 id 格式都能识别并替换为新种子；用户自建（文本唯一）不受影响。
+    if (ver !== SEED_VERSION) {
+      const seedTexts = {};
+      SEED_QUOTES.forEach(q => { seedTexts[String(q.text || '').trim()] = 1; });
+      const kept = list.filter(q => !seedTexts[String(q.text || '').trim()]);
+      if (kept.length !== list.length) { writeAll(kept); list = kept; }
+      wx.setStorageSync(SEED_VER_KEY, SEED_VERSION);
     }
     let n = 0;
     SEED_QUOTES.forEach(q => {
-      // ⚠️ 必须传 id：主题分类（人生/情感/职场…）是靠 `q_seed_<category>_` 前缀过滤的
-      //（见 pages/quotes/quotes.js 的 applyFilter）。不传就会走 genId() 生成随机 id，
-      // 分类筛选将永远筛不到东西（2026-10-07 用户反馈「切分类句子不变」）。
-      // 同时显式给 kind='quote'：48 条种子都是金句。
-      const item = addQuote({ id: q.id, text: q.text, tags: q.tags, source: '', kind: 'quote' });
+      // ⚠️ id 决定主题分类（人生/情感/职场…），kind 决定来源类型（金句/台词/书摘…）。
+      // 紧凑格式下 category/kind 均不冗余存储，需从 id 反解：
+      //   q_seed_<category>_<kind>_<NN> → split('_')[3] 即 kind（quote/line/book/…）。
+      const kind = normKind(String(q.id || '').split('_')[3]);
+      const item = addQuote({ id: q.id, text: q.text, tags: q.tags, source: q.source || '', kind: kind });
       if (item) { n++; }
     });
-    wx.setStorageSync(SEED_FLAG_KEY, 1);
     return { seeded: true, count: n };
   } catch (e) {
     return { seeded: false, count: 0 };
   }
 }
 
-/**
- * 把已入库的种子条目 id 回填为固定 id（q_seed_<category>_<n>）。
- * 按**文本**匹配（种子文本唯一），幂等：已是固定 id 的跳过。
- * 返回被修正的条数。
- */
-function backfillSeedIds() {
-  try {
-    const list = readAll();
-    if (!list.length) return 0;
-    // 文本 → 种子 id
-    const byText = {};
-    SEED_QUOTES.forEach(q => { byText[q.text] = q.id; });
-    let n = 0;
-    const next = list.map(q => {
-      const want = byText[q.text];
-      if (want && q.id !== want) { n++; return Object.assign({}, q, { id: want }); }
-      return q;
-    });
-    if (n) writeAll(next);
-    return n;
-  } catch (e) {
-    return 0;
-  }
-}
-
 module.exports = {
   KEY,
-  SEED_FLAG_KEY,
   addQuote, getQuote, updateQuote, removeQuote,
   listQuotes, searchQuotes, allTags, exportAll, normTags,
   seedIfEmpty,
