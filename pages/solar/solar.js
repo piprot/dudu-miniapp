@@ -166,13 +166,15 @@ const __pageCfg = {
       this.setData({ sel: { name, text } });
       // ⚠️ 不再传 author 落款：节气/节日卡右下角已有小程序码、右上角已有「dudu 画面感」
       //    品牌水印，左下角落款会与右上角品牌重复（2026-10-07 设计整改）。左下角留白更干净。
-      // solarLines：公历/农历/干支生肖三行小字（2026-10-07 用户要求「都展示出来、排列整齐、字号小一点」）。
-      // 空值自动过滤，避免出现「公历：」这种空标签。干支与生肖拼一行，省一纵向空间。
+      // solarLines：公历/农历/干支生肖（2026-10-07 用户要求左对齐放图片左下角）。
+      // ⚠️ 去重：普通日的标题本身就是 dateLabelOf()（「10月7日 · 星期二」），
+      //    若不剔除，日历首行会与标题**完全重复**（用户反馈"今天日期和星期几已经重复了"）。
+      //    故这里过滤掉与标题相同的那一行。
       const solarLines = [
         this.data.todayLabel || '',
         this.data.lunarText || '',
         (this.data.ganzhi && this.data.zodiac) ? (this.data.ganzhi + '年 · ' + this.data.zodiac) : (this.data.ganzhi || this.data.zodiac || '')
-      ].filter(Boolean);
+      ].filter(Boolean).filter(ln => ln !== name);
       const data = cardStyle.applyCardStyle(this, { title: name, body: text, solarLines });
       this._lastData = { type: 'dailysign', theme: this.data.theme, data };
       this._cardOpts = { canvasId: '#solarCanvas', type: 'dailysign', theme: this.data.theme, data };

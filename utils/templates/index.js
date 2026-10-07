@@ -118,21 +118,10 @@ const PHOTO_SHADOW = (fontPx) => ({
   txt(brand, { left: W - PAD - brandW, top: y + 5, width: brandW, color: sub, fontSize: 10, lineHeight: 12 });
   y += 22 + 16;
 
-  // ── 日历信息区（dailysign专属，2026-10-07 用户要求）──
-  // 公历 / 农历 / 干支生肖三行小字，居中排列在日期标题之上、金句之下。
-  // 「排列整齐」= 三行等宽居中、行高一致；「字号小一点」= 11px 弱色，
-  // 明确 subordinate于金句主体（20px），只做背景信息不抢戏。
-  if (type === 'dailysign' && (d.solarLines || []).length) {
-    const cFs = 11, cLh = 17;
-    const cAlign = 'center';
-    (d.solarLines || []).forEach((ln) => {
-      if (!ln) return;
-      txt(String(ln), { left: PAD, top: y, width: innerW, color: sub,
-        fontSize: cFs, lineHeight: cLh, lineClamp: 1, textAlign: cAlign });
-      y += cLh;
-    });
-    y += 8;
-  }
+  // ── 日历信息区（公历/农历/干支生肖）──
+  // 2026-10-07 用户要求：这些信息**左对齐、放在图片左下角**。
+  // 故不在此处流式绘制，改为配图绘制完后在图上叠印（见下方 hasCover 分支）。
+  // 无配图时退化为标题上方的居中小字，保证信息不丢。
 
   // ── kicker：小字元信息行（城市/天气/日期等），**必须比正文小**──
   // 用途：天气卡这类「金句是主体、天气只是场景」的卡，把场景信息从20px 粗体标题槽
@@ -185,6 +174,32 @@ const PHOTO_SHADOW = (fontPx) => ({
       colors: ['rgba(0,0,0,0)', 'rgba(0,0,0,0.18)'] });
     rect({ left: PAD, top: y, width: innerW, height: ch, radius: 12, border: 1, borderColor: 'rgba(0,0,0,0.06)' });
     y += ch + 12;
+  }
+
+  // ── 日历信息区：公历/ 农历 / 干支生肖（2026-10-07 用户要求）──
+  // 「左对齐 + 放在图片左下角」：压在配图之上时用**白字 + 投影**保证在照片上可读；
+  // 无配图的卡片（dailysign 默认无图）则画在卡片自身左下角、用弱色。
+  const solarLs = (d.solarLines || []).filter(Boolean);
+  if (solarLs.length) {
+    const cFs = 11, cLh = 16;
+    if (CARD_TYPES[type].hasCover && d.cover) {
+      // 叠在图上：左下角、左对齐、白字 + 投影
+      const boxTop = y - 12 - solarLs.length * cLh;   // 紧贴配图底部（y 已含 +12 间距）
+      solarLs.forEach((ln, i) => {
+        txt(String(ln), { left: PAD + 12, top: boxTop + i * cLh, width: innerW - 24,
+          color: '#ffffff', fontSize: cFs, lineHeight: cLh, lineClamp: 1, textAlign: 'left',
+          shadow: { color: 'rgba(0,0,0,0.55)', blur: 4, y: 1 } });
+      });
+    } else {
+      // 无配图：画在卡片左下角（标题之前），左对齐、弱色
+      let cy = y;
+      solarLs.forEach((ln) => {
+        txt(String(ln), { left: PAD, top: cy, width: innerW, color: sub,
+          fontSize: cFs, lineHeight: cLh, lineClamp: 1, textAlign: 'left' });
+        cy += cLh;
+      });
+      y = cy + 6;
+    }
   }
 
   // ── 金句引导符（quote / dailysign 专属装饰）──
