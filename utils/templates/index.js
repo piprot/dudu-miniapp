@@ -118,6 +118,22 @@ const PHOTO_SHADOW = (fontPx) => ({
   txt(brand, { left: W - PAD - brandW, top: y + 5, width: brandW, color: sub, fontSize: 10, lineHeight: 12 });
   y += 22 + 16;
 
+  // ── 日历信息区（dailysign专属，2026-10-07 用户要求）──
+  // 公历 / 农历 / 干支生肖三行小字，居中排列在日期标题之上、金句之下。
+  // 「排列整齐」= 三行等宽居中、行高一致；「字号小一点」= 11px 弱色，
+  // 明确 subordinate于金句主体（20px），只做背景信息不抢戏。
+  if (type === 'dailysign' && (d.solarLines || []).length) {
+    const cFs = 11, cLh = 17;
+    const cAlign = 'center';
+    (d.solarLines || []).forEach((ln) => {
+      if (!ln) return;
+      txt(String(ln), { left: PAD, top: y, width: innerW, color: sub,
+        fontSize: cFs, lineHeight: cLh, lineClamp: 1, textAlign: cAlign });
+      y += cLh;
+    });
+    y += 8;
+  }
+
   // ── kicker：小字元信息行（城市/天气/日期等），**必须比正文小**──
   // 用途：天气卡这类「金句是主体、天气只是场景」的卡，把场景信息从20px 粗体标题槽
   // 降到 12px 灰字，让金句真正成为视觉主体。旧版把「北京·晴·好心情」塞进标题槽，
