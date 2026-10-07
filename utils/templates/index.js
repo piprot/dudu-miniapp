@@ -130,9 +130,11 @@ const PHOTO_SHADOW = (fontPx) => ({
     const tFs = styleOn ? S.titleSize : 20;
     const tLh = styleOn ? Math.round(tFs * 1.4) : 28;
     const tLines = countLines(d.title, tw, tFs, measure, 2);
-    // 日签/节日卡（dailysign）天生居中、书卷气，左竖条与之气质冲突 → 仅公告卡(notice)保留。
-    // 旧逻辑：type==='notice' || (styleOn && S.showBar) 会让现代风日签也长出一根左竖条，显得多余。
-    if (type === 'notice' || (styleOn && S.showBar && type !== 'dailysign')) {
+    // 2026-10-07 用户反馈「所有卡片左下角竖线都去掉」→ 标题左竖条**全类型**取消。
+    // 旧逻辑：type==='notice' || (styleOn && S.showBar) 会给 notice / 现代风卡片加一根
+    // 主色竖条。竖条是「公告/条目列表」的视觉语言，套到卡片上显冗余，且与居中金句气质冲突。
+    // 竖条改由需要「条目感」的模板自行处理，卡片层不再统一画。
+    if (d.showTitleBar === true) {
       rect({ left: PAD, top: y + 3, width: 4, height: Math.min(tLines * tLh - 6, 50), background: p.primary });
       txt(d.title, { left: PAD + 14, top: y, width: tw, color: ink, fontSize: tFs, fontWeight: 'bold',
         lineHeight: tLh, lineClamp: 2, fontFamily: titleFont,
@@ -190,6 +192,21 @@ const PHOTO_SHADOW = (fontPx) => ({
       fontFamily: bodyFont, letterSpacing: styleOn ? S.bodySpacing : 0,
       textAlign: type === 'dailysign' && !styleOn ? 'center' : bodyAlign });
     y += countLines(d.body, innerW, fs, measure, clamp) * lh + 12;
+
+    // ── 收尾引号（下引号）──
+    // 2026-10-07 用户反馈「只有上引号没有下引号」：单上引号头重脚轻。
+    // literary 风格给decoClose（❞）画一个下引号，与上方 ❝ 成对；
+    // ❀ / ◆ 本身是完整花纹、warm/poster 的 decoClose 为空，故不画。
+    const closeMark = styleOn ? (S.decoClose || '') : '';
+    if (wantDeco && closeMark) {
+      const cSize = styleOn ? Math.round(S.decoSize * 0.9) : 18;
+      const cLh = Math.round(cSize * 1.2);
+      txt(closeMark, { left: PAD, top: y, width: type === 'dailysign' ? innerW : 40, color: p.primary,
+        fontSize: cSize, fontWeight: 'bold', lineHeight: cLh,
+        fontFamily: decoFont,
+        textAlign: type === 'dailysign' ? 'center' : 'left' });
+      y += cLh + 4;
+    }
   }
 
   // ── 种草卡：价签色块高亮（规范：价格用色块）──

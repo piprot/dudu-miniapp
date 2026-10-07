@@ -60,7 +60,9 @@ const STYLES = {
     id: 'literary',
     name: '文艺',
     titleFont: 'serif',
-    titleSize: 21,
+    // 2026-10-07：标题缩到 19（原 21）。节气卡标题是「10月7日·星期二」这类日期，
+    // 原来 21 比正文 17 大出一截，喧宾夺主，压到 19 只比正文大 2px，层次在但不抢戏。
+    titleSize: 19,
     titleWeight: 'bold',
     titleSpacing: 1.5,
     titleAlign: 'center',
@@ -69,9 +71,11 @@ const STYLES = {
     bodyLineHeight: 31,
     bodyAlign: 'center',
     bodySpacing: 0.5,
-    deco: '❝',           // 引号装饰
+    // 成对引号：上「」+ 下「」，单引号会显得头重脚轻（2026-10-07 用户反馈只有上引号）
+    deco: '❝',           // 引导符（装饰在正文上方，见 buildCardModel 的 decoTop）
+    decoClose: '❞',      // 收尾符（画在正文下方）
     decoColor: 'primary',
-    decoSize: 26,
+    decoSize: 22,
     showDeco: true,
     radius: 20
   },
@@ -80,7 +84,7 @@ const STYLES = {
     id: 'modern',
     name: '现代',
     titleFont: 'sans',
-    titleSize: 20,
+    titleSize: 17,       // 2026-10-07：20→17，与正文 15 差 2px
     titleWeight: 'bold',
     titleSpacing: 0.5,
     titleAlign: 'left',
@@ -93,7 +97,7 @@ const STYLES = {
     decoColor: 'primary',
     decoSize: 0,
     showDeco: false,
-    showBar: true,        // 标题左侧主色竖条
+    showBar: true,        // 标题左侧主色竖条（2026-10-07 起所有卡片都不再画，见 buildCardModel）
     radius: 12
   },
   // 温暖手写：楷体 + 居中 + 圆点
@@ -101,7 +105,7 @@ const STYLES = {
     id: 'warm',
     name: '温暖',
     titleFont: 'kai',
-    titleSize: 22,
+    titleSize: 19,       // 2026-10-07：22→19，与正文 17 差 2px
     titleWeight: 'bold',
     titleSpacing: 2,
     titleAlign: 'center',
@@ -111,6 +115,7 @@ const STYLES = {
     bodyAlign: 'center',
     bodySpacing: 1,
     deco: '❀',
+    decoClose: '',       // ❀ 本身是完整花纹，无需收尾符
     decoColor: 'primary',
     decoSize: 20,
     showDeco: true,
@@ -121,7 +126,8 @@ const STYLES = {
     id: 'poster',
     name: '海报',
     titleFont: 'round',
-    titleSize: 26,
+    titleSize: 20,       // 2026-10-07：26→20。原来比正文 16 大 10px，标题压过金句本体；
+                        // 仍需大于 literary 的 19（海报风靠大标题立身份，test_font_kit 有断言）。
     titleWeight: 'bold',
     titleSpacing: 3,
     titleAlign: 'center',
@@ -131,6 +137,7 @@ const STYLES = {
     bodyAlign: 'center',
     bodySpacing: 0.5,
     deco: '◆',
+    decoClose: '',       // ◆ 本身是完整菱形，无需收尾符
     decoColor: 'primary',
     decoSize: 14,
     showDeco: true,
