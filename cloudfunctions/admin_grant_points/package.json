@@ -2,5 +2,8 @@
   "name": "admin_grant_points",
   "version": "1.0.1",
   "description": "[已停用] 原测试充值函数，现为恒拒绝桩，用于覆盖云端旧版本",
-  "main": "index.js"
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
 }
