@@ -26,6 +26,8 @@ const __pageCfg = {
     privacyShow: false,   // 隐私授权面板显隐（组件 privacy-panel 消费）
     addMineShow: true,    // 是否展示「添加到我的小程序」入口（组件 add-mine 总开关）
     points: 0,             // 积分余额
+    grantBusy: false,      // 临时测试充值按钮 loading（2026-10-07，测完删）
+    grantMsg: '',          // 临时测试充值结果提示（同上）
     streak: 0,             // 连续签到天数
     dailyChecked: false,   // 今日是否已签到
     dailyOn: true,         // 是否开启每日登录奖励
@@ -232,6 +234,36 @@ const __pageCfg = {
       title: 'dudu 画面感｜把你的故事，变成打动人的文案与图文卡片',
       query: ''
     };
+  },
+
+  // ⚠️ 临时测试充值（2026-10-07）：给自己 +1000 积分，测完应连同
+  //    cloudfunctions/admin_grant_points 与页面上的 dev-grant 区块一起删除。
+  // 云函数用 getWXContext().OPENID 认「调用者本人」，故只会给自己加分；
+  // targetPoints=1000 做幂等，重复点会被服务端拒绝，不会把分数刷高。
+  async onDevGrant() {
+    if (this.data.grantBusy) return;
+    this.setData({ grantBusy: true, grantMsg: '充值中…' });
+    try {
+      const r = await wx.cloud.callFunction({
+        name: 'admin_grant_points',
+        data: { amount: 1000, mode: 'add', targetPoints: 1000 }
+      });
+      const res = (r && r.result) || {};
+      if (res.ok) {
+        this.setData({
+          grantMsg: '✅ 成功：' + res.before + ' → ' + res.after + '（+' + res.delta + '）',
+          points: res.after
+        });
+        // 同步刷新顶部积分显示
+        try { this.refreshPoints && this.refreshPoints(); } catch (e) { /* 非致命 */ }
+      } else {
+        this.setData({ grantMsg: '⚠️ ' + (res.err || '未知错误') });
+      }
+    } catch (e) {
+      this.setData({ grantMsg: '❌ 调用失败：' + ((e && e.message) || e) });
+    } finally {
+      this.setData({ grantBusy: false });
+    }
   },
   onReady() {
     if (typeof wx.showShareMenu === 'function') {
