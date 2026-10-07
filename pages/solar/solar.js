@@ -166,14 +166,21 @@ const __pageCfg = {
       this.setData({ sel: { name, text } });
       // ⚠️ 不再传 author 落款：节气/节日卡右下角已有小程序码、右上角已有「dudu 画面感」
       //    品牌水印，左下角落款会与右上角品牌重复（2026-10-07 设计整改）。左下角留白更干净。
-      // solarLines：公历/农历/干支生肖（2026-10-07 用户要求左对齐放图片左下角）。
-      // ⚠️ 去重：普通日的标题本身就是 dateLabelOf()（「10月7日 · 星期二」），
-      //    若不剔除，日历首行会与标题**完全重复**（用户反馈"今天日期和星期几已经重复了"）。
-      //    故这里过滤掉与标题相同的那一行。
+      // solarLines：公历/农历/干支生肖（2026-10-07 用户要求左对齐放左下角）。
+      // ⚠️ 干支去重（用户反馈"农历…和下面一行丙午年重复了"）：
+      //    calendar_mix 的 lunarText 本身就是 '农历' + 干支年 + 月 + 日，
+      //    即「农历丙午年八月廿六」已含干支；再单独拼一行「丙午年 · 马」就重复了。
+      //    故农历行**剥离干支前缀**，只留「农历八月廿六」，干支另起一行。
+      // ⚠️ 同时过滤与标题相同的行：普通日标题就是 dateLabelOf()（「10月7日 · 星期二」），
+      //    不剔除会与日历首行完全重复（用户反馈"今天日期和星期几已经重复了"）。
+      const gz = this.data.ganzhi ? (this.data.ganzhi + '年') : '';
+      const lunarPure = gz && this.data.lunarText
+        ? String(this.data.lunarText).replace(gz, '')      // 「农历丙午年八月廿六」→ 「农历八月廿六」
+        : (this.data.lunarText || '');
       const solarLines = [
         this.data.todayLabel || '',
-        this.data.lunarText || '',
-        (this.data.ganzhi && this.data.zodiac) ? (this.data.ganzhi + '年 · ' + this.data.zodiac) : (this.data.ganzhi || this.data.zodiac || '')
+        lunarPure,
+        (this.data.ganzhi && this.data.zodiac) ? (gz + ' · ' + this.data.zodiac) : (gz || this.data.zodiac || '')
       ].filter(Boolean).filter(ln => ln !== name);
       const data = cardStyle.applyCardStyle(this, { title: name, body: text, solarLines });
       this._lastData = { type: 'dailysign', theme: this.data.theme, data };
