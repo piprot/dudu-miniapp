@@ -222,8 +222,20 @@ const __pageCfg = {
   // 列表按来源筛选（空字符串 = 全部）
   onFilterKind(e) {
     const key = e.currentTarget.dataset.key;
-    this.setData({ filterKind: key ? store.normKind(key) : '' });
-    this.applyFilter();
+    const kind = key ? store.normKind(key) : '';
+    if (kind === this.data.filterKind) return; // 幂等：重复点同一个 chip 不重刷
+    this.setData({ filterKind: kind });
+    // 修法两处（2026-10-08 用户反馈「节气、节日这两个 sheet 还没有改」）：
+    // ① 走 refresh() 单一出口——旧版只调 applyFilter()，**今日推荐不会重选**，
+    //    切来源后 todayPick 还停留在上一个 sheet 的句子（「切了句子不变」的真正接线缺口；
+    //    v1.1.58 只修了 pickToday 纯函数与种子库，漏了这层页面接线）。
+    // ② 把「主题大类 / 标签」过滤一并归位——节气/节日共 120 条种子全部挂在「时间」分类
+    //    （q_seed_time_solar_* / q_seed_time_festival_*），而进页默认大类是「成长」；
+    //    残留 activeCat='growth' 会让这两个 sheet 相交为空、整版空掉。
+    //    来源类型与主题分类是正交维度：切来源 = 想看该来源的全部。
+    //    pgItem/pgGroupOpen 同步归位，避免「高亮挂在旧标签上、列表却是全部」的错觉。
+    this.setData({ activeCat: '', activeTag: '', pgItem: '', pgGroupOpen: false });
+    this.refresh();
   },
   onField(e) {
     const field = e.currentTarget.dataset.field;

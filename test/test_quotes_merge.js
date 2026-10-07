@@ -142,7 +142,9 @@ t('金句页：列表有来源筛选条，且筛选走同一条过滤路径', ()
   assert.ok(/kind-filter/.test(wxml), '缺来源筛选条');
   assert.ok(/onFilterKind/.test(wxml), '筛选条未绑定 onFilterKind');
   const f = funcBody(js, 'onFilterKind');
-  assert.ok(f && /applyFilter\(\)/.test(strip(f)), 'onFilterKind 未触��� applyFilter');
+  // 2026-10-08：onFilterKind 改走 refresh()（单一出口）——只调 applyFilter 会让今日推荐
+  // 停留在上一个 sheet 的句子（「切来源句子不变」的接线缺口）。refresh 内部仍复用 applyFilter。
+  assert.ok(f && /refresh\(\)/.test(strip(f)), "onFilterKind 未走 refresh（切来源今日推荐不重选）");
   // applyFilter 必须把 filterKind 传给 store
   const af = funcBody(js, 'applyFilter');
   assert.ok(/kind:\s*this\.data\.filterKind/.test(strip(af)),

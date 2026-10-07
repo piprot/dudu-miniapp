@@ -76,6 +76,7 @@ const SUITES = [
   'test/test_calendar_mix.js',
   'test/test_solar_layers.js',
   'test/test_quotes_merge.js',
+  'test/test_quotes_page.js',
   'test/test_history.js',
   'test/test_poster_page.js',
   // ── 2026-10-04 隐私错误分类（errno 精确判定，防「用户拒绝」被误当成「后台没配」）──
