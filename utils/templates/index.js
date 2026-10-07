@@ -176,31 +176,10 @@ const PHOTO_SHADOW = (fontPx) => ({
     y += ch + 12;
   }
 
-  // ── 日历信息区：公历/ 农历 / 干支生肖（2026-10-07 用户要求）──
-  // 「左对齐 + 放在图片左下角」：压在配图之上时用**白字 + 投影**保证在照片上可读；
-  // 无配图的卡片（dailysign 默认无图）则画在卡片自身左下角、用弱色。
-  const solarLs = (d.solarLines || []).filter(Boolean);
-  if (solarLs.length) {
-    const cFs = 11, cLh = 16;
-    if (CARD_TYPES[type].hasCover && d.cover) {
-      // 叠在图上：左下角、左对齐、白字 + 投影
-      const boxTop = y - 12 - solarLs.length * cLh;   // 紧贴配图底部（y 已含 +12 间距）
-      solarLs.forEach((ln, i) => {
-        txt(String(ln), { left: PAD + 12, top: boxTop + i * cLh, width: innerW - 24,
-          color: '#ffffff', fontSize: cFs, lineHeight: cLh, lineClamp: 1, textAlign: 'left',
-          shadow: { color: 'rgba(0,0,0,0.55)', blur: 4, y: 1 } });
-      });
-    } else {
-      // 无配图：画在卡片左下角（标题之前），左对齐、弱色
-      let cy = y;
-      solarLs.forEach((ln) => {
-        txt(String(ln), { left: PAD, top: cy, width: innerW, color: sub,
-          fontSize: cFs, lineHeight: cLh, lineClamp: 1, textAlign: 'left' });
-        cy += cLh;
-      });
-      y = cy + 6;
-    }
-  }
+  // ── 日历信息区：公历/农历/干支生肖 ──
+  // 2026-10-07 用户要求：两行小字、**左对齐、放在图片的左下角**。
+  // 「图片」= 卡片背景图（bgImg，铺满整卡），故左下角 = 卡片底部左侧。
+  // 绘制时机放在**底部信息行阶段**（见下方 foot 逻辑），此处只取值不落位。
 
   // ── 金句引导符（quote / dailysign 专属装饰）──
   // 注意：风格声明 showDeco:false 时**不生成装饰节点**（否则会留一个 0px 的空块白占纵向空间）。
@@ -297,6 +276,27 @@ const PHOTO_SHADOW = (fontPx) => ({
     txt(foot, { left: PAD, top: hasQr ? y + Math.round((QS - 18) / 2) : y,
       width: hasQr ? innerW - QS - 12 : innerW,
       color: sub, fontSize: 12, lineHeight: 18, lineClamp: 2, textAlign: 'left' });
+  }
+  // ── 日历信息（公历/农历/干支生肖）画在**左下角** ──
+  // 2026-10-07 用户要求：两行小字、左对齐、放在图片左下角。「图片」指卡片背景图
+  // （bgImg 铺满整卡），所以左下角= 底部信息行左侧——正是取消落款后空出来的那块。
+  // 与小程序码同行、垂直居中；有二维码时只占左侧，避免被码压住。
+  const solarLs = (d.solarLines || []).filter(Boolean);
+  if (solarLs.length) {
+    const cFs = 11, cLh = 15;
+    // 有码时右侧留出码宽；无码则占满内侧宽度。
+    const cW = hasQr ? innerW - QS - 12 : innerW;
+    // 垂直居中于二维码行；无码时直接贴顶。
+    const blockH = solarLs.length * cLh;
+    const baseTop = hasQr ? y + Math.max(0, Math.round((QS - blockH) / 2)) : y;
+    // 照片背景（bgImg）下用白字 + 投影才看得清；否则用弱色。
+    const onBg = !!d.bgImg;
+    solarLs.forEach((ln, i) => {
+      txt(String(ln), { left: PAD, top: baseTop + i * cLh, width: cW,
+        color: onBg ? '#ffffff' : sub, fontSize: cFs, lineHeight: cLh,
+        lineClamp: 1, textAlign: 'left',
+        ...(onBg ? { shadow: { color: 'rgba(0,0,0,0.55)', blur: 4, y: 1 } } : {}) });
+    });
   }
   y += (hasQr ? QS : 18) + 18;
 
