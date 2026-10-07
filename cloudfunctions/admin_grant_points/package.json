@@ -1,9 +1,6 @@
 {
   "name": "admin_grant_points",
-  "version": "1.0.0",
-  "description": "一次性测试积分充值管理函数（用完请删除）",
-  "main": "index.js",
-  "dependencies": {
-    "wx-server-sdk": "~2.6.3"
-  }
+  "version": "1.0.1",
+  "description": "[已停用] 原测试充值函数，现为恒拒绝桩，用于覆盖云端旧版本",
+  "main": "index.js"
 }

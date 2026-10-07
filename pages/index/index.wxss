@@ -137,8 +137,3 @@
 }
 .tool-title { font-size: 32rpx; font-weight: 700; color: var(--text-title); }
 .tool-desc { font-size: 24rpx; color: #9a8b74; margin-top: 8rpx; line-height: 1.6; }
-
-/* ⚠️ 临时测试充值区块（2026-10-07，测完连同 wxml/dev-grant 与云函数一起删除） */
-.dev-grant { margin: 28rpx 0 8rpx; padding: 20rpx; border: 2rpx dashed #b9a68a; border-radius: 16rpx; background: #fff8ec; }
-.dev-grant-btn { background: var(--primary); color: #fff; font-size: 26rpx; font-weight: 600; border-radius: 999rpx; padding: 18rpx 0; margin: 0; }
-.dev-grant-msg { margin-top: 12rpx; font-size: 23rpx; color: var(--primary-deep); text-align: center; line-height: 1.5; }

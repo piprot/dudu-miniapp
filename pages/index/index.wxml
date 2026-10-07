@@ -40,16 +40,6 @@
     <view class="tool-hint-drag">长按工具卡可拖动排序 · 顺序自动记住</view>
   </view>
 
-  <!-- ⚠️ 临时测试工具（2026-10-07）：给自己充值 1000 积分，测完删除。
-       云函数 admin_grant_points 用 getWXContext().OPENID 认「调用者本人」，
-       所以点一下只会给自己加分，不需要传 openid。 -->
-  <view class="dev-grant">
-    <button class="dev-grant-btn" bindtap="onDevGrant" loading="{{grantBusy}}" disabled="{{grantBusy}}">
-      🧪 测试充值 +1000 积分
-    </button>
-    <view class="dev-grant-msg">{{grantMsg}}</view>
-  </view>
-
   <!-- 「添加到我的小程序」入口：点一下弹引导，箭头指向右上角胶囊。
        ⚠️ 微信小程序没有「一键添加」的 API（wx.addToFavorites 是小游戏 API，不适用），
            只能引导用户点右上角 ··· → 收藏。详见 components/add-mine/index.js 注释。 -->
