@@ -77,6 +77,10 @@ function buildCardModel(type, themeId, data, opts) {
   // dailysign 的居中排版是它的识别特征，故只有它无条件走风格对齐；
   // 其他类型仅当显式传了 styleKey 才应用风格（避免改变历史卡片观感）。
   const styleOn = !!d.styleKey || type === 'dailysign';
+  // 排版风格现在不仅换字体，还换**结构**（顶部锚点 / 标题处理 / 装饰位置 / 外框）。
+  // L 决定用哪套构图骨架：editorial(文艺) / swiss(现代) / memo(温暖) / poster(海报)。
+  // plain 仅用于「未显式开风格」的历史卡片，保持旧观感（向后兼容单测）。
+  const L = styleOn ? (S.layout || 'editorial') : 'plain';
   const titleFont = styleOn ? fontKit.familyOf(S.titleFont) : font;
   const bodyFont = styleOn ? fontKit.familyOf(S.bodyFont) : font;
   const decoFont = styleOn ? fontKit.familyForRole('deco') : font;
@@ -103,20 +107,51 @@ const PHOTO_SHADOW = (fontPx) => ({
   };
   const rect = (o) => children.push(Object.assign({ type: 'rect' }, o));
 
-  // ── 顶部主色细条（锚点 ①）──
-  rect({ left: 0, top: 0, width: W, height: 4, background: p.primary });
-  y = 18;
+  // ── 顶部锚点（按风格分结构）──
+  // poster：整宽主色 header 带（类型名反白居中），海报识别度最高。
+  // memo(温暖)：和纸胶带条（半透明主色块横贯顶部），手账便签感。
+  // 其余：4px 主色细条（沿用旧观感）。
+  if (styleOn && L === 'poster') {
+    rect({ left: 0, top: 0, width: W, height: 34, background: p.primary, radius: p.radius });
+    const bandName = CARD_TYPES[type].name;
+    const bw = measure(bandName, 13);
+    txt(bandName, { left: (W - bw) / 2, top: 11, width: bw, color: '#ffffff', fontSize: 13, fontWeight: 'bold', lineHeight: 16, textAlign: 'center' });
+    y = 34 + 14;
+  } else if (styleOn && L === 'memo') {
+    // 和纸胶带：双层半透明色块，上宽下窄，模拟贴纸压边
+    rect({ left: 0, top: 0, width: W, height: 14, background: fontKit.alpha(p.primary, 0.16) });
+    rect({ left: PAD, top: 4, width: innerW, height: 6, background: fontKit.alpha(p.primary, 0.34) });
+    y = 18;
+  } else {
+    rect({ left: 0, top: 0, width: W, height: 4, background: p.primary });
+    y = 18;
+  }
 
-  // ── 头部：类型小标签（左） + 品牌水印（右）──
-  const pillText = CARD_TYPES[type].name;
-  const pillW = Math.ceil(measure(pillText, 11)) + 20;
-  rect({ left: PAD, top: y, width: pillW, height: 22, background: p.bgSoft, radius: 11 });
-  // noShadow：pill 有实色底块，投影只会让 11px 小字发糊（2026-10-07 整改）
-  txt(pillText, { left: PAD + 10, top: y + 4, width: pillW - 20, color: p.primary, fontSize: 11, fontWeight: 'bold', lineHeight: 14, noShadow: true });
-  const brand = 'dudu 画面感';
-  const brandW = Math.ceil(measure(brand, 10));
-  txt(brand, { left: W - PAD - brandW, top: y + 5, width: brandW, color: sub, fontSize: 10, lineHeight: 12 });
-  y += 22 + 16;
+  // ── 头部：类型小标签 + 品牌水印 ──
+  // poster 的类型名已进 header 带，这里只留品牌水印（右下弱色）。
+  // memo(温暖) 把类型 pill 改成居中胶囊，强化手账感。
+  if (styleOn && L === 'poster') {
+    const brand = 'dudu 画面感';
+    const brandW = Math.ceil(measure(brand, 10));
+    txt(brand, { left: W - PAD - brandW, top: y - 2, width: brandW, color: sub, fontSize: 10, lineHeight: 12 });
+    y += 14;
+  } else {
+    const pillText = CARD_TYPES[type].name;
+    const pillW = Math.ceil(measure(pillText, 11)) + 20;
+    if (styleOn && L === 'memo') {
+      const px = (W - pillW) / 2;
+      rect({ left: px, top: y, width: pillW, height: 22, background: p.bgSoft, radius: 11 });
+      txt(pillText, { left: px + 10, top: y + 4, width: pillW - 20, color: p.primary, fontSize: 11, fontWeight: 'bold', lineHeight: 14, noShadow: true, textAlign: 'center' });
+    } else {
+      rect({ left: PAD, top: y, width: pillW, height: 22, background: p.bgSoft, radius: 11 });
+      // noShadow：pill 有实色底块，投影只会让 11px 小字发糊（2026-10-07 整改）
+      txt(pillText, { left: PAD + 10, top: y + 4, width: pillW - 20, color: p.primary, fontSize: 11, fontWeight: 'bold', lineHeight: 14, noShadow: true });
+    }
+    const brand = 'dudu 画面感';
+    const brandW = Math.ceil(measure(brand, 10));
+    txt(brand, { left: W - PAD - brandW, top: y + 5, width: brandW, color: sub, fontSize: 10, lineHeight: 12 });
+    y += 22 + 16;
+  }
 
   // ── 日历信息区（公历/农历/干支生肖）──
   // 2026-10-07 用户要求：这些信息**左对齐、放在图片左下角**。
@@ -130,8 +165,10 @@ const PHOTO_SHADOW = (fontPx) => ({
   if (d.kicker) {
     const kFs = 12, kLh = 17;
     const kLines = countLines(d.kicker, innerW, kFs, measure, 2);
+    // swiss(现代) 元信息走等宽，强化瑞士网格的克制数字感
     txt(d.kicker, { left: PAD, top: y, width: innerW, color: sub, fontSize: kFs, lineHeight: kLh,
-      lineClamp: 2, textAlign: (styleOn ? S.bodyAlign : (type === 'dailysign' ? 'center' : 'left')) });
+      lineClamp: 2, fontFamily: (styleOn && L === 'swiss') ? fontKit.familyForRole('date') : font,
+      textAlign: (styleOn ? S.bodyAlign : (type === 'dailysign' ? 'center' : 'left')) });
     y += kLines * kLh + 6;
   }
 
@@ -163,7 +200,20 @@ const PHOTO_SHADOW = (fontPx) => ({
         letterSpacing: styleOn ? S.titleSpacing : 0,
         textAlign: type === 'dailysign' && !styleOn ? 'center' : titleAlign });
     }
-    y += tLines * tLh + 10;
+    // ── 标题下方分隔（按风格分结构）──
+    // swiss(现代)：2px 主色粗基线，瑞士国际主义的强网格语言。
+    // editorial(文艺)：1px 主色发丝线，编辑式细分割，书卷克制。
+    // 其余风格不画，保持留白。
+    const titleBlockH = tLines * tLh;
+    if (styleOn && L === 'swiss') {
+      rect({ left: PAD, top: y + titleBlockH + 4, width: innerW, height: 2, background: p.primary });
+      y += titleBlockH + 10 + 6;
+    } else if (styleOn && L === 'editorial') {
+      rect({ left: PAD, top: y + titleBlockH + 4, width: innerW, height: 1, background: fontKit.alpha(p.primary, 0.5) });
+      y += titleBlockH + 10 + 4;
+    } else {
+      y += titleBlockH + 10;
+    }
   }
 
   // ── 配图（统一 16:10 比例、圆角 12、底部渐晕、1px 内描边）──
@@ -189,12 +239,20 @@ const PHOTO_SHADOW = (fontPx) => ({
     const mark = styleOn ? S.deco : '❝';
     // 装饰符**不能比金句本体还大**（旧版26px 引号压过 17px 金句，喧宾夺主还显闷）。
     // 现在封顶到 20px：hero 卡（金句 20px）用 18，小金句（17px）配 20 刚好成对。
-    const dSize = styleOn ? S.decoSize : (d.hero ? 18 : 20);
+    let dSize = styleOn ? S.decoSize : (d.hero ? 18 : 20);
+    let dLeft = PAD;
+    let dAlign = (type === 'dailysign') ? 'center' : 'left';
+    let dWidth = type === 'dailysign' ? innerW : 40;
+    // editorial(文艺) 金句卡：左栏大引号 drop-cap（34px，左对齐），强化书卷编辑式。
+    // 日签保持居中（它的识别特征），不改。
+    if (styleOn && L === 'editorial' && type === 'quote') {
+      dSize = 34; dLeft = PAD; dAlign = 'left'; dWidth = 60;
+    }
     const dLh = Math.round(dSize * 1.2);
-    txt(mark, { left: PAD, top: y, width: type === 'dailysign' ? innerW : 40, color: p.primary,
+    txt(mark, { left: dLeft, top: y, width: dWidth, color: p.primary,
       fontSize: dSize, fontWeight: 'bold', lineHeight: dLh,
       fontFamily: decoFont,
-      textAlign: type === 'dailysign' ? 'center' : 'left' });
+      textAlign: dAlign });
     y += dLh;
   }
 
@@ -214,12 +272,18 @@ const PHOTO_SHADOW = (fontPx) => ({
       : (styleOn ? (hero ? S.bodyLineHeight + 4 : S.bodyLineHeight)
         : (hero ? 34 : (isQuote ? 30 : (type === 'recommend' ? 26 : 24))));
     const clamp = isQuote ? 6 : 8;
+    const bodyLines = countLines(d.body, innerW, fs, measure, clamp);
+    // memo(温暖)：柔色高亮块垫底（手账便签的荧光笔感），正文居中压在其上。
+    if (styleOn && L === 'memo') {
+      const blockH = bodyLines * lh + 16;
+      rect({ left: PAD - 6, top: y - 4, width: innerW + 12, height: blockH, background: p.bgSoft, radius: 10 });
+    }
     txt(d.body, { left: PAD, top: y, width: innerW, color: ink,
       fontSize: fs, lineHeight: lh, lineClamp: clamp,
       fontWeight: (hero && !styleOn) || type === 'dailysign' ? 'bold' : undefined,
       fontFamily: bodyFont, letterSpacing: styleOn ? S.bodySpacing : 0,
       textAlign: type === 'dailysign' && !styleOn ? 'center' : bodyAlign });
-    y += countLines(d.body, innerW, fs, measure, clamp) * lh + 12;
+    y += bodyLines * lh + 12;
 
     // ── 收尾引号（下引号）──
     // 2026-10-07 用户反馈「只有上引号没有下引号」：单上引号头重脚轻。
@@ -273,9 +337,12 @@ const PHOTO_SHADOW = (fontPx) => ({
   //    没有 author 就让这一行空着（下面 foot 为空则不push text节点，不占纵向空间）。
   const foot = d.author || d.source || '';
   if (foot) {
+    // swiss(现代) 落款也走等宽，与上方元信息呼应
     txt(foot, { left: PAD, top: hasQr ? y + Math.round((QS - 18) / 2) : y,
       width: hasQr ? innerW - QS - 12 : innerW,
-      color: sub, fontSize: 12, lineHeight: 18, lineClamp: 2, textAlign: 'left' });
+      color: sub, fontSize: 12, lineHeight: 18, lineClamp: 2,
+      fontFamily: (styleOn && L === 'swiss') ? fontKit.familyForRole('date') : font,
+      textAlign: 'left' });
   }
   // ── 日历信息（公历/农历/干支生肖）画在**左下角** ──
   // 2026-10-07 用户要求：两行小字、左对齐、放在图片左下角。「图片」指卡片背景图
@@ -301,6 +368,18 @@ const PHOTO_SHADOW = (fontPx) => ({
   y += (hasQr ? QS : 18) + 18;
 
   const height = Math.max(y, 200);
+
+  // ── 整卡外框（按风格分结构，仅描边不填色）──
+  // swiss(现代)：1px 主色实线框，几何包裹感。
+  // memo(温暖)：1px 主色柔框（半透明），与便签圆角呼应。
+  // poster(海报)：1px 主色实线框，收束整宽色带。
+  // editorial / plain：不画外框，保持留白。
+  if (styleOn && (L === 'swiss' || L === 'poster')) {
+    rect({ left: 1, top: 1, width: W - 2, height: height - 2, border: 1, borderColor: p.primary, radius: p.radius });
+  } else if (styleOn && L === 'memo') {
+    rect({ left: 1, top: 1, width: W - 2, height: height - 2, border: 1, borderColor: fontKit.alpha(p.primary, 0.45), radius: p.radius });
+  }
+
   const model = {
     width: W, height,
     gradient: p.bg,

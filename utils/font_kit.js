@@ -51,6 +51,22 @@ function familyForRole(role) {
   return familyOf(ROLE_FAMILY[role] || role);
 }
 
+// ── 透明度助手 ──────────────────────────────────────────────────────────
+// 风格结构层（胶带条/高亮块/外框）需要主色的半透明版本，但主题 primary 多为
+// #rrggbb 十六进制。canvas 只认 rgba()，故此助手把 hex 转 rgba（三部校验：
+// 去 # → 3位扩6位 → 非 hex 原样返回，兼容 rgba 已带透明度的情况）。
+function alpha(hex, a) {
+  if (typeof hex !== 'string') return hex;
+  let h = hex.trim().replace(/^#/, '');
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  if (h.length !== 6) return hex;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  const al = Math.max(0, Math.min(1, a));
+  return `rgba(${r},${g},${b},${al})`;
+}
+
 // ── 排版风格 ──────────────────────────────────────────────────────────
 // 4 种风格，每种是一组完整的排版参数。卡片按风格切换即可整体换气质，
 // 无需引入字体文件。
@@ -59,6 +75,7 @@ const STYLES = {
   literary: {
     id: 'literary',
     name: '文艺',
+    layout: 'editorial',   // 编辑式：左对齐衬线标题 + 标题下细发丝线 + 左栏大引号 drop-cap
     titleFont: 'serif',
     // 2026-10-07：标题缩到 19（原 21）。节气卡标题是「10月7日·星期二」这类日期，
     // 原来 21 比正文 17 大出一截，喧宾夺主，压到 19 只比正文大 2px，层次在但不抢戏。
@@ -83,6 +100,7 @@ const STYLES = {
   modern: {
     id: 'modern',
     name: '现代',
+    layout: 'swiss',       // 瑞士网格：左对齐 + 整卡几何外框 + 标题基线粗分隔 + 等宽元信息
     titleFont: 'sans',
     titleSize: 17,       // 2026-10-07：20→17，与正文 15 差 2px
     titleWeight: 'bold',
@@ -104,6 +122,7 @@ const STYLES = {
   warm: {
     id: 'warm',
     name: '温暖',
+    layout: 'memo',        // 手账便签：顶部和纸胶带条 + 正文柔色高亮块 + 圆角虚柔外框 + 居中楷体
     titleFont: 'kai',
     titleSize: 19,       // 2026-10-07：22→19，与正文 17 差 2px
     titleWeight: 'bold',
@@ -125,6 +144,7 @@ const STYLES = {
   poster: {
     id: 'poster',
     name: '海报',
+    layout: 'poster',      // 醒目海报：整宽主色 header 带（类型名反白居中）+ 大字号居中 + 厚分隔
     titleFont: 'round',
     titleSize: 20,       // 2026-10-07：26→20。原来比正文 16 大 10px，标题压过金句本体；
                         // 仍需大于 literary 的 19（海报风靠大标题立身份，test_font_kit 有断言）。
@@ -167,5 +187,5 @@ function stats() {
 
 module.exports = {
   FAMILIES, ROLE_FAMILY, STYLES, STYLE_LIST,
-  familyOf, familyForRole, styleOf, hasStyle, styleName, stats
+  familyOf, familyForRole, alpha, styleOf, hasStyle, styleName, stats
 };
