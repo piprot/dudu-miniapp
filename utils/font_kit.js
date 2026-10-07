@@ -122,7 +122,8 @@ const STYLES = {
   warm: {
     id: 'warm',
     name: '温暖',
-    layout: 'memo',        // 手账便签：顶部和纸胶带条 + 正文柔色高亮块 + 圆角虚柔外框 + 居中楷体
+    layout: 'memo',        // 奶油便签（v2 重做）：整卡做减法（无胶带/无外框），标题下居中小短线，
+                           // 一块浅底大圆角便签托住金句、四周留白均匀——参照小红书高赞「温柔便签卡」版式
     titleFont: 'kai',
     titleSize: 19,       // 2026-10-07：22→19，与正文 17 差 2px
     titleWeight: 'bold',

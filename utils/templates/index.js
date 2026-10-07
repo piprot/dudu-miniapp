@@ -109,19 +109,14 @@ const PHOTO_SHADOW = (fontPx) => ({
 
   // ── 顶部锚点（按风格分结构）──
   // poster：整宽主色 header 带（类型名反白居中），海报识别度最高。
-  // memo(温暖)：和纸胶带条（半透明主色块横贯顶部），手账便签感。
-  // 其余：4px 主色细条（沿用旧观感）。
+  // memo(温暖)：不做顶部装饰（v2 做减法——旧版胶带条与便签/外框叠三层显乱），
+  //   温暖的识别交给「浅底便签 + 居中楷体」，其余沿用 4px 主色细条。
   if (styleOn && L === 'poster') {
     rect({ left: 0, top: 0, width: W, height: 34, background: p.primary, radius: p.radius });
     const bandName = CARD_TYPES[type].name;
     const bw = measure(bandName, 13);
     txt(bandName, { left: (W - bw) / 2, top: 11, width: bw, color: '#ffffff', fontSize: 13, fontWeight: 'bold', lineHeight: 16, textAlign: 'center' });
     y = 34 + 14;
-  } else if (styleOn && L === 'memo') {
-    // 和纸胶带：双层半透明色块，上宽下窄，模拟贴纸压边
-    rect({ left: 0, top: 0, width: W, height: 14, background: fontKit.alpha(p.primary, 0.16) });
-    rect({ left: PAD, top: 4, width: innerW, height: 6, background: fontKit.alpha(p.primary, 0.34) });
-    y = 18;
   } else {
     rect({ left: 0, top: 0, width: W, height: 4, background: p.primary });
     y = 18;
@@ -203,6 +198,7 @@ const PHOTO_SHADOW = (fontPx) => ({
     // ── 标题下方分隔（按风格分结构）──
     // swiss(现代)：2px 主色粗基线，瑞士国际主义的强网格语言。
     // editorial(文艺)：1px 主色发丝线，编辑式细分割，书卷克制。
+    // memo(温暖)：24px 居中小短线（半透明主色），便签卡的轻点缀——参照「模块标题配同色短横线」。
     // 其余风格不画，保持留白。
     const titleBlockH = tLines * tLh;
     if (styleOn && L === 'swiss') {
@@ -211,6 +207,10 @@ const PHOTO_SHADOW = (fontPx) => ({
     } else if (styleOn && L === 'editorial') {
       rect({ left: PAD, top: y + titleBlockH + 4, width: innerW, height: 1, background: fontKit.alpha(p.primary, 0.5) });
       y += titleBlockH + 10 + 4;
+    } else if (styleOn && L === 'memo') {
+      rect({ left: (W - 24) / 2, top: y + titleBlockH + 5, width: 24, height: 3, radius: 2,
+        background: fontKit.alpha(p.primary, 0.75) });
+      y += titleBlockH + 10 + 8;
     } else {
       y += titleBlockH + 10;
     }
@@ -244,9 +244,12 @@ const PHOTO_SHADOW = (fontPx) => ({
     let dAlign = (type === 'dailysign') ? 'center' : 'left';
     let dWidth = type === 'dailysign' ? innerW : 40;
     // editorial(文艺) 金句卡：左栏大引号 drop-cap（34px，左对齐），强化书卷编辑式。
+    // memo(温暖)：装饰居中（便签卡是全居中构图，❀ 偏左会破坏对称）。
     // 日签保持居中（它的识别特征），不改。
     if (styleOn && L === 'editorial' && type === 'quote') {
       dSize = 34; dLeft = PAD; dAlign = 'left'; dWidth = 60;
+    } else if (styleOn && L === 'memo') {
+      dAlign = 'center'; dWidth = innerW;
     }
     const dLh = Math.round(dSize * 1.2);
     txt(mark, { left: dLeft, top: y, width: dWidth, color: p.primary,
@@ -273,10 +276,12 @@ const PHOTO_SHADOW = (fontPx) => ({
         : (hero ? 34 : (isQuote ? 30 : (type === 'recommend' ? 26 : 24))));
     const clamp = isQuote ? 6 : 8;
     const bodyLines = countLines(d.body, innerW, fs, measure, clamp);
-    // memo(温暖)：柔色高亮块垫底（手账便签的荧光笔感），正文居中压在其上。
+    // memo(温暖) v2「奶油便签」：一块浅底大圆角便签托住正文，四周留白均匀、悬浮居中
+    // （参照小红书高赞温柔便签卡：奶白底 + 浅色大圆角便签 + 金句居中粗体）。
+    // 旧版 v1 的「小高亮块 + 胶带 + 柔框」三层叠一起显乱，全部撤掉，只留这一块。
     if (styleOn && L === 'memo') {
-      const blockH = bodyLines * lh + 16;
-      rect({ left: PAD - 6, top: y - 4, width: innerW + 12, height: blockH, background: p.bgSoft, radius: 10 });
+      rect({ left: PAD - 8, top: y - 12, width: innerW + 16, height: bodyLines * lh + 30,
+        background: p.bgSoft, radius: 14 });
     }
     txt(d.body, { left: PAD, top: y, width: innerW, color: ink,
       fontSize: fs, lineHeight: lh, lineClamp: clamp,
@@ -371,13 +376,12 @@ const PHOTO_SHADOW = (fontPx) => ({
 
   // ── 整卡外框（按风格分结构，仅描边不填色）──
   // swiss(现代)：1px 主色实线框，几何包裹感。
-  // memo(温暖)：1px 主色柔框（半透明），与便签圆角呼应。
   // poster(海报)：1px 主色实线框，收束整宽色带。
+  // memo(温暖)：v2 不画外框（v1 的柔框+胶带+高亮块叠三层是「不好看」的主因），
+  //   温暖感全交给那块浅底便签，卡面只有一层盒子。
   // editorial / plain：不画外框，保持留白。
   if (styleOn && (L === 'swiss' || L === 'poster')) {
     rect({ left: 1, top: 1, width: W - 2, height: height - 2, border: 1, borderColor: p.primary, radius: p.radius });
-  } else if (styleOn && L === 'memo') {
-    rect({ left: 1, top: 1, width: W - 2, height: height - 2, border: 1, borderColor: fontKit.alpha(p.primary, 0.45), radius: p.radius });
   }
 
   const model = {
