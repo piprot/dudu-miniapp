@@ -104,23 +104,33 @@ const __pageCfg = {
     this.setData({ groups });
   },
 
-  // 点条目 → 展开它的文案（分层的第二层）。用 uid 唯一定位（同一节日有 5 条文案，name 会重复）
+  // 点条目 → 展开它的文案（分层的第二层）。用 uid 唯一定位（同一节日有 5 条文案，name 会重复）。
+  // 手风琴：展开一条时把同组其它条目全部收起，避免同时铺开多条详情把页面撑得极长
+  //（2026-10-07 用户反馈「全是铺陈、来回翻」）。
   onToggleItem(e) {
     const key = e.currentTarget.dataset.key;
     const uid = e.currentTarget.dataset.uid;
     const groups = this.data.groups.map(g => {
       if (g.key !== key) return g;
-      const items = g.items.map(it => (it.uid === uid ? Object.assign({}, it, { open: !it.open }) : it));
+      const target = g.items.find(it => it.uid === uid);
+      const willOpen = target ? !target.open : false;
+      const items = g.items.map(it => Object.assign({}, it, { open: willOpen && it.uid === uid }));
       return Object.assign({}, g, { items });
     });
     this.setData({ groups });
   },
 
-  // 「展开更多」：把该组的渲染上限放开到全库（数据一直在，只是默认不铺开）
+  // 「展开更多」：分级放开该组的显示条数 show：INITIAL(8) → limit(48) → 全部。
+  // 数据一直都在 items 里，只是逐级显示，避免一打开就铺 48 行让人来回翻。
   onShowMore(e) {
     const key = e.currentTarget.dataset.key;
-    const groups = this.data.groups.map(g =>
-      (g.key === key ? Object.assign({}, g, { limit: g.items.length }) : g));
+    const groups = this.data.groups.map(g => {
+      if (g.key !== key) return g;
+      let show;
+      if (g.show < g.limit) show = g.limit;              // 8 → 48
+      else show = g.items.length;                         // 48 → 全部
+      return Object.assign({}, g, { show });
+    });
     this.setData({ groups });
   },
 
@@ -154,11 +164,20 @@ const __pageCfg = {
     //    改价只动 utils/config.js 的 POINTS.cost.solarCard，云函数 GEN_COST 同名同值。
     charge('solarCard', { label: '节气文案卡' }).then(() => {
       this.setData({ sel: { name, text } });
-      const data = cardStyle.applyCardStyle(this, { title: name, body: text, author: 'dudu 画面感' });
+      // ⚠️ 不再传 author 落款：节气/节日卡右下角已有小程序码、右上角已有「dudu 画面感」
+      //    品牌水印，左下角落款会与右上角品牌重复（2026-10-07 设计整改）。左下角留白更干净。
+      const data = cardStyle.applyCardStyle(this, { title: name, body: text });
       this._lastData = { type: 'dailysign', theme: this.data.theme, data };
       this._cardOpts = { canvasId: '#solarCanvas', type: 'dailysign', theme: this.data.theme, data };
       this.setData({ err: '' });
       return renderCard(self, { canvasId: '#solarCanvas', type: 'dailysign', theme: self.data.theme, data })
+        .then(() => {
+          // 成卡后自动滚回顶部预览：从很深的条目成卡时，用户还要手动往上滑很久才看到结果
+          // （2026-10-07 用户反馈「来回翻」）。selector 需要基础库 ≥2.23.1，低版本静默跳过。
+          if (wx.pageScrollTo && typeof wx.createSelectorQuery === 'function') {
+            wx.pageScrollTo({ selector: '#solarCanvas', duration: 300, fail() {} });
+          }
+        })
         .catch(err => { self.setData({ err: (err && err.message) || '生成失败' }); });
     }).catch(() => {
       self.setData({ err: '' });   // charge 已弹积分不足引导

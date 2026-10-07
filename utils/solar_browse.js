@@ -29,6 +29,11 @@ const TAGS = ['其一', '其二', '其三', '其四', '其五', '其六', '其�
 // 为什么：100+ 条一次性平铺，滚动成本太高；先给 48 条足够挑，想看全库再展开。
 const DEFAULT_LIMIT = 48;
 
+// 分组「展开」后默认只露出前 INITIAL_SHOW 条（其余靠 wxml display:none 隐藏，
+// 不破坏「每组渲染上限 48」的预算，也不一次性铺 48 行让人来回翻）。
+// 点「展开更多」逐级放开：INITIAL_SHOW(8) → 48 → 全部。渐进披露，减少平铺。
+const INITIAL_SHOW = 8;
+
 /**
  * 把一个来源列表（节气或节日）+ 它的 N 条文案，展开成 N 个文案级条目。
  * @param {Array} list        来源数组，元素含 name 字段
@@ -94,10 +99,10 @@ function buildGroups() {
   );
 
   return [
-    { key: 'term', name: '二十四节气', icon: '🌾', desc: '东方节气 · 物候与时令', open: false, items: termItems, limit: DEFAULT_LIMIT },
-    { key: 'lunar', name: '农历传统节日', icon: '🏮', desc: '按真实农历日期推算', open: false, items: lunarItems, limit: DEFAULT_LIMIT },
-    { key: 'western', name: '西方节日', icon: '🎄', desc: '公历固定日期', open: false, items: westernItems, limit: DEFAULT_LIMIT }
+    { key: 'term', name: '二十四节气', icon: '🌾', desc: '东方节气 · 物候与时令', open: false, items: termItems, limit: DEFAULT_LIMIT, show: INITIAL_SHOW },
+    { key: 'lunar', name: '农历传统节日', icon: '🏮', desc: '按真实农历日期推算', open: false, items: lunarItems, limit: DEFAULT_LIMIT, show: INITIAL_SHOW },
+    { key: 'western', name: '西方节日', icon: '🎄', desc: '公历固定日期', open: false, items: westernItems, limit: DEFAULT_LIMIT, show: INITIAL_SHOW }
   ];
 }
 
-module.exports = { buildGroups, expand, TAGS, DEFAULT_LIMIT };
+module.exports = { buildGroups, expand, TAGS, DEFAULT_LIMIT, INITIAL_SHOW };

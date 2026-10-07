@@ -88,7 +88,11 @@ const PHOTO_SHADOW = (fontPx) => ({
   const txt = (content, o) => {
     const node = Object.assign(
       { type: 'text', content: String(content == null ? '' : content), fontFamily: font }, o);
-    if (onPhoto && !node.shadow) node.shadow = PHOTO_SHADOW(node.fontSize || 14);
+    // 照片背景模式：文字靠投影保证可读。但**自带实色底块**的小标签（如左上角「每日日签」pill）
+    // 不需要投影——底块本身已提供对比，投影反而把 11px 小字糊成一团（2026-10-07 用户反馈「看不清」）。
+    // 故支持 noShadow:true 显式豁免。
+    if (onPhoto && !node.shadow && !node.noShadow) node.shadow = PHOTO_SHADOW(node.fontSize || 14);
+    delete node.noShadow;   // 不让内部标记漏进渲染引擎
     children.push(node);
   };
   const rect = (o) => children.push(Object.assign({ type: 'rect' }, o));
@@ -101,7 +105,8 @@ const PHOTO_SHADOW = (fontPx) => ({
   const pillText = CARD_TYPES[type].name;
   const pillW = Math.ceil(measure(pillText, 11)) + 20;
   rect({ left: PAD, top: y, width: pillW, height: 22, background: p.bgSoft, radius: 11 });
-  txt(pillText, { left: PAD + 10, top: y + 4, width: pillW - 20, color: p.primary, fontSize: 11, fontWeight: 'bold', lineHeight: 14 });
+  // noShadow：pill 有实色底块，投影只会让 11px 小字发糊（2026-10-07 整改）
+  txt(pillText, { left: PAD + 10, top: y + 4, width: pillW - 20, color: p.primary, fontSize: 11, fontWeight: 'bold', lineHeight: 14, noShadow: true });
   const brand = 'dudu 画面感';
   const brandW = Math.ceil(measure(brand, 10));
   txt(brand, { left: W - PAD - brandW, top: y + 5, width: brandW, color: sub, fontSize: 10, lineHeight: 12 });
@@ -125,7 +130,9 @@ const PHOTO_SHADOW = (fontPx) => ({
     const tFs = styleOn ? S.titleSize : 20;
     const tLh = styleOn ? Math.round(tFs * 1.4) : 28;
     const tLines = countLines(d.title, tw, tFs, measure, 2);
-    if (type === 'notice' || (styleOn && S.showBar)) {
+    // 日签/节日卡（dailysign）天生居中、书卷气，左竖条与之气质冲突 → 仅公告卡(notice)保留。
+    // 旧逻辑：type==='notice' || (styleOn && S.showBar) 会让现代风日签也长出一根左竖条，显得多余。
+    if (type === 'notice' || (styleOn && S.showBar && type !== 'dailysign')) {
       rect({ left: PAD, top: y + 3, width: 4, height: Math.min(tLines * tLh - 6, 50), background: p.primary });
       txt(d.title, { left: PAD + 14, top: y, width: tw, color: ink, fontSize: tFs, fontWeight: 'bold',
         lineHeight: tLh, lineClamp: 2, fontFamily: titleFont,

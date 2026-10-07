@@ -30,7 +30,8 @@
     </view>
   </view>
 
-  <!-- 预览：紧跟主流程（先看到结果，再决定要不要调样式） -->
+  <!-- 预览：成卡后自动滚回这里（见 solar.js preview 里的 pageScrollTo），
+       不用用户手动往上面滑；卡片本身不常驻，避免占掉半屏。 -->
   <view class="canvas-wrap">
     <canvas type="2d" id="solarCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
     <view wx:if="{{!rendered}}" class="canvas-ph">点「生成今日卡」，或展开下面任一条目，预览显示在这里</view>
@@ -52,7 +53,7 @@
       </view>
 
       <view class="group-body" wx:if="{{item.open}}">
-        <view class="item" wx:for="{{item.items}}" wx:for-item="it" wx:for-index="idx" wx:key="uid" wx:if="{{idx < item.limit}}">
+        <view class="item" wx:for="{{item.items}}" wx:for-item="it" wx:for-index="idx" wx:key="uid" wx:if="{{idx < item.limit}}" style="{{idx < item.show ? '' : 'display:none'}}">
           <view class="item-head" bindtap="onToggleItem" data-key="{{item.key}}" data-uid="{{it.uid}}">
             <view class="item-main">
               <view class="item-name">{{it.name}} · {{it.tag}}</view>
@@ -67,9 +68,10 @@
           </view>
         </view>
 
-        <!-- 默认只渲染 48 条（库里仍是 100+ 条），点这里看全部 -->
-        <view class="group-more" wx:if="{{item.items.length > item.limit}}" bindtap="onShowMore" data-key="{{item.key}}">
-          展开更多（共 {{item.items.length}} 条，已显示 {{item.limit}} 条）
+        <!-- 分级展开更多：8 → 48 → 全部。数据一直在库里，只是逐级放开渲染/显示，
+             避免一打开就铺 48 行让人来回翻。 -->
+        <view class="group-more" wx:if="{{item.show < item.items.length}}" bindtap="onShowMore" data-key="{{item.key}}">
+          {{item.show < item.limit ? '展开更多（已显示 ' + item.show + ' 条，共 ' + item.items.length + ' 条）' : '查看全部 ' + item.items.length + ' 条'}}
         </view>
       </view>
     </view>
