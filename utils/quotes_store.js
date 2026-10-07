@@ -82,7 +82,10 @@ function addQuote(input) {
     return exist;
   }
   const item = {
-    id: genId(),
+    // 允许调用方指定 id（内置种子必须用固定 id q_seed_<category>_<n>：
+    // 金句馆的「按主题分类」筛选就是靠这个前缀识别的，见 quotes.js applyFilter）。
+    // 用户手动新增的条目不传 id → 走 genId() 随机 id，两类互不干扰。
+    id: String(input.id || '').trim() || genId(),
     text,
     tags: normTags(input.tags),
     source: String(input.source || '').trim(),
@@ -164,22 +167,57 @@ function exportAll() {
 // 返回 { seeded: Boolean, count: Number }
 function seedIfEmpty() {
   try {
-    if (wx.getStorageSync(SEED_FLAG_KEY)) return { seeded: false, count: 0 };
+    // 2026-10-07 修复：老用户已播过种（SEED_FLAG_KEY 已置位），但当时 addQuote 不支持传 id，
+    // 48 条种子拿到的都是随机 id（q_<时间戳>_xxx），于是「按主题分类」永远筛不到东西。
+    // 这里做一次**幂等迁移**：按文本把既有种子回填成固定 id q_seed_<category>_<n>。
+    if (wx.getStorageSync(SEED_FLAG_KEY)) {
+      const fixed = backfillSeedIds();
+      return { seeded: false, count: 0, migrated: fixed };
+    }
     const list = readAll();
     if (list.length) {
       wx.setStorageSync(SEED_FLAG_KEY, 1);
-      return { seeded: false, count: 0 };
+      const fixed = backfillSeedIds();
+      return { seeded: false, count: 0, migrated: fixed };
     }
     let n = 0;
     SEED_QUOTES.forEach(q => {
-      // 用固定 id 前缀标记为种子条目，便于日后区分/清理
-      const item = addQuote({ text: q.text, tags: q.tags, source: '' });
+      // ⚠️ 必须传 id：主题分类（人生/情感/职场…）是靠 `q_seed_<category>_` 前缀过滤的
+      //（见 pages/quotes/quotes.js 的 applyFilter）。不传就会走 genId() 生成随机 id，
+      // 分类筛选将永远筛不到东西（2026-10-07 用户反馈「切分类句子不变」）。
+      // 同时显式给 kind='quote'：48 条种子都是金句。
+      const item = addQuote({ id: q.id, text: q.text, tags: q.tags, source: '', kind: 'quote' });
       if (item) { n++; }
     });
     wx.setStorageSync(SEED_FLAG_KEY, 1);
     return { seeded: true, count: n };
   } catch (e) {
     return { seeded: false, count: 0 };
+  }
+}
+
+/**
+ * 把已入库的种子条目 id 回填为固定 id（q_seed_<category>_<n>）。
+ * 按**文本**匹配（种子文本唯一），幂等：已是固定 id 的跳过。
+ * 返回被修正的条数。
+ */
+function backfillSeedIds() {
+  try {
+    const list = readAll();
+    if (!list.length) return 0;
+    // 文本 → 种子 id
+    const byText = {};
+    SEED_QUOTES.forEach(q => { byText[q.text] = q.id; });
+    let n = 0;
+    const next = list.map(q => {
+      const want = byText[q.text];
+      if (want && q.id !== want) { n++; return Object.assign({}, q, { id: want }); }
+      return q;
+    });
+    if (n) writeAll(next);
+    return n;
+  } catch (e) {
+    return 0;
   }
 }
 
