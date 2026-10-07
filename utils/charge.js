@@ -17,6 +17,14 @@ function costOf(action) {
   return (POINTS && POINTS.cost && POINTS.cost[action]) || 0;
 }
 
+// 统一从各种错误形态里取出可读原因：云调用失败给 errMsg，业务失败给 message。
+// 2026-10-07：原提示只写「请重试」把真实原因吞掉了，排障只能靠猜，故统一在此提取。
+function reasonOf(err) {
+  if (!err) return '未知原因';
+  if (typeof err === 'string') return err;
+  return err.message || err.errMsg || err.err || '未知原因';
+}
+
 function charge(action, opts) {
   opts = opts || {};
   const cost = costOf(action);
@@ -38,13 +46,19 @@ function charge(action, opts) {
       }
       points.spend(opts.reason || action, cost).then(() => {
         resolve(true);
-      }).catch(() => {
-        wx.showToast({ title: '积分扣除失败，请重试', icon: 'none' });
-        reject(new Error('spend fail'));
+      }).catch(err => {
+        // 暴露真实原因：最常见的是服务端 GEN_COST 与前端 config.POINTS.cost 不同值，
+        // 云函数会返回「扣费成本不符（xx 应为 N 积分，收到 M）」，原提示只说「请重试」看不见。
+        console.error('[charge] 积分扣除失败：', err);
+        wx.showToast({ title: '积分扣除失败·' + String(reasonOf(err)).slice(0, 12), icon: 'none', duration: 3000 });
+        reject(err instanceof Error ? err : new Error(String(reasonOf(err))));
       });
-    }).catch(() => {
-      wx.showToast({ title: '读取余额失败，请重试', icon: 'none' });
-      reject(new Error('balance fail'));
+    }).catch(err => {
+      // 同上：balance 失败只有两条路径 —— wx.cloud.callFunction 被拒（云未初始化/网络/函数未部署），
+      // 或云函数返回 ok:false（openid 为空）。把原因打出来，避免再靠猜。
+      console.error('[charge] 读取余额失败：', err);
+      wx.showToast({ title: '读取余额失败·' + String(reasonOf(err)).slice(0, 12), icon: 'none', duration: 3000 });
+      reject(err instanceof Error ? err : new Error(String(reasonOf(err))));
     });
   });
 }

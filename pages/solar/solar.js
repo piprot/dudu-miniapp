@@ -6,7 +6,7 @@
 // 纯静态本地数据，零 AI、零网络（个人主体合规）：
 //   东方 24 节气（utils/solar_terms.js）+ 真实农历/干支/生肖 + 东西方节日
 //   （utils/calendar_mix.js，1900–2100 农历换算）。
-// 2026-10-06 起启用积分：每次成卡扣 5 分（charge('solarCard')，单价见 config.POINTS.cost）。
+// 2026-10-06 起启用积分：每次成卡扣 8 分（charge('solarCard')，单价见 config.POINTS.cost）。
 const { SOLAR_TERMS, FESTIVALS, pickForToday, pickAnotherNormal } = require('../../utils/solar_terms');
 const { renderCard, saveCanvas } = require('../../utils/quote_card_render');
 const { addQuote } = require('../../utils/quotes_store');
@@ -124,7 +124,7 @@ const __pageCfg = {
     this.setData({ groups });
   },
 
-  // 点条目上的「成卡」→ 立即出卡（扣 5 积分）
+  // 点条目上的「成卡」→ 立即出卡（扣 8 积分）
   onPickItem(e) {
     const name = e.currentTarget.dataset.name;
     const text = e.currentTarget.dataset.text;

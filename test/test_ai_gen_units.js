@@ -188,8 +188,8 @@ function reset(openid, points) {
     const r = await aiGen.main({ prompt: '今天爬山' });
     assert.strictEqual(r.ok, true, JSON.stringify(r));
     assert.strictEqual(r.mode, 'moments');
-    assert.strictEqual(r.cost, 20);
-    assert.strictEqual(store['openid-test'].points, 30, '应扣 20（50→30），实际 ' + store['openid-test'].points);
+    assert.strictEqual(r.cost, 8);
+    assert.strictEqual(store['openid-test'].points, 42, '应扣 8（50→42），实际 ' + store['openid-test'].points);
   });
 
   // 2) moments 余额不足：扣费失败，返回 积分不足 且不加分
@@ -199,7 +199,7 @@ function reset(openid, points) {
     assert.strictEqual(r.ok, false, '应失败');
     assert.strictEqual(r.err, '积分不足');
     assert.strictEqual(r.points, 5, '应返回当前余额 5，实际 ' + r.points);
-    assert.strictEqual(r.need, 20);
+    assert.strictEqual(r.need, 8);
     assert.strictEqual(store['openid-test'].points, 5, 'DB 余额不应变');
     assert.strictEqual(capturedPosts.length, 0, '余额不足不应调用模型');
   });
@@ -209,9 +209,9 @@ function reset(openid, points) {
   await t('moments 余额充足 → 扣 20（50→30）且返回扣后余额', async () => {
     const r = await aiGen.main({ mode: 'moments', prompt: '今天爬山' });
     assert.strictEqual(r.ok, true, JSON.stringify(r));
-    assert.strictEqual(r.cost, 20);
-    assert.strictEqual(r.points, 30, '应返回扣后余额 30，实际 ' + r.points);
-    assert.strictEqual(store['openid-test'].points, 30, 'DB 余额应为 30');
+    assert.strictEqual(r.cost, 8);
+    assert.strictEqual(r.points, 42, '应返回扣后余额 42，实际 ' + r.points);
+    assert.strictEqual(store['openid-test'].points, 42, 'DB 余额应为 42');
     assert.ok(Array.isArray(r.options) && r.options.length >= 1, 'options 应为数组');
   });
 
@@ -360,24 +360,24 @@ function reset(openid, points) {
     reset('openid-test', 50);
     const r = await aiGen.main({ mode: 'moments', prompt: '今天爬了山', feedback: '太文艺了，要更口语' });
     assert.strictEqual(r.ok, true, JSON.stringify(r));
-    assert.strictEqual(r.cost, 15, '换一批应扣 15，实际 ' + r.cost);
+    assert.strictEqual(r.cost, 6, '换一批应扣 6，实际 ' + r.cost);
     assert.strictEqual(r.revised, true);
-    assert.strictEqual(r.points, 35, '余额应 50-15=35，实际 ' + r.points);
-    assert.strictEqual(store['openid-test'].points, 35);
+    assert.strictEqual(r.points, 44, '余额应 50-6=44，实际 ' + r.points);
+    assert.strictEqual(store['openid-test'].points, 44);
   });
 
   await t('moments 无 feedback → 仍按首次档扣 20，revised=false', async () => {
     reset('openid-test', 50);
     const r = await aiGen.main({ mode: 'moments', prompt: '今天爬了山' });
-    assert.strictEqual(r.cost, 20, '首次应扣 20，实际 ' + r.cost);
+    assert.strictEqual(r.cost, 8, '首次应扣 8，实际 ' + r.cost);
     assert.strictEqual(r.revised, false);
-    assert.strictEqual(store['openid-test'].points, 30);
+    assert.strictEqual(store['openid-test'].points, 42);
   });
 
   await t('feedback 为空白串 → 视为首次（不可用它把价格压到 15）', async () => {
     reset('openid-test', 50);
     const r = await aiGen.main({ mode: 'moments', prompt: 'x', feedback: '   ' });
-    assert.strictEqual(r.cost, 20, '空白 feedback 不应走 15 档，实际 ' + r.cost);
+    assert.strictEqual(r.cost, 8, '空白 feedback 不应走 6 档，实际 ' + r.cost);
   });
 
   await t('换一批：修改意见与上一版文案都注入模型输入', async () => {
@@ -396,24 +396,24 @@ function reset(openid, points) {
       '系统提示词应保持字符串（缓存前缀稳定）');
   });
 
-  await t('换一批余额不足（12 < 15）→ 明确返回 need:15 且不扣分', async () => {
-    reset('openid-test', 12);
+  await t('换一批余额不足（5 < 6）→ 明确返回 need:6 且不扣分', async () => {
+    reset('openid-test', 5);
     const r = await aiGen.main({ mode: 'moments', prompt: 'x', feedback: '改一下' });
     assert.strictEqual(r.ok, false);
     assert.strictEqual(r.err, '积分不足');
-    assert.strictEqual(r.need, 15, '应提示需要 15，实际 ' + r.need);
-    assert.strictEqual(store['openid-test'].points, 12, '不应扣分');
+    assert.strictEqual(r.need, 6, '应提示需要 6，实际 ' + r.need);
+    assert.strictEqual(store['openid-test'].points, 5, '不应扣分');
     assert.strictEqual(capturedPosts.length, 0, '余额不足不应调模型');
   });
 
-  await t('换一批模型失败 → 退回 15（余额不变）', async () => {
+  await t('换一批模型失败 → 退回 6（余额不变）', async () => {
     reset('openid-test', 40);
     const orig = fakeHttps.request;
     fakeHttps.request = makeRequestFailing();
     try {
       const r = await aiGen.main({ mode: 'moments', prompt: 'x', feedback: '改一下' });
       assert.strictEqual(r.ok, false);
-      assert.strictEqual(store['openid-test'].points, 40, '失败应退回 15，实际 ' + store['openid-test'].points);
+      assert.strictEqual(store['openid-test'].points, 40, '失败应退回 6，实际 ' + store['openid-test'].points);
     } finally { fakeHttps.request = orig; }
   });
 
@@ -421,7 +421,7 @@ function reset(openid, points) {
     reset('openid-test', 50);
     const r = await aiGen.main({ mode: 'moments', feedback: '换个轻松点的说法', previous: ['a'] });
     assert.strictEqual(r.ok, true, JSON.stringify(r));
-    assert.strictEqual(r.cost, 15);
+    assert.strictEqual(r.cost, 6);
   });
 
   await t('超长 feedback 被截断到 300 字（避免把请求撑爆）', async () => {
@@ -731,8 +731,8 @@ function reset(openid, points) {
     const r = await aiGen.main({ channel: 'h5', prompt: '今天爬山' });
     assert.strictEqual(r.ok, true, JSON.stringify(r));
     assert.strictEqual(r.channel, 'mp', '有 openid 时必须走小程序通道');
-    assert.strictEqual(store['openid-test'].points, 30, '应扣 20 积分，实际 ' + store['openid-test'].points);
-    assert.strictEqual(r.points, 30, '应返回扣费后余额');
+    assert.strictEqual(store['openid-test'].points, 42, '应扣 20 积分，实际 ' + store['openid-test'].points);
+    assert.strictEqual(r.points, 42, '应返回扣费后余额');
   });
 
   await t('H5：不声明 channel 就明确报错（绝不靠推断放行免费额度）', async () => {

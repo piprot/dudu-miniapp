@@ -318,14 +318,14 @@ const errCode = (r) => (/<ErrCode>(\d+)<\/ErrCode>/.exec((r && r.body) || '') ||
 
   // ── ④ 余额不足：先守卫、后调模型 ──
   console.log('[④ 余额不足守门]');
-  await t('余额不足（15 分想生成 20 分的朋友圈文案）→ 拒绝且不扣分、不给 need 以外的副作用', async () => {
-    UNIVERSE.users.U_ALICE.points = 15;   // 把余额压到 20 以下才能走到"不足"分支（模拟老用户只剩 15，不看前面发了多少）
+  await t('余额不足（5 分想生成 8 分的朋友圈文案）→ 拒绝且不扣分、不给 need 以外的副作用', async () => {
+    UNIVERSE.users.U_ALICE.points = 5;    // 把余额压到 8 以下才能走到"不足"分支（模拟老用户只剩 5，不看前面发了多少）
     const before = pts();
     httpLog = [];
     const r = await aiGen.main({ mode: 'moments', prompt: '今天天气不错' });
     assert.strictEqual(r.ok, false);
     assert.strictEqual(r.err, '积分不足');
-    assert.strictEqual(r.need, 20);
+    assert.strictEqual(r.need, 8);
     assert.strictEqual(pts(), before, '余额不足绝不能扣分');
     assert.strictEqual(httpLog.length, 0, '余额不足时不应调用大模型（白白烧钱）');
   });
@@ -401,10 +401,10 @@ const errCode = (r) => (/<ErrCode>(\d+)<\/ErrCode>/.exec((r && r.body) || '') ||
     const before = pts();
     const r = await aiGen.main({ mode: 'moments', prompt: '今天和朋友去爬山' });
     assert.strictEqual(r.ok, true, '生成应成功: ' + r.err);
-    assert.strictEqual(r.cost, 20);
+    assert.strictEqual(r.cost, 8);
     assert.strictEqual(r.revised, false);
     assert.strictEqual(r.options.length, 3);
-    assert.strictEqual(pts(), before - 20);
+    assert.strictEqual(pts(), before - 8);
     assert.strictEqual(r.points, pts(), '返回的余额要与库里一致');
     firstOptions = r.options;
   });
@@ -416,18 +416,18 @@ const errCode = (r) => (/<ErrCode>(\d+)<\/ErrCode>/.exec((r && r.body) || '') ||
       previous: firstOptions
     });
     assert.strictEqual(r.ok, true, '换一批应成功: ' + r.err);
-    assert.strictEqual(r.cost, 15);
+    assert.strictEqual(r.cost, 6);
     assert.strictEqual(r.revised, true);
     assert.strictEqual(r.options.length, 3);
-    assert.strictEqual(pts(), before - 15);
+    assert.strictEqual(pts(), before - 6);
     assert.notDeepStrictEqual(r.options, firstOptions, '换一批必须和上一版不同');
   });
   await t('换一批：feedback 只有空白 → 不能压价，仍按首次 20 扣', async () => {
     const before = pts();
     const r = await aiGen.main({ mode: 'moments', prompt: '今天和朋友去爬山', feedback: '   ' });
     assert.strictEqual(r.ok, true);
-    assert.strictEqual(r.cost, 20, '空白 feedback 不得享受 15 分档');
-    assert.strictEqual(pts(), before - 20);
+    assert.strictEqual(r.cost, 8, '空白 feedback 不得享受 6 分档');
+    assert.strictEqual(pts(), before - 8);
   });
 
   // ── ⑧ 多模态输入（图片 / 文章链接）──
@@ -440,7 +440,7 @@ const errCode = (r) => (/<ErrCode>(\d+)<\/ErrCode>/.exec((r && r.body) || '') ||
     const r = await aiGen.main({ mode: 'moments', imageFileId: 'cloud://env/pic.png' });
     assert.strictEqual(r.ok, true, '图片生成应成功: ' + r.err);
     assert.ok(Array.isArray(r.options) && r.options.length >= 1, '应返回文案');
-    assert.strictEqual(pts(), before - 20, '生成应扣 20，实际 ' + (before - pts()));
+    assert.strictEqual(pts(), before - 8, '生成应扣 8，实际 ' + (before - pts()));
   });
   await t('文章链接生成朋友圈文案 → 抓正文、剔除页面噪声、注入模型输入', async () => {
     httpLog = [];
@@ -517,14 +517,17 @@ const errCode = (r) => (/<ErrCode>(\d+)<\/ErrCode>/.exec((r && r.body) || '') ||
   // ── ⑬ 收尾：账目自洽 ──
   console.log('[⑪ 账目自洽]');
   await t('Alice 的积分 = 各项收支之和（无凭空增减）', async () => {
-    // 80(新人礼) +30(签到) +30(并发补签) −125(④守门时把余额 140→15，模拟老用户) +800(充值) +200(云函数模式推送充值)
-    //   −20(首次) −15(换一批) −20(空白feedback) −20(图片) −20(文章) = 920
+    // 80(新人礼) +30(签到) +30(并发补签) −135(④守门时把余额 140→5，模拟老用户) +800(充值) +200(云函数模式推送充值)
+    //   −8(首次) −6(换一批) −8(空白feedback) −8(图片) −8(文章) = 967
     // 2026-09-18：生成从「+30 赚分」改为「−30 扣分」
     // 2026-09-19：新增新人礼 +100；且「生成画面感内容脚本」路径移除，图片/文章两例改走 moments
     //             （单项 −30 → −20），故 900 → 920。
     // 2026-09-23：新人礼 100→80、每日 base 20→30，但 80+30+30 = 100+20+20 = 140，终值 920 不变。
-    // ④ 那步是**直接赋值** 15，终值不受前面发了多少影响（若这条断言突然变了，说明④ 被改成相对增减，需重新核算）。
-    assert.strictEqual(pts(), 920, '最终余额应为 920，实际 ' + pts());
+    // 2026-10-07：全站产出统一 8 分/次（换一批 6 分），故五次生成 95 → 38；
+    //             且④ 的守门余额由 15 改为 5（8 分制下 15 已够扣，压不到"不足"分支），140→5 即 −135。
+    //             终值 920 + (95−38) − 10 = 967。
+    // ④ 那步是**直接赋值**，终值不受前面发了多少影响（若这条断言突然变了，说明④ 被改成相对增减，需重新核算）。
+    assert.strictEqual(pts(), 967, '最终余额应为 967，实际 ' + pts());
   });
   await t('全程只发了 1 次重复发货尝试，订单状态全部落地', async () => {
     const bad = UNIVERSE.orders.filter(o => o.status !== 'delivered' && o.productId !== 'points_800');

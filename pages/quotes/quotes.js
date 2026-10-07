@@ -1,7 +1,7 @@
 // pages/quotes/quotes.js —— 金句收藏馆（2026-10-06 新增 · 纯本地静态库，零 AI）
 // 仿「随身文案库」类小程序的个人语料库：本地收藏金句/文案，支持
 //   标签分类 · 关键词搜索 · 复制 · 增删改 · 一键成卡（金句卡）。
-// 2026-10-06 起启用积分：每次成卡扣 5 分（charge('quoteCard')，单价见 config.POINTS.cost）。
+// 2026-10-06 起启用积分：每次成卡扣 8 分（charge('quoteCard')，单价见 config.POINTS.cost）。
 // 语料仍全程 wx.storage 本地保存，不上传服务器。
 const store = require('../../utils/quotes_store');
 const { renderCard, saveCanvas } = require('../../utils/quote_card_render');
@@ -143,7 +143,7 @@ const __pageCfg = {
   // 金句卡统一渲染出口：注入风格 + 背景，并记录 _cardOpts 供切主题/改风格时原样重绘。
   //
   // ⚠️ 扣费也收在这里（唯一出口），这样 onMakeCard / onMakeTodayCard / 编辑后重渲染
-  //    三条入口**都**会自动扣 5 分，不会漏。改价只动 config.POINTS.cost.quoteCard。
+  //    三条入口**都**会自动扣 8 分，不会漏。改价只动 config.POINTS.cost.quoteCard。
   //    注意：切主题/改风格走 mixin.repaint，不经过本函数，**不重复扣费**（只重绘已出的卡）。
   renderQuote(base) {
     const self = this;

@@ -154,7 +154,7 @@ t('节气页 WXML：条目文案与「成卡」按钮都在折叠体内（默认
   assert.ok(!has(wxml, 'switchTab'), '仍保留旧 tab 切换（应改为分组折叠）');
   assert.ok(!has(wxml, 'termList'), '仍保留旧 termList 平铺（应改为 groups 分层）');
   // 成卡按钮要明示扣费，避免用户误以为免费
-  assert.ok(/-5 积分/.test(wxml), '成卡按钮未标明扣 5 积分');
+  assert.ok(/-8 积分/.test(wxml), '成卡按钮未标明扣 8 积分');
 });
 
 t('历法模块异常不得拖垮节气页（try/catch 兜底）', () => {

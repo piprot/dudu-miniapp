@@ -1,7 +1,7 @@
 // pages/spark/spark.js —— 每日一句（2026-10-06 新增 · 纯本地静态库，零 AI）
 // 复用 daily.todayQuote() 本地确定性轮换文案库，提供：
 //   ① 今日灵感（每天自动换一条）② 随机换一句 ③ 存金句馆 ④ 预览成卡（日签）。
-// 2026-10-06 起启用积分：每次成卡扣 5 分（charge('sparkCard')，单价见 config.POINTS.cost）。
+// 2026-10-06 起启用积分：每次成卡扣 8 分（charge('sparkCard')，单价见 config.POINTS.cost）。
 // 同时并入 utils/calendar_mix 的节气与东西方节日今日文案（见calendarBlock）。
 const daily = require('../../utils/templates/daily');
 const { renderCard, saveCanvas } = require('../../utils/quote_card_render');

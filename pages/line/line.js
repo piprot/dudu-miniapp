@@ -1,7 +1,7 @@
 // pages/line/line.js —— 台词 / 书摘卡（2026-10-06 新增 · 纯本地静态库，零 AI）
 // 参照「随身文案库」的「来源分类」思路：影视台词 / 书本摘录 / 名言 → 金句卡。
 //   ① 选类型 ② 粘贴文本 + 出处 ③ 一键成卡（金句卡）。
-// 2026-10-06 起启用积分：每次成卡扣 5 分（charge('lineCard')，单价见 config.POINTS.cost）。
+// 2026-10-06 起启用积分：每次成卡扣 8 分（charge('lineCard')，单价见 config.POINTS.cost）。
 // 数据仍全程本地，不上传服务器。
 const { renderCard, saveCanvas } = require('../../utils/quote_card_render');
 const { addQuote } = require('../../utils/quotes_store'); // 存金句馆（与金句馆同一个库）

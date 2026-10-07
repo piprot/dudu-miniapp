@@ -73,14 +73,14 @@ async function run() {
   await t('余额不足 → 拒绝 + 弹「积分不足」引导，不扣费', () => {
     spendCalls.length = 0;
     captured.modal = null; captured.toast = null; captured.nav = null;
-    balanceToReturn = 5; // momentsGen 单价 20，不足
+    balanceToReturn = 5; // momentsGen 单价 8，不足
     return charge('momentsGen', { label: '套模板出文案', reason: '套模板出文案' }).then(
       () => { throw new Error('应当 reject，却 resolve 了'); },
       (err) => {
         assert.strictEqual(err.message, 'insufficient', '应 reject insufficient');
         assert.ok(captured.modal, '应弹出「积分不足」modal');
         assert.ok(/套模板出文案/.test(captured.modal.content), 'modal 文案应含工具名');
-        assert.ok(/20/.test(captured.modal.content), 'modal 文案应含单价 20');
+        assert.ok(/8/.test(captured.modal.content), 'modal 文案应含单价 8');
         assert.strictEqual(captured.modal.confirmText, '去积分', '确认按钮应为「去积分」');
         assert.strictEqual(spendCalls.length, 0, '余额不足不应调用 spend');
       }

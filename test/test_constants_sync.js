@@ -228,13 +228,13 @@ t('5 个合规模块档位：前后端同名同值，且五页都经 charge() �
   Object.keys(MAP).forEach(page => {
     const action = MAP[page];
     // ① 前端 config 有该档位且 = 5
-    assert.strictEqual(cfgCost[action], 5,
-      'config.POINTS.cost.' + action + ' 应为 5，实际 ' + cfgCost[action]);
+    assert.strictEqual(cfgCost[action], 8,
+      'config.POINTS.cost.' + action + ' 应为 8，实际 ' + cfgCost[action]);
     // ② 云函数 GEN_COST 有同名同值（缺一即 spend拒单）
     const m = genBlock.match(new RegExp(action + '\\s*:\\s*(\\d+)'));
     assert.ok(m, '云函数 GEN_COST 缺 ' + action + ' —— spend 会以「扣费成本不符」拒单');
-    assert.strictEqual(Number(m[1]), 5,
-      '云函数 GEN_COST.' + action + ' 应为 5，实际 ' + m[1] + '（与前端不一致）');
+    assert.strictEqual(Number(m[1]), 8,
+      '云函数 GEN_COST.' + action + ' 应为 8，实际 ' + m[1] + '（与前端不一致）');
     // ③ 页面真的调了 charge
     const js = fs.readFileSync(path.join(ROOT, 'pages', page, page + '.js'), 'utf8');
     assert.ok(new RegExp("charge\\(\\s*'" + action + "'").test(js),

@@ -63,7 +63,7 @@
           </view>
           <view class="item-detail" wx:if="{{it.open}}">
             <view class="item-text">{{it.text}}</view>
-            <button class="btn primary item-cta" bindtap="onPickItem" data-name="{{it.name}}" data-text="{{it.text}}">🖼️ 成卡（-5 积分）</button>
+            <button class="btn primary item-cta" bindtap="onPickItem" data-name="{{it.name}}" data-text="{{it.text}}">🖼️ 成卡（-8 积分）</button>
           </view>
         </view>
 
@@ -89,7 +89,7 @@
     bind:cyclemode="onCyclePhotoMode" bind:theme="onPickTheme" />
 
   <view class="err" wx:if="{{err}}">{{err}}</view>
-  <view class="tip">农历与节日来自内置历法表（1900–2100 民用农历），文案与图片仅保存在你手机本地，不上传服务器。每次成卡扣 5 积分。</view>
+  <view class="tip">农历与节日来自内置历法表（1900–2100 民用农历），文案与图片仅保存在你手机本地，不上传服务器。每次成卡扣 8 积分。</view>
 </view>
 
 <privacy-panel privacy-show="{{privacyShow}}" />

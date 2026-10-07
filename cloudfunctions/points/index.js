@@ -56,18 +56,20 @@ const REDEEM = {
 //    → 前端统一报「积分扣除失败，请重试」（2026-10-02 真机反馈）。补上生成类 reason 即闭环。
 // generation 只扣积分、不写任何权益（grant 忽略）。
 const GEN_COST = {
-  momentsGen: 20,    // 套模板出文案（需与 config.POINTS.cost.momentsGen 一致）
-  optFormat: 2,      // 排版优化（防折叠/加 emoji/分段，每次应用）
-  comicGen: 20,      // 分镜编辑器·生成分镜
-  cardGen: 20,       // 卡片制作·生成卡片
-  posterGen: 20,     // 海报长图·生成海报
+  // 2026-10-07 用户拍板：全站所有产出型动作统一 8 分 / 次。
+  // ⚠️ 必须与 utils/config.js POINTS.cost 的同名档位**同值**，否则 spend 拒单
+  //    （前端表现为「积分扣除失败，请重试」）。改价必须两端同改并重新部署本云函数。
+  momentsGen: 8,     // 套模板出文案（需与 config.POINTS.cost.momentsGen 一致）
+  optFormat: 8,      // 排版优化（防折叠/加 emoji/分段，每次应用）
+  comicGen: 8,       // 分镜编辑器·生成分镜
+  cardGen: 8,        // 卡片制作·生成卡片
+  posterGen: 8,      // 海报长图·生成海报
   // 5 个合规模块（2026-10-06 用户拍板启用积分，此前为纯本地免费）
-  // ⚠️ 必须与 utils/config.js POINTS.cost 的同名档位**同值**，否则 spend 拒单。
-  quoteCard: 5,      // 金句收藏馆·成卡
-  sparkCard: 5,      // 每日一句·成卡
-  weatherCard: 5,    // 天气心情卡·成卡
-  solarCard: 5,      // 节气文案·成卡
-  lineCard: 5        // 台词书摘卡·成卡
+  quoteCard: 8,      // 金句收藏馆·成卡
+  sparkCard: 8,      // 每日一句·成卡
+  weatherCard: 8,    // 天气心情卡·成卡
+  solarCard: 8,      // 节气文案·成卡
+  lineCard: 8        // 台词书摘卡·成卡
 };
 
 const DAY_MS = 86400000;

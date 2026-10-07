@@ -1,7 +1,7 @@
 // pages/weather/weather.js —— 天气心情卡（2026-10-06 新增 · 纯本地静态库，零 AI）
 // 参照「天气星语」剥离星座/占卜风险后的纯本地版本：天气 + 心情 → 图文卡。
 //   ① 选天气 ② 选心情 ③ 选城市（可选）④ 写一句（可选）⑤ 选本地图（可选）⑥ 一键成卡。
-// 2026-10-06 起启用积分：每次成卡扣 5 分（charge('weatherCard')，单价见 config.POINTS.cost）。
+// 2026-10-06 起启用积分：每次成卡扣 8 分（charge('weatherCard')，单价见 config.POINTS.cost）。
 //
 // 城市方案（2026-10-06 定案）：省市级联 picker 选到「市」+ 最近使用快捷区。
 //   不使用 wx.getLocation —— 它只回经纬度，拿不到城市名；变城市名必须走逆地理编码
@@ -271,7 +271,7 @@ const __pageCfg = {
     const self = this;
     this.setData({ err: '', autoText: note ? '' : auto });
     // ⚠️ 扣费在前、渲染在后：积分不足时**不产出**（charge 会 reject 并弹引导）。
-    //    「换一条」也会走onGen → 同样扣 5 分（用户拍板「每次成卡扣 5 积分」）。
+    //    「换一条」也会走onGen → 同样扣 8 分（用户拍板「每次成卡扣 8 积分」）。
     //    改价只动 utils/config.js 的 POINTS.cost.weatherCard，云函数 GEN_COST 同名同值。
     charge('weatherCard', { label: '天气心情卡' }).then(() => {
       renderCard(self, { canvasId: '#weatherCanvas', type, theme: self.data.theme, data })
