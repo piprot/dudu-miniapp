@@ -139,6 +139,7 @@ t('分层折叠的两个 handler 存在，条目用 uid 唯一定位', () => {
 });
 
 t('节气页 WXML：条目文案与「成卡」按钮都在折叠体内（默认不展开）', () => {
+  const js = rd(ROOT, 'pages', 'solar', 'solar.js');
   const wxml = rd(ROOT, 'pages', 'solar', 'solar.wxml');
   const detail = wxml.match(/<view class="item-detail" wx:if="\{\{it\.open\}\}">([\s\S]*?)<\/view>\s*<\/view>/);
   assert.ok(detail, '找不到 item-detail 折叠体（条目文案未做二级收起）');
@@ -153,8 +154,11 @@ t('节气页 WXML：条目文案与「成卡」按钮都在折叠体内（默认
   // 旧的两段式 tab + 平铺列表必须已移除
   assert.ok(!has(wxml, 'switchTab'), '仍保留旧 tab 切换（应改为分组折叠）');
   assert.ok(!has(wxml, 'termList'), '仍保留旧 termList 平铺（应改为 groups 分层）');
-  // 成卡按钮要明示扣费，避免用户误以为免费
-  assert.ok(/-8 积分/.test(wxml), '成卡按钮未标明扣 8 积分');
+  // 成卡按钮要明示扣费，避免用户误以为免费。
+  // 2026-10-07：改为动态取价 {{cardCost}}（与 card/poster 页一致），改价只需改 config，
+  // 断言也从写死「-8」改为「成卡按钮必须引用 cardCost」。
+  assert.ok(/成卡（{{cardCost}} 积分）/.test(wxml), '成卡按钮未标明扣费（应引用 cardCost 动态显示单价）');
+  assert.ok(/cardCost:\s*0/.test(js), 'data 未声明 cardCost（按钮取不到单价会显示空白）');
 });
 
 t('历法模块异常不得拖垮节气页（try/catch 兜底）', () => {

@@ -91,3 +91,10 @@
 
 .kind-row { display: flex; flex-wrap: wrap; gap: 12rpx; }
 .qkind { font-size: 22rpx; color: #fff; background: var(--accent-blue); border-radius: var(--r-pill); padding: 4rpx 16rpx; }
+
+/* 积分余额条（2026-10-07 补：让扣费可见） */
+.points-bar { display: flex; align-items: center; justify-content: space-between;
+  padding: 18rpx 22rpx; margin: 18rpx 0 4rpx;
+  background: var(--bg-surface-3); border-radius: 16rpx; }
+.points-num { font-size: 26rpx; font-weight: 600; color: var(--text-title); }
+.points-hint { font-size: 22rpx; color: var(--text-tertiary); }

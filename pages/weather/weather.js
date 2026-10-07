@@ -22,6 +22,8 @@ const cardStyle = require('../../utils/card_style_mixin');  // 排版风格 + �
 const catPicker = require('../../utils/cat_picker_mixin.js'); // 分层选择器（大类→小类 + 常用前置）
 const privacyPanel = require('../../utils/privacy_panel.js');
 const { charge } = require('../../utils/charge.js');
+const points = require('../../utils/points.js');   // 余额显示（扣费提示用）
+const { POINTS } = require('../../utils/config.js');
 
 const WEATHER = [
   { key: 'sunny', name: '晴', icon: '☀️' },
@@ -95,9 +97,40 @@ const __pageCfg = {
     canvasH: 0,
     rendered: false,
     err: '',
+    points: 0,          // 积分余额（顶部展示，扣费后刷新）
+    cardCost: 0,        // 成卡单价（按钮上明写）
     savedTick: 0,
     savedKey: ''
   }, cardStyle.defaults('literary')),
+
+  // 点余额条去积分页（充值/签到）
+
+  goPoints() { wx.navigateTo({ url: '/pages/points/points' }); },
+
+
+  onShow() {
+
+    this.refreshBalance();
+
+  },
+
+
+  // 余额显示：进页拉一次（成卡后由 charge 的 onDone 刷新）
+
+  async refreshBalance() {
+
+    try {
+
+      const bal = await points.getBalance();
+
+      const c = (POINTS && POINTS.cost && POINTS.cost['weatherCard']) || 0;
+
+      this.setData({ points: (bal && bal.points) || 0, cardCost: c });
+
+    } catch (e) { /* 静默，不阻断浏览 */ }
+
+  },
+
 
   onLoad() {
     this.initCardStyle('literary');
@@ -273,7 +306,7 @@ const __pageCfg = {
     // ⚠️ 扣费在前、渲染在后：积分不足时**不产出**（charge 会 reject 并弹引导）。
     //    「换一条」也会走onGen → 同样扣 8 分（用户拍板「每次成卡扣 8 积分」）。
     //    改价只动 utils/config.js 的 POINTS.cost.weatherCard，云函数 GEN_COST 同名同值。
-    charge('weatherCard', { label: '天气心情卡' }).then(() => {
+    charge('weatherCard', { onDone: (r) => this.setData({ points: (r && r.points) || 0 }), label: '天气心情卡' }).then(() => {
       renderCard(self, { canvasId: '#weatherCanvas', type, theme: self.data.theme, data })
         .catch(err => { self.setData({ err: (err && err.message) || '生成失败' }); });
     }).catch(() => {

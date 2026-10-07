@@ -2,6 +2,11 @@
   <view class="hd">
     <view class="hd-title">📚 金句收藏馆</view>
     <view class="hd-sub">金句 · 台词 · 书摘统一收藏 · 标签分类 · 搜索 · 一键成卡（纯本地，零 AI）</view>
+  <!-- 积分余额：成卡会扣费，让用户随时看得见余额（2026-10-07 补） -->
+  <view class="points-bar" bindtap="goPoints">
+    <text class="points-num">💰 {{points}} 积分</text>
+    <text class="points-hint">每次成卡 -{{cardCost}} ›</text>
+  </view>
   </view>
 
   <view class="search">
@@ -21,7 +26,7 @@
   <view class="today" wx:if="{{todayPick}}">
     <view class="today-hd">
       <view class="today-label">✨ 今日推荐</view>
-      <view class="mini gold" bindtap="onMakeTodayCard">🖼️ 成卡</view>
+      <view class="mini gold" bindtap="onMakeTodayCard">🖼️ 成卡 ·{{cardCost}}积分</view>
     </view>
     <view class="today-text">{{todayPick.text}}</view>
   </view>
@@ -74,7 +79,7 @@
         <text wx:if="{{item.source}}" class="qsrc">—— {{item.source}}</text>
       </view>
       <view class="qacts">
-        <view class="mini" bindtap="onMakeCard" data-id="{{item.id}}">🖼️ 成卡</view>
+        <view class="mini" bindtap="onMakeCard" data-id="{{item.id}}">🖼️ 成卡 ·{{cardCost}}积分</view>
         <view class="mini" bindtap="onCopy" data-text="{{item.text}}">📋 复制</view>
         <view class="mini danger" bindtap="onDelete" data-id="{{item.id}}">🗑️ 删</view>
       </view>

@@ -44,7 +44,21 @@ function charge(action, opts) {
         reject(new Error('insufficient'));
         return;
       }
-      points.spend(opts.reason || action, cost).then(() => {
+      points.spend(opts.reason || action, cost).then((res) => {
+        // 2026-10-07：扣了分必须让用户看得见。
+        // 此前只有 gen 页做了「刷新余额 + toast(-N)」，solar/weather/spark/quotes 四个页面
+        // 扣完静默无声，用户以为没扣分（实测反馈）。故统一在这里发出扣费成功事件，
+        // 由页面自行决定怎么提示；onDone(res) 还会带回扣后余额。
+        const after = (res && typeof res.points === 'number') ? res.points : null;
+        if (typeof wx.showToast === 'function' && opts.silent !== true) {
+          wx.showToast({
+            title: opts.successText ? (opts.successText + '（-' + cost + '）') : ('已扣 ' + cost + ' 积分'),
+            icon: 'none', duration: 1500
+          });
+        }
+        if (typeof opts.onDone === 'function') {
+          try { opts.onDone({ points: after, cost }); } catch (e) { /* 提示失败不阻断产出 */ }
+        }
         resolve(true);
       }).catch(err => {
         // 暴露真实原因：最常见的是服务端 GEN_COST 与前端 config.POINTS.cost 不同值，

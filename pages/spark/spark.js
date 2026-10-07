@@ -9,6 +9,8 @@ const { addQuote } = require('../../utils/quotes_store');
 const { THEME_LIST } = require('../../utils/themes/index.js');
 const privacyPanel = require('../../utils/privacy_panel.js');
 const { charge } = require('../../utils/charge.js');
+const points = require('../../utils/points.js');   // 余额显示（扣费提示用）
+const { POINTS } = require('../../utils/config.js');
 
 function dateLabel() {
   const d = new Date();
@@ -34,9 +36,40 @@ const __pageCfg = {
     canvasH: 0,
     rendered: false,
     err: '',
+    points: 0,          // 积分余额（顶部展示，扣费后刷新）
+    cardCost: 0,        // 成卡单价（按钮上明写）
     savedTick: 0,
     savedKey: ''
   },
+
+  // 点余额条去积分页（充值/签到）
+
+  goPoints() { wx.navigateTo({ url: '/pages/points/points' }); },
+
+
+  onShow() {
+
+    this.refreshBalance();
+
+  },
+
+
+  // 余额显示：进页拉一次（成卡后由 charge 的 onDone 刷新）
+
+  async refreshBalance() {
+
+    try {
+
+      const bal = await points.getBalance();
+
+      const c = (POINTS && POINTS.cost && POINTS.cost['sparkCard']) || 0;
+
+      this.setData({ points: (bal && bal.points) || 0, cardCost: c });
+
+    } catch (e) { /* 静默，不阻断浏览 */ }
+
+  },
+
 
   onLoad() {
     this._offset = 0;
@@ -99,7 +132,7 @@ const __pageCfg = {
     // ⚠️ 扣费在前、渲染在后：积分不足时**不产出**（charge 会 reject 并弹引导）。
     //    切主题走 mixin.repaint 只重绘已出的卡，不重复扣费。
     //    改价只动 utils/config.js 的 POINTS.cost.sparkCard，云函数 GEN_COST 同名同值。
-    charge('sparkCard', { label: '每日一句卡' }).then(() => {
+    charge('sparkCard', { onDone: (r) => this.setData({ points: (r && r.points) || 0 }), label: '每日一句卡' }).then(() => {
       this._lastPreview = data;
       this.setData({ err: '' });
       return renderCard(self, { canvasId: '#sparkCanvas', type: 'dailysign', theme: self.data.theme, data })

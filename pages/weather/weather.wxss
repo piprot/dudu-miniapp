@@ -83,3 +83,10 @@
 .btn.save { flex: none; margin-top: 22rpx; padding: 18rpx 64rpx; }
 .err { margin-top: 16rpx; font-size: 24rpx; color: var(--danger); line-height: 1.6; }
 .tip { margin-top: 22rpx; font-size: 22rpx; color: var(--text-tertiary); line-height: 1.6; text-align: center; }
+
+/* 积分余额条（2026-10-07 补：让扣费可见） */
+.points-bar { display: flex; align-items: center; justify-content: space-between;
+  padding: 18rpx 22rpx; margin: 18rpx 0 4rpx;
+  background: var(--bg-surface-3); border-radius: 16rpx; }
+.points-num { font-size: 26rpx; font-weight: 600; color: var(--text-title); }
+.points-hint { font-size: 22rpx; color: var(--text-tertiary); }

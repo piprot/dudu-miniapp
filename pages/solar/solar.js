@@ -15,6 +15,8 @@ const { dateLabelOf } = require('../../utils/daily_rotate');
 const cardStyle = require('../../utils/card_style_mixin');  // 排版风格 + 背景图（四页共用）
 const privacyPanel = require('../../utils/privacy_panel.js');
 const { charge } = require('../../utils/charge.js');
+const points = require('../../utils/points.js');   // 余额显示（扣费提示用）
+const { POINTS } = require('../../utils/config.js');
 
 const __pageCfg = {
   data: Object.assign({
@@ -43,9 +45,40 @@ const __pageCfg = {
     canvasH: 0,
     rendered: false,
     err: '',
+    points: 0,          // 积分余额（顶部展示，扣费后刷新）
+    cardCost: 0,        // 成卡单价（按钮上明写）
     savedTick: 0,
     savedKey: ''
   }, cardStyle.defaults('literary')),   // 日签气质默认文艺风
+
+  // 点余额条去积分页（充值/签到）
+
+  goPoints() { wx.navigateTo({ url: '/pages/points/points' }); },
+
+
+  onShow() {
+
+    this.refreshBalance();
+
+  },
+
+
+  // 余额显示：进页拉一次（成卡后由 charge 的 onDone 刷新）
+
+  async refreshBalance() {
+
+    try {
+
+      const bal = await points.getBalance();
+
+      const c = (POINTS && POINTS.cost && POINTS.cost['solarCard']) || 0;
+
+      this.setData({ points: (bal && bal.points) || 0, cardCost: c });
+
+    } catch (e) { /* 静默，不阻断浏览 */ }
+
+  },
+
 
   onLoad() {
     this.initCardStyle('literary');
@@ -164,7 +197,7 @@ const __pageCfg = {
     // ⚠️ 扣费在前、渲染在后：积分不足时**不产出**（charge 会 reject 并弹引导）。
     //    切主题/改风格走 mixin.repaint 只重绘已出的卡，不重复扣费。
     //    改价只动 utils/config.js 的 POINTS.cost.solarCard，云函数 GEN_COST 同名同值。
-    charge('solarCard', { label: '节气文案卡' }).then(() => {
+    charge('solarCard', { onDone: (r) => this.setData({ points: (r && r.points) || 0 }), label: '节气文案卡' }).then(() => {
       this.setData({ sel: { name, text } });
       // ⚠️ 不再传 author 落款：节气/节日卡右下角已有小程序码、右上角已有「dudu 画面感」
       //    品牌水印，左下角落款会与右上角品牌重复（2026-10-07 设计整改）。左下角留白更干净。

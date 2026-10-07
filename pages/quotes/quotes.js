@@ -12,6 +12,8 @@ const cardStyle = require('../../utils/card_style_mixin');  // 排版风格 + �
 const catPicker = require('../../utils/cat_picker_mixin.js'); // 分层选择器（大类→小类下钻 + 常用前置）
 const privacyPanel = require('../../utils/privacy_panel.js'); // 隐私授权面板：同意按钮须用 open-type=agreePrivacyAuthorization
 const { charge } = require('../../utils/charge.js');
+const points = require('../../utils/points.js');   // 余额显示（扣费提示用）
+const { POINTS } = require('../../utils/config.js');
 
 // 常用分类：进页最常点的四个。**必须是真实高频**，不是凑数——
 // 常用区的作用是让用户一步到位，若放不相关的项反而误导（用户会点「人生」但其实要「职场」）。
@@ -54,11 +56,24 @@ const __pageCfg = {
     canvasH: 0,
     rendered: false,
     err: '',
+    points: 0,          // 积分余额（顶部展示，扣费后刷新）
+    cardCost: 0,        // 成卡单价（按钮上明写）
     savedTick: 0,
     savedKey: ''
   }, cardStyle.defaults('literary')),   // 金句卡默认文艺风
 
   onLoad() { this.initCardStyle('literary'); store.seedIfEmpty(); this.initPicker(); this.refresh(); },
+
+  // 余额显示：进入页面时拉一次（成卡后由 charge 的 onDone 刷新）
+  async refreshBalance() {
+    try { const bal = await points.getBalance();
+      const c = (POINTS && POINTS.cost && POINTS.cost['quoteCard']) || 0;
+      this.setData({ points: (bal && bal.points) || 0, cardCost: c });
+    } catch (e) { /* 静默，不阻断浏览 */ }
+  },
+  // 点余额条去积分页（充值/签到）
+  goPoints() { wx.navigateTo({ url: '/pages/points/points' }); },
+
   onShow() { this.refresh(); },
 
   // 分层选择器初始化：大类=分类，小类=该类下真实存在的标签
@@ -82,6 +97,7 @@ const __pageCfg = {
     };
     // 进页默认落在第一个常用大类上
     this._pickerOnChange({ key: '__all__' });
+    this.refreshBalance();
   },
 
   // 标签云随收藏增长 → 大类下的小类也要跟着变，重进页面时重建一次分组
@@ -147,7 +163,7 @@ const __pageCfg = {
   //    注意：切主题/改风格走 mixin.repaint，不经过本函数，**不重复扣费**（只重绘已出的卡）。
   renderQuote(base) {
     const self = this;
-    return charge('quoteCard', { label: '金句卡' }).then(() => {
+    return charge('quoteCard', { onDone: (r) => this.setData({ points: (r && r.points) || 0 }), label: '金句卡' }).then(() => {
       this._lastQuote = base;
       const data = cardStyle.applyCardStyle(this, base);
       this._cardOpts = { canvasId: '#quotesCanvas', type: 'quote', theme: this.data.theme, data };

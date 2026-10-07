@@ -2,6 +2,11 @@
   <view class="hd">
     <view class="hd-title">🌤️ 天气心情卡</view>
     <view class="hd-sub">天气 + 心情 → 图文卡（纯本地，零 AI · 已去除星座占卜风险）</view>
+  <!-- 积分余额：成卡会扣费，让用户随时看得见余额（2026-10-07 补） -->
+  <view class="points-bar" bindtap="goPoints">
+    <text class="points-num">💰 {{points}} 积分</text>
+    <text class="points-hint">每次成卡 -{{cardCost}} ›</text>
+  </view>
   </view>
 
   <!-- 分层选择：大类（天气/心情）→ 小类（具体项），常用前置。
@@ -101,7 +106,7 @@
   <!-- 主行动按钮：紧跟内容区。
        旧序把「生成卡片」夹在 4 个配置 block 之后，用户改完要往上翻才找得到提交键
        —— 这是 2026-10-06 用户反馈「排版太有问题」里最实质的一条。 -->
-  <button class="btn primary gen" bindtap="onGen">生成卡片</button>
+  <button class="btn primary gen" bindtap="onGen">生成卡片（{{cardCost}} 积分）</button>
 
   <view class="canvas-wrap">
     <canvas type="2d" id="weatherCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
