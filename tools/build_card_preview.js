@@ -297,8 +297,9 @@ document.getElementById('info').innerHTML =
 // ── 单屏入口：只看某一区块 ──
 //   file://…/card_preview.html#styles  9 种风格（含分组标题）
 //   file://…/card_preview.html#frames  5 种成图 × 照片背景
+//   file://…/card_preview.html#poster  海报长图
 // 与参考图逐张核对时长图里翻找太费劲，加 hash 直接单屏看。
-const ONLY = { '#styles': 'grid4', '#frames': 'grid5' }[location.hash];
+const ONLY = { '#styles': 'grid4', '#frames': 'grid5', '#poster': 'grid3' }[location.hash];
 if (ONLY) {
   [...document.querySelectorAll('.demo')].forEach(d => {
     if (!d.querySelector('#' + ONLY)) d.style.display = 'none';

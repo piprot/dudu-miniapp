@@ -87,8 +87,14 @@ function buildPosterModel(themeId, data, opts) {
     h += barH;
     if (d.author) {
       h += 14;
-      const aw = Math.ceil(measure('—— ' + d.author, 13));
-      text(mid, '—— ' + d.author, { left: W - PAD - aw, top: h, width: aw, color: sub, fontSize: 13, lineHeight: 20 });
+      // ⚠️ 这里以前是 `width: Math.ceil(measure('—— ' + author, 13))`——把容器宽度卡成
+      //    **正好等于**测量值。问题：measure 走 canvas 的 sans-serif，而渲染走主题的
+      //    PingFang/雅黑，两者差一两个像素，wrapText 就判定「装不下」→「dudu」被挤到
+      //    第二行；更糟的是下面 h 只加了 20（一行的高度），折行后署名会压住下方内容。
+      //    正确做法：署名放在整行容器里靠右对齐，宽度给足 innerW，永不依赖测量精度。
+      //    lineClamp:1 是兜底（署名长到 24 字以上才截断，截断也比撑破版心好）。
+      text(mid, '—— ' + d.author, { left: PAD, top: h, width: innerW, color: sub,
+        fontSize: 13, lineHeight: 20, textAlign: 'right', lineClamp: 1 });
       h += 20;
     }
   }

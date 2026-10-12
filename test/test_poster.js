@@ -3,7 +3,7 @@
 // 提示不折行、照片背景白字、流式高度、合规（无头像/署名占位）。
 'use strict';
 const assert = require('assert');
-const { buildPosterModel, W } = require('../utils/templates/poster');
+const { buildPosterModel, W, PAD } = require('../utils/templates/poster');
 const { computeLayout, draw } = require('../utils/core/render_engine');
 const { THEME_LIST } = require('../utils/themes/index.js');
 
@@ -86,6 +86,30 @@ t('落款不重复画署名：中段已有 `—— 作者`，落款不得再画�
   const m3 = buildPosterModel('warm', { quote: '短句。' });
   assert.strictEqual(m3.children.filter(c => c.type === 'text' && !String(c.content || '').trim()).length, 0,
     '无来源时不应渲染空文本占位');
+});
+
+t('署名「—— 作者」不折行：容器给足整行宽 + 右对齐（2026-10-13 真机折行修复）', () => {
+  // 用户反馈：海报里「—— dudu」的 dudu 掉到了第二行。
+  // 根因是这里以前把容器宽度卡成 `Math.ceil(measure(text, 13))`——正好等于测量值。
+  // measure 走 canvas 的 sans-serif，渲染走主题的 PingFang/雅黑，差一两个 px 就被
+  // wrapText 判成「装不下」而折行；而且署名区高度只按一行(20px)累加，折行会压住
+  // 下方正文。修法：容器给整行 innerW、靠 textAlign 右对齐，不再依赖测量精度。
+  const m = buildPosterModel('warm', { quote: '短句。', author: 'dudu' });
+  const sign = m.children.find(c => c.type === 'text' && /^—— /.test(String(c.content)));
+  assert.ok(sign, '应有 `—— 作者` 署名节点');
+  const innerW = W - PAD * 2;                     // 别硬编码 PAD，跟着模板走
+  assert.strictEqual(sign.width, innerW,
+    '署名容器应是整行宽（' + innerW + '），实际 ' + sign.width + '——宽度卡太窄就会折行');
+  assert.strictEqual(sign.textAlign, 'right', '署名应靠右对齐');
+  assert.strictEqual(sign.left, PAD, '署名容器左边界应是 PAD');
+  assert.strictEqual(sign.lineClamp, 1, '署名应限制单行（超长截断，不能撑破版心）');
+
+  // 任何长度的作者名都只占一行：容器宽度不随内容变化，这是防折行的关键
+  for (const a of ['dudu', '鲁迅', '欧内斯特·米勒尔·海明威', '一个特别特别长的署名名字测试']) {
+    const mm = buildPosterModel('warm', { quote: '短句。', author: a });
+    const s = mm.children.find(c => c.type === 'text' && /^—— /.test(String(c.content)));
+    assert.strictEqual(s.width, innerW, '作者「' + a + '」的署名容器宽度不该随内容变');
+  }
 });
 
 t('合规：不渲染头像/首字圆形占位（署名已随整改移除，旧版圆占位与文字叠加出橙点 bug）', () => {
