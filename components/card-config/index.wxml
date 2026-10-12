@@ -17,6 +17,10 @@
           class="style-chip {{styleKey === item.id ? 'on' : ''}}"
           bindtap="onPickStyle" data-key="{{item.id}}">{{item.name}}</view>
       </view>
+      <!-- 当前风格的一句话说明：2026-10-12 风格从 4 种扩到 9 种后新增——
+           选项一多，光看「色带 / 签名 / 刊头 / 大字」这类两字名字猜不出效果，
+           得有一行说明把「选它就变成什么样」讲清楚。 -->
+      <view wx:if="{{styleDesc}}" class="cc-styledesc">{{styleDesc}}</view>
       <view class="cc-hint">{{styleHint}}</view>
     </view>
 

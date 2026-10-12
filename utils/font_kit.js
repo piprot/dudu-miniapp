@@ -15,7 +15,9 @@
 //
 // ── 为什么不单调 ─────────────────────────────────────────────────────
 // 真正的视觉层次来自「字体族 × 字重 × 字距 × 对齐 × 装饰符号」的组合，
-// 而非某一款字形。本库把这套组合抽象成 4 种可直接切换的排版风格。
+// 而非某一款字形。本库把这套组合抽象成 9 种可直接切换的排版风格
+// （2026-10-12 由 4 种扩到 9 种：新增 色带 / 签名 / 极简 / 刊头 / 大字，
+//  版式取自 5 张参考图——磨砂色带引言、签名打卡、静默水印、社群栏头栏脚、大字标题封面）。
 
 // ── 字体族 ────────────────────────────────────────────────────────────
 // 每族给一串回退链，ctx.font 取第一个系统可用的。
@@ -68,13 +70,27 @@ function alpha(hex, a) {
 }
 
 // ── 排版风格 ──────────────────────────────────────────────────────────
-// 4 种风格，每种是一组完整的排版参数。卡片按风格切换即可整体换气质，
-// 无需引入字体文件。
+// 9 种风格，每种是一组完整的排版参数（字体 × 字号 × 字距 × 对齐 × 装饰 × 构图骨架）。
+// 卡片按风格切换即可整体换气质，无需引入字体文件。
+//
+// 两个字段容易被忽略，但它们是「风格不只是换字体」的关键：
+//   layout —— 构图骨架 id，由 utils/templates/index.js 消费（顶部锚点 / 标题处理 /
+//             装饰位置 / 正文容器 / 落款对齐 / 外框），决定卡面的结构而不只是字形。
+//   desc   —— 出图设置里显示给用户的一句话说明（组件 card-config 渲染）。
+//
+// ⚠️ 新增风格时必守的硬约束（test/test_font_kit.js 有断言，别绕）：
+//   ① 必填字段齐全（id/name/titleFont/titleSize/titleWeight/titleAlign/bodyFont/
+//      bodySize/bodyLineHeight/bodyAlign/decoSize/radius）；
+//   ② titleFont/bodyFont 必须是 FAMILIES 里已有的族名；
+//   ③ titleSize > bodySize，bodyLineHeight > bodySize；
+//   ④ 风格签名 [titleFont|titleSize|titleAlign|bodySize|deco] 全局唯一——
+//      光换颜色不算新风格，字号/对齐/装饰至少有一处真不同。
 const STYLES = {
   // 文艺书卷：衬线标题 + 居中 + 主色引号（参照原日签模板的气质）
   literary: {
     id: 'literary',
     name: '文艺',
+    desc: '衬线标题 + 居中金句，左上大引号压角，书卷气最重（默认）',
     layout: 'editorial',   // 编辑式：左对齐衬线标题 + 标题下细发丝线 + 左栏大引号 drop-cap
     titleFont: 'serif',
     // 2026-10-07：标题缩到 19（原 21）。节气卡标题是「10月7日·星期二」这类日期，
@@ -100,6 +116,7 @@ const STYLES = {
   modern: {
     id: 'modern',
     name: '现代',
+    desc: '黑体左对齐 + 几何外框，元信息走等宽，干净克制的公告感',
     layout: 'swiss',       // 瑞士网格：左对齐 + 整卡几何外框 + 标题基线粗分隔 + 等宽元信息
     titleFont: 'sans',
     titleSize: 17,       // 2026-10-07：20→17，与正文 15 差 2px
@@ -122,6 +139,7 @@ const STYLES = {
   warm: {
     id: 'warm',
     name: '温暖',
+    desc: '楷体标题 + 奶油便签托住金句，四周留白均匀，最柔和',
     layout: 'memo',        // 奶油便签（v2 重做）：整卡做减法（无胶带/无外框），标题下居中小短线，
                            // 一块浅底大圆角便签托住金句、四周留白均匀——参照小红书高赞「温柔便签卡」版式
     titleFont: 'kai',
@@ -145,6 +163,7 @@ const STYLES = {
   poster: {
     id: 'poster',
     name: '海报',
+    desc: '整宽主色顶带 + 圆体大字，分享图身份感最强',
     layout: 'poster',      // 醒目海报：整宽主色 header 带（类型名反白居中）+ 大字号居中 + 厚分隔
     titleFont: 'round',
     titleSize: 20,       // 2026-10-07：26→20。原来比正文 16 大 10px，标题压过金句本体；
@@ -163,11 +182,133 @@ const STYLES = {
     decoSize: 14,
     showDeco: true,
     radius: 16
+  },
+
+  // ── 2026-10-12 新增 5 种（版式取自 5 张参考图）────────────────────────
+  // 色带：正文压在一条横向半透明色带里，落款右对齐——参考「磨砂色带引言卡」。
+  // 适合长句/书摘类内容：图再花，色带也把文字隔出一块安静的阅读区。
+  band: {
+    id: 'band',
+    name: '色带',
+    desc: '正文压在一条半透明色带里，落款右对齐，像书摘引言页',
+    layout: 'band',        // 横向色带托正文 + 上下发丝线 + 落款右对齐
+    titleFont: 'serif',
+    titleSize: 18,
+    titleWeight: 'bold',
+    titleSpacing: 1,
+    titleAlign: 'center',
+    bodyFont: 'sans',
+    bodySize: 17,
+    bodyLineHeight: 32,
+    bodyAlign: 'center',
+    bodySpacing: 0.5,
+    deco: '',              // 色带本身就是装饰，不再叠引号（避免两层装饰打架）
+    decoClose: '',
+    decoColor: 'primary',
+    decoSize: 0,
+    showDeco: false,
+    radius: 16
+  },
+  // 签名：右上角手写署名 + 底部两行品牌行（年份｜品牌 @人名）——参考「生活打卡图」。
+  // 适合个人 IP 日更：署名是「我在场」的痕迹，比一个 logo 更有温度。
+  signature: {
+    id: 'signature',
+    name: '签名',
+    desc: '右上角手写署名 + 底部两行品牌行，生活打卡的气质',
+    layout: 'signature',   // 无顶带无胶囊：右上角楷体署名，落款居中，末尾追加品牌行
+    titleFont: 'kai',
+    titleSize: 18,
+    titleWeight: 'bold',
+    titleSpacing: 1.5,
+    titleAlign: 'left',
+    bodyFont: 'sans',
+    bodySize: 16,
+    bodyLineHeight: 30,
+    bodyAlign: 'center',
+    bodySpacing: 0.5,
+    deco: '',
+    decoClose: '',
+    decoColor: 'primary',
+    decoSize: 0,
+    showDeco: false,
+    radius: 18
+  },
+  // 极简：去掉顶带 / 胶囊 / 分隔线 / 外框，只留文字压在图上——参考「静默氛围图」。
+  // 适合氛围图与多图连发：文字退成痕迹，画面本身是主角。
+  minimal: {
+    id: 'minimal',
+    name: '极简',
+    desc: '去掉全部装饰与分隔线，只剩文字压在图上，画面是主角',
+    layout: 'minimal',     // 无顶带 / 无胶囊 / 无分隔线 / 无外框；左下角一行极小水印收尾
+    titleFont: 'sans',
+    titleSize: 16,
+    titleWeight: 'normal',
+    titleSpacing: 0.5,
+    titleAlign: 'left',
+    bodyFont: 'sans',
+    bodySize: 15,
+    bodyLineHeight: 27,
+    bodyAlign: 'left',
+    bodySpacing: 0,
+    deco: '',
+    decoClose: '',
+    decoColor: 'primary',
+    decoSize: 0,
+    showDeco: false,
+    radius: 10
+  },
+  // 刊头：顶部大字距刊头（字链）+ 底部两行栏脚——参考「社群打卡物料」。
+  // 适合陪伴营/训练营的系列日更：像一本刊物的内页，栏目归属一眼可辨。
+  masthead: {
+    id: 'masthead',
+    name: '刊头',
+    desc: '顶部大字距刊头 + 底部两行栏脚，像一本刊物的内页',
+    layout: 'masthead',    // 顶部居中大字距刊头 + 1px 细线；落款居中 + 栏脚行（品牌@）
+    titleFont: 'serif',
+    titleSize: 20,
+    titleWeight: 'bold',
+    titleSpacing: 2,
+    titleAlign: 'center',
+    bodyFont: 'sans',
+    bodySize: 16,
+    bodyLineHeight: 30,
+    bodyAlign: 'left',
+    bodySpacing: 0.5,
+    deco: '❖',
+    decoClose: '',
+    decoColor: 'primary',
+    decoSize: 12,
+    showDeco: true,
+    radius: 20
+  },
+  // 大字：标题放大到 24px（本库最大），底部加厚分隔 + 字距放宽的信息行——参考「大字标题封面」。
+  // 适合系列栏目封面：字够大、留白够狠，缩略图里也能一眼读出来。
+  headline: {
+    id: 'headline',
+    name: '大字',
+    desc: '标题放大到 24px + 加厚分隔线，缩略图里也醒目',
+    layout: 'headline',    // 标题 24px 大字 + 3px 厚分隔；底部信息行走大字距
+    titleFont: 'round',
+    titleSize: 24,
+    titleWeight: 'bold',
+    titleSpacing: 3,
+    titleAlign: 'center',
+    bodyFont: 'sans',
+    bodySize: 17,
+    bodyLineHeight: 32,
+    bodyAlign: 'center',
+    bodySpacing: 1,
+    deco: '',
+    decoClose: '',
+    decoColor: 'primary',
+    decoSize: 0,
+    showDeco: false,
+    radius: 18
   }
 };
 
 const STYLE_LIST = Object.keys(STYLES).map(k => ({
-  id: k, name: STYLES[k].name, titleFont: STYLES[k].titleFont
+  id: k, name: STYLES[k].name, titleFont: STYLES[k].titleFont, desc: STYLES[k].desc || ''
 }));
 
 function styleOf(id) {
@@ -182,11 +323,17 @@ function styleName(id) {
   return hasStyle(id) ? STYLES[id].name : STYLES.literary.name;
 }
 
+/** 风格的一句话说明（出图设置里显示给用户，帮他在 9 个选项里选）。
+ *  未知 id 回退文艺的说明，不返回空串——空串会让组件那一行塌成 0 高。 */
+function styleDesc(id) {
+  return hasStyle(id) ? (STYLES[id].desc || '') : (STYLES.literary.desc || '');
+}
+
 function stats() {
   return { families: Object.keys(FAMILIES).length, styles: Object.keys(STYLES).length, list: STYLE_LIST.map(s => s.name).join('/') };
 }
 
 module.exports = {
   FAMILIES, ROLE_FAMILY, STYLES, STYLE_LIST,
-  familyOf, familyForRole, alpha, styleOf, hasStyle, styleName, stats
+  familyOf, familyForRole, alpha, styleOf, hasStyle, styleName, styleDesc, stats
 };

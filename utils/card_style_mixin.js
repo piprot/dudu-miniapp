@@ -51,11 +51,15 @@ const FALLBACK_ID = 'bg01';   // 背景加载失败时回落到这张（保证�
 
 /** 页面 data 里的风格/背景字段。defaultStyleKey 缺省用文艺（与模板层 DEFAULT_STYLE 对齐）。 */
 function defaults(defaultStyleKey) {
+  const def = defaultStyleKey || 'literary';
   return {
     // 排版风格
-    styleKey: defaultStyleKey || 'literary',
+    styleKey: def,
     styleList: fontKit.STYLE_LIST,
-    styleDefault: defaultStyleKey || 'literary',
+    styleDefault: def,
+    // 当前风格的一句话说明（2026-10-12 风格扩到 9 种后新增：选项变多，
+    // 光看「色带 / 签名 / 刊头」这类名字猜不出效果，得有一行说明帮用户选）。
+    styleDesc: fontKit.styleDesc(def),
     // 背景：内置压缩兜底图（默认来源，零网络零白名单）
     builtinPhotos: bgPack.listAll(),
     bgPhotoId: FALLBACK_ID,
@@ -222,6 +226,7 @@ const cardStyleMethods = {
 
     this.setData(Object.assign({}, defaults(def), {
       styleKey,
+      styleDesc: fontKit.styleDesc(styleKey),
       photoMode,
       photoModeLabel: MODE_LABEL[photoMode],
       bgSource: src,
@@ -233,7 +238,7 @@ const cardStyleMethods = {
   onPickStyle(e) {
     const k = pickVal(e, 'key');
     if (!fontKit.hasStyle(k) || k === this.data.styleKey) return;
-    this.setData({ styleKey: k, rendered: false });
+    this.setData({ styleKey: k, styleDesc: fontKit.styleDesc(k), rendered: false });
     writeStore({ styleKey: k });
     repaint(this);
   },

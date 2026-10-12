@@ -102,6 +102,55 @@ t('styleOf 未知 id 回退 literary，styleName 同步', () => {
   assert.ok(kit.styleName('nope').length > 0, 'styleName 未知 id 应有回退名');
 });
 
+// ── 2026-10-12：风格由 4 种扩到 9 种（色带/签名/极简/刊头/大字）──
+t('9 种风格齐全，每种都带一句话说明（出图设置那一行就靠它）', () => {
+  const ids = Object.keys(kit.STYLES);
+  assert.strictEqual(ids.length, 9, '风格数应为 9，实际 ' + ids.length);
+  for (const id of ids) {
+    const s = kit.STYLES[id];
+    assert.ok(s.layout, id + ' 缺 layout 骨架 id（模板层靠它选构图）');
+    assert.ok(s.desc && s.desc.length >= 8, id + ' 缺 desc / 太短（用户看不出这风格长什么样）');
+    assert.strictEqual(kit.styleDesc(id), s.desc, id + ' styleDesc 与 STYLES 不一致');
+  }
+  assert.strictEqual(kit.STYLE_LIST.length, 9, 'STYLE_LIST 应同步到 9');
+  assert.ok(kit.STYLE_LIST.every(x => x.desc && x.desc.length),
+    'STYLE_LIST 必须带 desc —— 组件 card-config 直接遍历它渲染，缺了说明行就是空的');
+  // 未知识别回退，不能返回空串（空串会让组件那一行塌成 0 高）
+  assert.ok(kit.styleDesc('nope').length > 0, '未知风格说明应回退文艺，不能为空');
+});
+
+t('5 种新风格真的换了**构图骨架**（不是只换字体/颜色）', () => {
+  // 自带样例数据，不引用文件下方的 DATA（const 在 TDZ 里，提前引用会抛
+  // "Cannot access 'DATA' before initialization"）
+  const D = { title: '今天的风很轻', body: '把窗帘拉开，把心事放下。', author: 'dudu', qr: true };
+  const kids = k => buildCardModel('quote', 'warm', Object.assign({ styleKey: k }, D)).children;
+  const wide = cs => cs.filter(c => c.type === 'rect' && c.left === 0 && c.width === 340);
+
+  // 色带：正文外围那条整宽半透明色带 + 上下两条发丝线 → 整宽 rect 从 1（顶带）变 4
+  assert.ok(wide(kids('band')).length >= 4,
+    '色带风应有整宽色带块与上下发丝线，实际整宽 rect: ' + wide(kids('band')).length);
+
+  // 极简：无胶囊、无分隔线、无顶部色条（文字直接坐在图上）
+  const minimal = kids('minimal');
+  assert.ok(!minimal.some(c => c.type === 'line'), '极简风不应有分隔线');
+  assert.ok(!minimal.some(c => c.type === 'rect' && c.height === 4), '极简风不应有 4px 顶部色条');
+  assert.ok(!minimal.some(c => c.type === 'text' && c.content === '金句卡'), '极简风不应有类型胶囊');
+
+  // 刊头：顶部插空格的字链刊头（引擎不消费 letterSpacing，靠插空格才真的有字距）
+  assert.ok(kids('masthead').some(c => c.type === 'text' && c.fontSize === 13 && /\s/.test(c.content || '')),
+    '刊头风应有空格分隔的字链刊头');
+
+  // 签名：署名上卡面 + 底部「年份｜品牌」栏脚行
+  const sigTexts = kids('signature').filter(c => c.type === 'text').map(c => c.content);
+  assert.ok(sigTexts.indexOf(D.author) >= 0, '签名风应把署名放到卡面（右上角手写署名）');
+  assert.ok(sigTexts.some(x => /\d{4}｜/.test(x)),
+    '签名风应有「年份｜品牌」栏脚行，实际: ' + JSON.stringify(sigTexts));
+
+  // 大字：3px 厚分隔线（细线会被 24px 大标题压没）
+  assert.ok(kids('headline').some(c => c.type === 'line' && c.thickness === 3),
+    '大字风应有 3px 厚分隔线');
+});
+
 // ── 与模板层集成（真正的价值在这里） ──
 const DATA = { title: '今天的风很轻', body: '把窗帘拉开，把心事放下。', author: 'dudu' };
 

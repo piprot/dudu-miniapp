@@ -371,6 +371,16 @@ t('onPickStyle 只接受 font_kit 认得的 key，且同值不重复渲染', () 
   p.onPickStyle(ev({ key: 'modern' }));
   assert.strictEqual(p.data.styleKey, 'modern');
   assert.strictEqual(store[mixin.KEY].styleKey, 'modern', '风格未持久化');
+  assert.strictEqual(p.data.styleDesc, fontKit.styleDesc('modern'),
+    '切换风格必须同步更新 styleDesc（出图设置里那行说明，2026-10-12 风格扩到 9 种后新增）');
+
+  // 新增风格也要能被选中（色带/签名/极简/刊头/大字）
+  for (const k of ['band', 'signature', 'minimal', 'masthead', 'headline']) {
+    p.onPickStyle(ev({ key: k }));
+    assert.strictEqual(p.data.styleKey, k, '新风格未被接受: ' + k);
+    assert.strictEqual(p.data.styleDesc, fontKit.styleDesc(k), k + ' 的说明未同步');
+  }
+  p.onPickStyle(ev({ key: 'modern' }));
 
   p.onPickStyle(ev({ key: '不存在的风格' }));
   assert.strictEqual(p.data.styleKey, 'modern', '非法风格被接受了');

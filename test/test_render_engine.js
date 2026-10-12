@@ -72,6 +72,24 @@ t('image / qrcode 元素被解析（含 contain 不裁剪语义占位）', () =>
   assert.ok(qr && qr.w === 56 && qr.h === 56, '二维码应为 56×56');
 });
 
+t('line 不给 height = 水平分隔线（2026-10-12 修复：此前继承整卡高，被判成竖线）', () => {
+  const m = { width: 340, height: 400, children: [
+    { type: 'line', left: 20, top: 100, width: 300, thickness: 1, color: '#e5e5e5' }
+  ]};
+  const L = computeLayout(m, {}, measure);
+  const ln = L.blocks.find(b => b.type === 'line');
+  assert.ok(ln, '应有 line block');
+  assert.strictEqual(ln.h, 1, '横线的 h 应为 thickness（1），而不是整卡高 ' + ln.h);
+  assert.strictEqual(ln.w, 300, '横线宽度应保持传入的 w');
+  assert.ok(ln.h <= ln.thickness, 'h <= thickness 才会走 draw 的横线分支');
+  // 显式传 height > thickness 才是竖线，不能被"修"没了
+  const v = computeLayout({ width: 340, height: 400, children: [
+    { type: 'line', left: 0, top: 0, height: 120, thickness: 2 }
+  ]}, {}, measure).blocks.find(b => b.type === 'line');
+  assert.strictEqual(v.h, 120, '显式 height 的竖线应保留（h=120）');
+  assert.strictEqual(v.w, 2, '竖线宽度应为 thickness');
+});
+
 // ── 2. 文本折行 + 省略号 ──
 t('长文按 width 折行', () => {
   const m = { width: 200, height: 200, children: [

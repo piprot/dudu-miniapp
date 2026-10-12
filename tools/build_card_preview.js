@@ -12,6 +12,7 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 
 const engine = read('utils/core/render_engine.js');
 const themes = read('utils/themes/index.js');
+const fontKit = read('utils/font_kit.js');
 const templates = read('utils/templates/index.js');
 const daily = read('utils/templates/daily.js');
 const posterTpl = read('utils/templates/poster.js');
@@ -44,6 +45,10 @@ const html = `<!DOCTYPE html>
   <div class="grid" id="grid2"></div>
 </div>
 <div class="demo">
+  <h1>排版风格（9 种）× 金句卡 / 日签卡 —— 2026-10-12 风格扩充验证</h1>
+  <div class="grid" id="grid4"></div>
+</div>
+<div class="demo">
   <h1>海报长图（6 主题 + 照片背景 · 头像首字占位 + 昵称 + 专属码）</h1>
   <div class="grid" id="grid3"></div>
 </div>
@@ -51,7 +56,10 @@ const html = `<!DOCTYPE html>
 <script>
 const __mods = {};
 function __def(name, fn) { const m = { exports: {} }; fn(m, m.exports, __req); __mods[name] = m; }
-const __MAP = { '../themes': 'themes', '../core/render_engine': 'render_engine' };
+// 2026-10-12 修复：templates/index.js 自排版风格功能起 require('../font_kit.js')，
+// 但本 harness 没有注册它 → 整页脚本报 "module not found" 直接中断，一张卡都画不出来
+// （工具从 2026-10-06 起就已静默失效，本次扩充风格后重建预览时暴露）。
+const __MAP = { '../themes': 'themes', '../themes/index.js': 'themes', '../core/render_engine': 'render_engine', '../font_kit.js': 'font_kit' };
 function __req(p) { const m = __mods[__MAP[p] || p]; if (!m) throw new Error('module not found: ' + p); return m.exports; }
 </script>
 <script>__def('render_engine', function (module, exports, require) {
@@ -59,6 +67,9 @@ ${engine}
 });</script>
 <script>__def('themes', function (module, exports, require) {
 ${themes}
+});</script>
+<script>__def('font_kit', function (module, exports, require) {
+${fontKit}
 });</script>
 <script>__def('templates', function (module, exports, require) {
 ${templates}
@@ -173,6 +184,22 @@ const grid2 = document.getElementById('grid2');
   draw(ctx, layout);
   addCard(grid2, '照片背景 · ' + name, canvas);
 });
+
+// ── 9 种排版风格 × 金句卡 / 日签卡（2026-10-12 风格 4→9 扩充的可视化验证）──
+// 色带/签名/极简/刊头/大字 5 种新骨架是否真的长出来，在这里一眼可见。
+const grid4 = document.getElementById('grid4');
+const STYLE_KEYS = ['literary', 'modern', 'warm', 'poster', 'band', 'signature', 'minimal', 'masthead', 'headline'];
+for (const sk of STYLE_KEYS) {
+  for (const [tp, name] of [['quote', '金句卡'], ['dailysign', '日签卡']]) {
+    const canvas = document.createElement('canvas');
+    try {
+      renderCard(canvas, tp, 'warm', Object.assign({}, SAMPLE[tp], { styleKey: sk, author: '杜淳滢' }));
+      addCard(grid4, sk + ' · ' + name, canvas);
+    } catch (e) {
+      addCard(grid4, '❌ ' + sk + ' · ' + name + '：' + e.message, canvas);
+    }
+  }
+}
 
 // ── 海报长图：6 主题 × 1 样例（头像用首字占位，展示模板兜底） ──
 const grid3 = document.getElementById('grid3');

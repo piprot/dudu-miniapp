@@ -47,3 +47,11 @@
   font-size: 21rpx; color: var(--text-tertiary);
   line-height: 1.6; margin-top: 12rpx;
 }
+/* 当前风格的说明行（2026-10-12）：比 cc-hint 更靠上、颜色更实——
+   它是「选这个风格会变成什么样」，属于决策信息，不该和背景图的使用说明同一视觉层级。 */
+.cc-styledesc {
+  font-size: 21rpx; color: var(--text-body);
+  line-height: 1.6; margin-top: 14rpx;
+  padding-left: 16rpx;
+  border-left: 4rpx solid var(--primary);
+}

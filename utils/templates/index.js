@@ -60,8 +60,9 @@ function buildCardModel(type, themeId, data, opts) {
   const children = [];
   let y = 0;
 
-  // ── 排版风格（2026-10-06）：字体族 × 字重 × 字距 × 对齐 × 装饰符号 ──
-  // data.styleKey 可传 'literary' | 'modern' | 'warm' | 'poster'。
+  // ── 排版风格（2026-10-06 新增，2026-10-12 扩到 9 种）：字体族 × 字重 × 字距 × 对齐 × 装饰符号 ──
+  // data.styleKey 可传 'literary' | 'modern' | 'warm' | 'poster'
+  //   | 'band' | 'signature' | 'minimal' | 'masthead' | 'headline'（见 utils/font_kit.js）。
   // 不传则按type 取默认风格：日签/金句走文艺（居中+引号，承袭原日签气质），
   // 其余保持原样（现代左对齐），确保向后兼容既有单测的排版断言。
   const DEFAULT_STYLE = {
@@ -78,7 +79,8 @@ function buildCardModel(type, themeId, data, opts) {
   // 其他类型仅当显式传了 styleKey 才应用风格（避免改变历史卡片观感）。
   const styleOn = !!d.styleKey || type === 'dailysign';
   // 排版风格现在不仅换字体，还换**结构**（顶部锚点 / 标题处理 / 装饰位置 / 外框）。
-  // L 决定用哪套构图骨架：editorial(文艺) / swiss(现代) / memo(温暖) / poster(海报)。
+  // L 决定用哪套构图骨架：editorial(文艺) / swiss(现代) / memo(温暖) / poster(海报) /
+  // band(色带) / signature(签名) / minimal(极简) / masthead(刊头) / headline(大字)。
   // plain 仅用于「未显式开风格」的历史卡片，保持旧观感（向后兼容单测）。
   const L = styleOn ? (S.layout || 'editorial') : 'plain';
   const titleFont = styleOn ? fontKit.familyOf(S.titleFont) : font;
@@ -109,14 +111,30 @@ const PHOTO_SHADOW = (fontPx) => ({
 
   // ── 顶部锚点（按风格分结构）──
   // poster：整宽主色 header 带（类型名反白居中），海报识别度最高。
+  // masthead(刊头)：居中「字链」栏目名 + 1px 细线（参照社群物料的顶部刊头）。
+  // minimal(极简) / signature(签名)：**完全不做顶部装饰**——这两套的版式就是做减法，
+  //   一条 4px 顶带会把画面从顶部切断（参考图 3 静默氛围图 / 图 2 生活打卡图的处理）。
   // memo(温暖)：不做顶部装饰（v2 做减法——旧版胶带条与便签/外框叠三层显乱），
   //   温暖的识别交给「浅底便签 + 居中楷体」，其余沿用 4px 主色细条。
+  const BRAND = 'dudu 画面感';
   if (styleOn && L === 'poster') {
     rect({ left: 0, top: 0, width: W, height: 34, background: p.primary, radius: p.radius });
     const bandName = CARD_TYPES[type].name;
     const bw = measure(bandName, 13);
     txt(bandName, { left: (W - bw) / 2, top: 11, width: bw, color: '#ffffff', fontSize: 13, fontWeight: 'bold', lineHeight: 16, textAlign: 'center' });
     y = 34 + 14;
+  } else if (styleOn && L === 'masthead') {
+    // 字链：字符之间手动插空格（引擎不消费 letterSpacing，插空格才真的看得见字距）。
+    // 宽度留 25% 余量：measure 用 sans-serif 量，渲染却走主题字体（衬线/楷体更宽），
+    // 不留余量就会折行（右上角品牌字折行就是这么来的）。
+    const headName = CARD_TYPES[type].name.split('').join(' ');
+    const hw = Math.ceil(measure(headName, 13) * 1.25);
+    txt(headName, { left: (W - hw) / 2, top: 14, width: hw, color: ink, fontSize: 13,
+      fontWeight: 'bold', lineHeight: 18, textAlign: 'center' });
+    rect({ left: 0, top: 36, width: W, height: 1, background: fontKit.alpha(p.primary, 0.45) });
+    y = 50;
+  } else if (styleOn && (L === 'minimal' || L === 'signature')) {
+    y = 16;
   } else {
     rect({ left: 0, top: 0, width: W, height: 4, background: p.primary });
     y = 18;
@@ -125,11 +143,26 @@ const PHOTO_SHADOW = (fontPx) => ({
   // ── 头部：类型小标签 + 品牌水印 ──
   // poster 的类型名已进 header 带，这里只留品牌水印（右下弱色）。
   // memo(温暖) 把类型 pill 改成居中胶囊，强化手账感。
+  // masthead(刊头) / minimal(极简) 都不画 pill：前者类型名已在顶部刊头，
+  //   后者整套版式不留任何控件感元素。
+  // signature(签名) 用「右上角手写署名」替代 pill —— 署名是「我在场」的痕迹，
+  //   比一个胶囊标签更有温度（参考图 2 右上角的手写 logo）。
   if (styleOn && L === 'poster') {
-    const brand = 'dudu 画面感';
-    const brandW = Math.ceil(measure(brand, 10));
-    txt(brand, { left: W - PAD - brandW, top: y - 2, width: brandW, color: sub, fontSize: 10, lineHeight: 12 });
+    const brandW = Math.ceil(measure(BRAND, 10) * 1.2) + 4;
+    txt(BRAND, { left: W - PAD - brandW, top: y - 2, width: brandW, color: sub, fontSize: 10, lineHeight: 12 });
     y += 14;
+  } else if (styleOn && L === 'masthead') {
+    y += 2;
+  } else if (styleOn && L === 'minimal') {
+    y += 2;
+  } else if (styleOn && L === 'signature') {
+    const sign = d.author || BRAND;
+    // 宽度留 30% 余量：署名用楷体渲染但用 sans-serif 测量，楷体更宽，不留余量会折行
+    const sw = Math.ceil(measure(sign, 13) * 1.3) + 4;
+    txt(sign, { left: W - PAD - sw, top: y - 4, width: sw, color: onPhoto ? '#ffffff' : p.primary,
+      fontSize: 13, fontWeight: 'bold', lineHeight: 18,
+      fontFamily: fontKit.familyOf('kai'), textAlign: 'right' });
+    y += 28;
   } else {
     const pillText = CARD_TYPES[type].name;
     const pillW = Math.ceil(measure(pillText, 11)) + 20;
@@ -142,9 +175,9 @@ const PHOTO_SHADOW = (fontPx) => ({
       // noShadow：pill 有实色底块，投影只会让 11px 小字发糊（2026-10-07 整改）
       txt(pillText, { left: PAD + 10, top: y + 4, width: pillW - 20, color: p.primary, fontSize: 11, fontWeight: 'bold', lineHeight: 14, noShadow: true });
     }
-    const brand = 'dudu 画面感';
-    const brandW = Math.ceil(measure(brand, 10));
-    txt(brand, { left: W - PAD - brandW, top: y + 5, width: brandW, color: sub, fontSize: 10, lineHeight: 12 });
+    // 品牌水印宽度留 20% 余量（同上：measure 用 sans-serif，渲染走主题字体，余量不足会折行）
+    const brandW = Math.ceil(measure(BRAND, 10) * 1.2) + 4;
+    txt(BRAND, { left: W - PAD - brandW, top: y + 5, width: brandW, color: sub, fontSize: 10, lineHeight: 12 });
     y += 22 + 16;
   }
 
@@ -199,7 +232,9 @@ const PHOTO_SHADOW = (fontPx) => ({
     // swiss(现代)：2px 主色粗基线，瑞士国际主义的强网格语言。
     // editorial(文艺)：1px 主色发丝线，编辑式细分割，书卷克制。
     // memo(温暖)：24px 居中小短线（半透明主色），便签卡的轻点缀——参照「模块标题配同色短横线」。
-    // 其余风格不画，保持留白。
+    // masthead(刊头)：1px 发丝线，与顶部刊头细线呼应，刊物内页的层级感。
+    // headline(大字)：3px 主色厚分隔，撑得住 24px 大标题的量感（细线会被大字压没）。
+    // band(色带) / minimal(极简)：不画——色带本身已是分界，极简则什么都不加。
     const titleBlockH = tLines * tLh;
     if (styleOn && L === 'swiss') {
       rect({ left: PAD, top: y + titleBlockH + 4, width: innerW, height: 2, background: p.primary });
@@ -207,6 +242,12 @@ const PHOTO_SHADOW = (fontPx) => ({
     } else if (styleOn && L === 'editorial') {
       rect({ left: PAD, top: y + titleBlockH + 4, width: innerW, height: 1, background: fontKit.alpha(p.primary, 0.5) });
       y += titleBlockH + 10 + 4;
+    } else if (styleOn && L === 'masthead') {
+      rect({ left: PAD, top: y + titleBlockH + 4, width: innerW, height: 1, background: fontKit.alpha(p.primary, 0.4) });
+      y += titleBlockH + 10 + 4;
+    } else if (styleOn && L === 'headline') {
+      rect({ left: PAD, top: y + titleBlockH + 5, width: innerW, height: 3, background: p.primary });
+      y += titleBlockH + 10 + 8;
     } else if (styleOn && L === 'memo') {
       rect({ left: (W - 24) / 2, top: y + titleBlockH + 5, width: 24, height: 3, radius: 2,
         background: fontKit.alpha(p.primary, 0.75) });
@@ -250,6 +291,9 @@ const PHOTO_SHADOW = (fontPx) => ({
       dSize = 34; dLeft = PAD; dAlign = 'left'; dWidth = 60;
     } else if (styleOn && L === 'memo') {
       dAlign = 'center'; dWidth = innerW;
+    } else if (styleOn && L === 'masthead') {
+      // 刊头风：装饰符居中（顶部刊头 + 居中分隔已是中轴构图，偏左会破坏对称）
+      dAlign = 'center'; dWidth = innerW;
     }
     const dLh = Math.round(dSize * 1.2);
     txt(mark, { left: dLeft, top: y, width: dWidth, color: p.primary,
@@ -282,6 +326,16 @@ const PHOTO_SHADOW = (fontPx) => ({
     if (styleOn && L === 'memo') {
       rect({ left: PAD - 8, top: y - 12, width: innerW + 16, height: bodyLines * lh + 30,
         background: p.bgSoft, radius: 14 });
+    } else if (styleOn && L === 'band') {
+      // band(色带)：正文上下各留 14px 呼吸，用一条**整宽**半透明主色带把文字从底图里
+      // 托出来，带子的上下边缘各 1px 发丝线定界（否则色带边界在照片上会糊掉）。
+      // 参照图 1「磨砂色带引言卡」：图再花，色带也隔出一块安静的阅读区。
+      // 色带必须 push 在正文文本之前，否则会盖住文字（引擎按 blocks 顺序绘制）。
+      const bandTop = y - 14;
+      const bandH = bodyLines * lh + 28;
+      rect({ left: 0, top: bandTop, width: W, height: bandH, background: fontKit.alpha(p.primary, 0.08) });
+      rect({ left: 0, top: bandTop, width: W, height: 1, background: fontKit.alpha(p.primary, 0.22) });
+      rect({ left: 0, top: bandTop + bandH - 1, width: W, height: 1, background: fontKit.alpha(p.primary, 0.22) });
     }
     txt(d.body, { left: PAD, top: y, width: innerW, color: ink,
       fontSize: fs, lineHeight: lh, lineClamp: clamp,
@@ -329,9 +383,18 @@ const PHOTO_SHADOW = (fontPx) => ({
   }
 
   // ── 底部信息行：分割线 + 落款（左）与小程序码（右）同行 ──
+  // minimal(极简)：**连分隔线都不画**（整套版式不留任何线条，文字直接坐在图上）。
+  // headline(大字)：3px 主色厚分隔线，与上方 24px 大标题配成一套「封面感」。
   y += 4;
-  children.push({ type: 'line', left: PAD, top: y, width: innerW, thickness: 1, color: p.line });
-  y += 12;
+  const noDivider = !!(styleOn && L === 'minimal');
+  if (!noDivider) {
+    const divTh = (styleOn && L === 'headline') ? 3 : 1;
+    children.push({ type: 'line', left: PAD, top: y, width: innerW, thickness: divTh,
+      color: (styleOn && L === 'headline') ? p.primary : p.line });
+    y += 12;
+  } else {
+    y += 2;
+  }
   const hasQr = !!d.qr;
   const QS = hasQr ? 56 : 0;
   if (hasQr) {
@@ -340,14 +403,29 @@ const PHOTO_SHADOW = (fontPx) => ({
   // ⚠️ 落款只认用户真实署名（author / source）。**不再兜底「长按识别小程序码」这类引导文案**——
   //    二维码自己会说话，卡面写「长按识别…」属于噪声，且在小红书/朋友圈场景里显得像广告。
   //    没有 author 就让这一行空着（下面 foot 为空则不push text节点，不占纵向空间）。
+  //
+  // 落款对齐/字号按风格分结构：
+  //   band(色带)  → 右对齐（与色带引言卡的出处行一致）
+  //   masthead / signature → 居中（刊头风的栏脚、签名风的署名行都是居中收尾）
+  //   minimal(极简) → 11px 极小字，退成「痕迹」
+  //   signature(签名) → **底部不重复署名**：名字已经写在右上角了
   const foot = d.author || d.source || '';
-  if (foot) {
+  const footCentered = !!(styleOn && (L === 'masthead' || L === 'signature'));
+  const skipFoot = !!(styleOn && L === 'signature');
+  if (foot && !skipFoot) {
     // swiss(现代) 落款也走等宽，与上方元信息呼应
     txt(foot, { left: PAD, top: hasQr ? y + Math.round((QS - 18) / 2) : y,
       width: hasQr ? innerW - QS - 12 : innerW,
-      color: sub, fontSize: 12, lineHeight: 18, lineClamp: 2,
+      color: sub, fontSize: (styleOn && L === 'minimal') ? 11 : 12, lineHeight: 18, lineClamp: 2,
       fontFamily: (styleOn && L === 'swiss') ? fontKit.familyForRole('date') : font,
-      textAlign: 'left' });
+      textAlign: footCentered ? 'center' : ((styleOn && L === 'band') ? 'right' : 'left') });
+  }
+  // 极简风没有署名时补一行极小水印：否则整卡下半部全空，看不出这张图出自哪里
+  // （参考图 3 的处理——文字退成痕迹，但不能没有）。
+  if (styleOn && L === 'minimal' && !foot) {
+    txt(BRAND, { left: PAD, top: hasQr ? y + Math.round((QS - 15) / 2) : y,
+      width: hasQr ? innerW - QS - 12 : innerW,
+      color: sub, fontSize: 11, lineHeight: 15, textAlign: 'left' });
   }
   // ── 日历信息（公历/农历/干支生肖）画在**左下角** ──
   // 2026-10-07 用户要求：两行小字、左对齐、放在图片左下角。「图片」指卡片背景图
@@ -370,7 +448,20 @@ const PHOTO_SHADOW = (fontPx) => ({
         ...(onBg ? { shadow: { color: 'rgba(0,0,0,0.55)', blur: 4, y: 1 } } : {}) });
     });
   }
-  y += (hasQr ? QS : 18) + 18;
+  // ── 栏脚行（signature / masthead 专属）：底部第二行品牌信息 ──
+  // 参照图 2「2026｜INNER FREE @ 泡芙」与图 4 底部的「社群名｜口号」两行结构：
+  // 第一行是署名/落款，第二行才是「年份｜品牌」这类归属信息。
+  // 有二维码时压到码行下方，避免与右侧的码抢位；无码时紧跟落款行。
+  const footLines = (styleOn && (L === 'signature' || L === 'masthead')) ? 1 : 0;
+  if (footLines) {
+    const year = new Date().getFullYear();
+    const line2 = (L === 'signature') ? (year + '｜' + BRAND) : BRAND;
+    const l2Top = hasQr ? (y + QS + 6) : (y + (foot && !skipFoot ? 20 : 0));
+    txt(line2, { left: PAD, top: l2Top, width: innerW,
+      color: sub, fontSize: 11, lineHeight: 16, textAlign: 'center',
+      fontFamily: fontKit.familyForRole('date') });
+  }
+  y += (hasQr ? QS : 18) + 18 + (footLines ? 22 : 0);
 
   const height = Math.max(y, 200);
 

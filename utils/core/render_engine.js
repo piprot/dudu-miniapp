@@ -19,7 +19,7 @@
 //   image     图片（src + objectFit: cover|contain|fill；asset 为已加载的 Image 对象）
 //   text      文本（自动折行 + lineClamp 省略号 + textAlign）
 //   qrcode    二维码（contain 完整绘制，绝不裁剪码点；asset 为已加载图片）
-//   line      细线（分隔线）
+//   line      细线（分隔线；不传 height = 水平线，显式 height > thickness 才是竖线）
 // ─────────────────────────────────────────────────────────────────────────────
 'use strict';
 
@@ -162,7 +162,20 @@ function layoutChildren(children, ox, oy, parentW, parentH, blocks, measure, opt
       const dd = el.d || el.width || 20;
       blocks.push({ type: 'circle', x, y, d: dd, background: el.background || '#333' });
     } else if (type === 'line') {
-      blocks.push({ type: 'line', x, y, w, h, color: el.color || '#e5e5e5', thickness: el.thickness || 1 });
+      // 分隔线默认是**水平**的：不给 height 时按 thickness 计高。
+      // ⚠️ 2026-10-12 修复：此前 height 缺省会继承 parentH（整卡高），于是 draw 里
+      //    `b.h <= b.thickness` 判假、走竖线分支 —— 所有「分隔线」实际画成 1px 宽、
+      //    整卡高的竖线（模板层 3 处 + 海报模板 2 处全是这个形态）。
+      //    现在：不传 height = 水平线（宽 w、高 thickness）；显式传 height > thickness 才是竖线。
+      const th = el.thickness || 1;
+      const vh = (el.height != null && el.height > th) ? el.height : null;
+      blocks.push({
+        type: 'line', x, y,
+        w: vh ? th : w,
+        h: vh || th,
+        color: el.color || '#e5e5e5',
+        thickness: th
+      });
     } else if (type === 'gradient') {
       blocks.push({ type: 'gradient', x, y, w, h, radius: el.radius || 0, colors: el.colors || ['#fff', '#fff'], direction: el.direction || 'v' });
     } else { // rect
