@@ -184,14 +184,20 @@ const STYLES = {
     radius: 16
   },
 
-  // ── 2026-10-12 新增 5 种（版式取自 5 张参考图）────────────────────────
-  // 色带：正文压在一条横向半透明色带里，落款右对齐——参考「磨砂色带引言卡」。
-  // 适合长句/书摘类内容：图再花，色带也把文字隔出一块安静的阅读区。
+  // ── 2026-10-12 新增 5 种「成图」风格（照 5 张社群成图做的）────────────────
+  // 这一组与上面 4 种**不是同一类东西**：它们是**成图版式**——固定 3:4 竖幅、
+  // 文字压在照片上、底部只有两行品牌信息，**不带类型胶囊 / 右上品牌水印 / 外框 / 分隔线**
+  // （参考图上都没有）。小程序码保留，缩到 44px 放右下角（回流入口是产品硬需求）。
+  // 标记字段 frame: '3:4' 由 utils/templates/index.js 识别并走独立构建器 buildFrameModel。
+  //
+  // 色带：正文压在一条横向浅色磨砂带里（整宽出血、占画幅约 1/3），带内**深色字**，
+  // 出处行右对齐——照「磨砂色带引言卡」。图再花，色带也隔出一块安静的阅读区。
   band: {
     id: 'band',
     name: '色带',
-    desc: '正文压在一条半透明色带里，落款右对齐，像书摘引言页',
-    layout: 'band',        // 横向色带托正文 + 上下发丝线 + 落款右对齐
+    desc: '3:4 成图 · 文字压在半透明浅色带里（黑字），出处右对齐',
+    layout: 'band',
+    frame: '3:4',
     titleFont: 'serif',
     titleSize: 18,
     titleWeight: 'bold',
@@ -202,20 +208,21 @@ const STYLES = {
     bodyLineHeight: 32,
     bodyAlign: 'center',
     bodySpacing: 0.5,
-    deco: '',              // 色带本身就是装饰，不再叠引号（避免两层装饰打架）
+    deco: '',
     decoClose: '',
     decoColor: 'primary',
     decoSize: 0,
     showDeco: false,
     radius: 16
   },
-  // 签名：右上角手写署名 + 底部两行品牌行（年份｜品牌 @人名）——参考「生活打卡图」。
-  // 适合个人 IP 日更：署名是「我在场」的痕迹，比一个 logo 更有温度。
+  // 签名：右上角手写署名 + 底部两行（标签链 / 年份｜品牌 @人名）——照「生活打卡图」。
+  // 署名是「我在场」的痕迹，比一个 logo 更有温度。
   signature: {
     id: 'signature',
     name: '签名',
-    desc: '右上角手写署名 + 底部两行品牌行，生活打卡的气质',
-    layout: 'signature',   // 无顶带无胶囊：右上角楷体署名，落款居中，末尾追加品牌行
+    desc: '3:4 成图 · 右上角手写署名 + 底部标签链与品牌行',
+    layout: 'signature',
+    frame: '3:4',
     titleFont: 'kai',
     titleSize: 18,
     titleWeight: 'bold',
@@ -233,13 +240,13 @@ const STYLES = {
     showDeco: false,
     radius: 18
   },
-  // 极简：去掉顶带 / 胶囊 / 分隔线 / 外框，只留文字压在图上——参考「静默氛围图」。
-  // 适合氛围图与多图连发：文字退成痕迹，画面本身是主角。
+  // 极简：什么都不加，左下角两行极小水印（年份｜画面感 + slogan）——照「静默氛围图」。
   minimal: {
     id: 'minimal',
     name: '极简',
-    desc: '去掉全部装饰与分隔线，只剩文字压在图上，画面是主角',
-    layout: 'minimal',     // 无顶带 / 无胶囊 / 无分隔线 / 无外框；左下角一行极小水印收尾
+    desc: '3:4 成图 · 无任何装饰，左下角两行极小水印，画面是主角',
+    layout: 'minimal',
+    frame: '3:4',
     titleFont: 'sans',
     titleSize: 16,
     titleWeight: 'normal',
@@ -257,13 +264,14 @@ const STYLES = {
     showDeco: false,
     radius: 10
   },
-  // 刊头：顶部大字距刊头（字链）+ 底部两行栏脚——参考「社群打卡物料」。
-  // 适合陪伴营/训练营的系列日更：像一本刊物的内页，栏目归属一眼可辨。
+  // 刊头：顶部一行「若隐若现」的栏目字链（贴顶、极小、大字距、低对比）+ 底部两行栏脚
+  // ——照「社群打卡物料」。像一本刊物的内页，栏目归属一眼可辨。
   masthead: {
     id: 'masthead',
     name: '刊头',
-    desc: '顶部大字距刊头 + 底部两行栏脚，像一本刊物的内页',
-    layout: 'masthead',    // 顶部居中大字距刊头 + 1px 细线；落款居中 + 栏脚行（品牌@）
+    desc: '3:4 成图 · 顶部极淡字链刊头 + 底部两行栏脚',
+    layout: 'masthead',
+    frame: '3:4',
     titleFont: 'serif',
     titleSize: 20,
     titleWeight: 'bold',
@@ -272,23 +280,24 @@ const STYLES = {
     bodyFont: 'sans',
     bodySize: 16,
     bodyLineHeight: 30,
-    bodyAlign: 'left',
+    bodyAlign: 'center',
     bodySpacing: 0.5,
-    deco: '❖',
+    deco: '',
     decoClose: '',
     decoColor: 'primary',
-    decoSize: 12,
-    showDeco: true,
+    decoSize: 0,
+    showDeco: false,
     radius: 20
   },
-  // 大字：标题放大到 24px（本库最大），底部加厚分隔 + 字距放宽的信息行——参考「大字标题封面」。
-  // 适合系列栏目封面：字够大、留白够狠，缩略图里也能一眼读出来。
+  // 大字：衬线大字压在底部，两字之间嵌一列竖排小字（照「早(美/學)餐」），下方两行小字
+  // ——照「大字标题封面」。缩略图里也能一眼读出来。
   headline: {
     id: 'headline',
     name: '大字',
-    desc: '标题放大到 24px + 加厚分隔线，缩略图里也醒目',
-    layout: 'headline',    // 标题 24px 大字 + 3px 厚分隔；底部信息行走大字距
-    titleFont: 'round',
+    desc: '3:4 成图 · 底部衬线大字 + 字间竖排嵌字，封面感最强',
+    layout: 'headline',
+    frame: '3:4',
+    titleFont: 'serif',
     titleSize: 24,
     titleWeight: 'bold',
     titleSpacing: 3,

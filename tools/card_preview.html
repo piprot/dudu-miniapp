@@ -30,6 +30,10 @@
   <div class="grid" id="grid4"></div>
 </div>
 <div class="demo">
+  <h1>成图版式（5 种）× 照片背景 · 固定 3:4 —— 与参考图逐张核对用</h1>
+  <div class="grid" id="grid5"></div>
+</div>
+<div class="demo">
   <h1>海报长图（6 主题 + 照片背景 · 头像首字占位 + 昵称 + 专属码）</h1>
   <div class="grid" id="grid3"></div>
 </div>
@@ -40,7 +44,10 @@ function __def(name, fn) { const m = { exports: {} }; fn(m, m.exports, __req); _
 // 2026-10-12 修复：templates/index.js 自排版风格功能起 require('../font_kit.js')，
 // 但本 harness 没有注册它 → 整页脚本报 "module not found" 直接中断，一张卡都画不出来
 // （工具从 2026-10-06 起就已静默失效，本次扩充风格后重建预览时暴露）。
-const __MAP = { '../themes': 'themes', '../themes/index.js': 'themes', '../core/render_engine': 'render_engine', '../font_kit.js': 'font_kit' };
+// 2026-10-12 二次补充：成图版式引入 brand_line.js（品牌行文案源），同样要注册。
+// 教训：harness 的模块白名单必须与 templates/index.js 的 require 清单同步，
+// 否则整页静默失效——图上什么都没有，控制台才是唯一线索。
+const __MAP = { '../themes': 'themes', '../themes/index.js': 'themes', '../core/render_engine': 'render_engine', '../font_kit.js': 'font_kit', '../brand_line.js': 'brand_line', '../templates/brand_line.js': 'brand_line' };
 function __req(p) { const m = __mods[__MAP[p] || p]; if (!m) throw new Error('module not found: ' + p); return m.exports; }
 </script>
 <script>__def('render_engine', function (module, exports, require) {
@@ -693,14 +700,20 @@ const STYLES = {
     radius: 16
   },
 
-  // ── 2026-10-12 新增 5 种（版式取自 5 张参考图）────────────────────────
-  // 色带：正文压在一条横向半透明色带里，落款右对齐——参考「磨砂色带引言卡」。
-  // 适合长句/书摘类内容：图再花，色带也把文字隔出一块安静的阅读区。
+  // ── 2026-10-12 新增 5 种「成图」风格（照 5 张社群成图做的）────────────────
+  // 这一组与上面 4 种**不是同一类东西**：它们是**成图版式**——固定 3:4 竖幅、
+  // 文字压在照片上、底部只有两行品牌信息，**不带类型胶囊 / 右上品牌水印 / 外框 / 分隔线**
+  // （参考图上都没有）。小程序码保留，缩到 44px 放右下角（回流入口是产品硬需求）。
+  // 标记字段 frame: '3:4' 由 utils/templates/index.js 识别并走独立构建器 buildFrameModel。
+  //
+  // 色带：正文压在一条横向浅色磨砂带里（整宽出血、占画幅约 1/3），带内**深色字**，
+  // 出处行右对齐——照「磨砂色带引言卡」。图再花，色带也隔出一块安静的阅读区。
   band: {
     id: 'band',
     name: '色带',
-    desc: '正文压在一条半透明色带里，落款右对齐，像书摘引言页',
-    layout: 'band',        // 横向色带托正文 + 上下发丝线 + 落款右对齐
+    desc: '3:4 成图 · 文字压在半透明浅色带里（黑字），出处右对齐',
+    layout: 'band',
+    frame: '3:4',
     titleFont: 'serif',
     titleSize: 18,
     titleWeight: 'bold',
@@ -711,20 +724,21 @@ const STYLES = {
     bodyLineHeight: 32,
     bodyAlign: 'center',
     bodySpacing: 0.5,
-    deco: '',              // 色带本身就是装饰，不再叠引号（避免两层装饰打架）
+    deco: '',
     decoClose: '',
     decoColor: 'primary',
     decoSize: 0,
     showDeco: false,
     radius: 16
   },
-  // 签名：右上角手写署名 + 底部两行品牌行（年份｜品牌 @人名）——参考「生活打卡图」。
-  // 适合个人 IP 日更：署名是「我在场」的痕迹，比一个 logo 更有温度。
+  // 签名：右上角手写署名 + 底部两行（标签链 / 年份｜品牌 @人名）——照「生活打卡图」。
+  // 署名是「我在场」的痕迹，比一个 logo 更有温度。
   signature: {
     id: 'signature',
     name: '签名',
-    desc: '右上角手写署名 + 底部两行品牌行，生活打卡的气质',
-    layout: 'signature',   // 无顶带无胶囊：右上角楷体署名，落款居中，末尾追加品牌行
+    desc: '3:4 成图 · 右上角手写署名 + 底部标签链与品牌行',
+    layout: 'signature',
+    frame: '3:4',
     titleFont: 'kai',
     titleSize: 18,
     titleWeight: 'bold',
@@ -742,13 +756,13 @@ const STYLES = {
     showDeco: false,
     radius: 18
   },
-  // 极简：去掉顶带 / 胶囊 / 分隔线 / 外框，只留文字压在图上——参考「静默氛围图」。
-  // 适合氛围图与多图连发：文字退成痕迹，画面本身是主角。
+  // 极简：什么都不加，左下角两行极小水印（年份｜画面感 + slogan）——照「静默氛围图」。
   minimal: {
     id: 'minimal',
     name: '极简',
-    desc: '去掉全部装饰与分隔线，只剩文字压在图上，画面是主角',
-    layout: 'minimal',     // 无顶带 / 无胶囊 / 无分隔线 / 无外框；左下角一行极小水印收尾
+    desc: '3:4 成图 · 无任何装饰，左下角两行极小水印，画面是主角',
+    layout: 'minimal',
+    frame: '3:4',
     titleFont: 'sans',
     titleSize: 16,
     titleWeight: 'normal',
@@ -766,13 +780,14 @@ const STYLES = {
     showDeco: false,
     radius: 10
   },
-  // 刊头：顶部大字距刊头（字链）+ 底部两行栏脚——参考「社群打卡物料」。
-  // 适合陪伴营/训练营的系列日更：像一本刊物的内页，栏目归属一眼可辨。
+  // 刊头：顶部一行「若隐若现」的栏目字链（贴顶、极小、大字距、低对比）+ 底部两行栏脚
+  // ——照「社群打卡物料」。像一本刊物的内页，栏目归属一眼可辨。
   masthead: {
     id: 'masthead',
     name: '刊头',
-    desc: '顶部大字距刊头 + 底部两行栏脚，像一本刊物的内页',
-    layout: 'masthead',    // 顶部居中大字距刊头 + 1px 细线；落款居中 + 栏脚行（品牌@）
+    desc: '3:4 成图 · 顶部极淡字链刊头 + 底部两行栏脚',
+    layout: 'masthead',
+    frame: '3:4',
     titleFont: 'serif',
     titleSize: 20,
     titleWeight: 'bold',
@@ -781,23 +796,24 @@ const STYLES = {
     bodyFont: 'sans',
     bodySize: 16,
     bodyLineHeight: 30,
-    bodyAlign: 'left',
+    bodyAlign: 'center',
     bodySpacing: 0.5,
-    deco: '❖',
+    deco: '',
     decoClose: '',
     decoColor: 'primary',
-    decoSize: 12,
-    showDeco: true,
+    decoSize: 0,
+    showDeco: false,
     radius: 20
   },
-  // 大字：标题放大到 24px（本库最大），底部加厚分隔 + 字距放宽的信息行——参考「大字标题封面」。
-  // 适合系列栏目封面：字够大、留白够狠，缩略图里也能一眼读出来。
+  // 大字：衬线大字压在底部，两字之间嵌一列竖排小字（照「早(美/學)餐」），下方两行小字
+  // ——照「大字标题封面」。缩略图里也能一眼读出来。
   headline: {
     id: 'headline',
     name: '大字',
-    desc: '标题放大到 24px + 加厚分隔线，缩略图里也醒目',
-    layout: 'headline',    // 标题 24px 大字 + 3px 厚分隔；底部信息行走大字距
-    titleFont: 'round',
+    desc: '3:4 成图 · 底部衬线大字 + 字间竖排嵌字，封面感最强',
+    layout: 'headline',
+    frame: '3:4',
+    titleFont: 'serif',
     titleSize: 24,
     titleWeight: 'bold',
     titleSpacing: 3,
@@ -847,6 +863,75 @@ module.exports = {
   familyOf, familyForRole, alpha, styleOf, hasStyle, styleName, styleDesc, stats
 };
 });</script>
+<script>__def('brand_line', function (module, exports, require) {
+// utils/brand_line.js —— 成图版式的「底部品牌两行」文案源（2026-10-12）
+// ─────────────────────────────────────────────────────────────────────────────
+// 背景：band / signature / minimal / masthead / headline 这 5 种风格是照着
+// 5 张社群成图做的，参考图的底部都有一条**固定的品牌两行**：
+//     行1  兴趣标签链（签名版式）／组织名 ❄ 栏目 ｜ slogan（刊头版式）
+//     行2  年份 ｜ 品牌原文 @署名                      （小一点、淡一点）
+// 这两行不属于「这一张卡的内容」，属于「发图人的身份」，所以单独抽一个模块：
+//   · 默认值集中一处，改文案不用翻 5 个版式分支；
+//   · 将来做「品牌行设置」（出图设置里让用户填社群名/标签/口号）时，
+//     只需要把这里改成读本地配置，5 个版式的调用点一行都不用动。
+//
+// ⚠️ 现在先用默认值自动填（用户 2026-10-12 拍板：零配置先能用）。
+//    页面/版式可用 data.brandTags / data.brandSlogan / data.brandName 覆盖单张图。
+// ─────────────────────────────────────────────────────────────────────────────
+'use strict';
+
+const BRAND = 'dudu 画面感';
+const BRAND_EN = 'dudu';
+// 标签链：两端装饰线 + ❄ 分隔（照参考图「— 瑜伽 ❄ 读书 ❄ 生活美学 —」的写法）。
+// 长度受行宽限制——成图行宽只有 300px（11px 字约 27 个中文字），别再加标签。
+const DEFAULT_TAGS = '— 生活记录 ❄ 日常美学 —';
+const DEFAULT_SLOGAN = '记录生活的一帧 · 分享眼前的暖';
+// 大字版式中间那列竖排小字（参考图 5「早(美/學)餐」）。dudu 品牌是「画面感」，取「畫面」。
+const DEFAULT_INSET = '畫面';
+
+/** 年份（四位）。每次出图都取当下，不做缓存——跨年那天不会写错。 */
+function year() {
+  return String(new Date().getFullYear());
+}
+
+/**
+ * 逐字插空格 —— 引擎不消费 letterSpacing（render_engine 只把 letterSpacing 存进 block，
+ * draw 时不用），所以「超大字距」在成图版式里靠插空格实现：'2026' → '2 0 2 6'。
+ */
+function spaced(s) {
+  return Array.from(String(s == null ? '' : s)).join(' ');
+}
+
+/**
+ * 签名版式的行1：纯兴趣标签链（组织名与署名留在行2，行1 再放品牌就重复了）。
+ * 刊头版式的行1 另有写法（组织名 ❄ 栏目 ｜ slogan），在模板层单独拼。
+ */
+function tagLine(tags) {
+  return (tags == null || tags === '') ? DEFAULT_TAGS : tags;
+}
+
+/** 行2：{年份} ｜ {品牌} @{署名}（无署名就不带 @）。 */
+function signLine(author, brand) {
+  const b = (brand == null || brand === '') ? BRAND : brand;
+  return year() + ' ｜ ' + b + (author ? ' @' + String(author) : '');
+}
+
+/** 大字版式的底部第一行：{年份} ｜ dudu（逐字空格，超大字距）。 */
+function yearLine() {
+  return spaced(year()) + '  ｜  ' + spaced(BRAND_EN);
+}
+
+/** 极简版式的左下角第一行：{年份} ｜ 画面感（逐字空格）。 */
+function watermarkLine() {
+  return spaced(year()) + ' ｜ ' + spaced('画面感');
+}
+
+module.exports = {
+  BRAND, BRAND_EN, DEFAULT_TAGS, DEFAULT_SLOGAN, DEFAULT_INSET,
+  year, spaced, tagLine, signLine, yearLine, watermarkLine
+};
+
+});</script>
 <script>__def('templates', function (module, exports, require) {
 // utils/templates/index.js
 // ─────────────────────────────────────────────────────────────────────────────
@@ -873,6 +958,7 @@ module.exports = {
 const { getTheme, palette } = require('../themes/index.js');
 const { wrapText, defaultMeasure } = require('../core/render_engine');
 const fontKit = require('../font_kit.js');
+const brand = require('../brand_line.js');
 
 const CARD_TYPES = {
   dailysign: { id: 'dailysign', name: '每日日签', scene: '早安/晚安心语', hasCover: false },
@@ -892,8 +978,239 @@ const DATE_LABEL_SIZE = 15;
 // 节日/日签卡金句正文字号（同上口径，比日期大5px 撑起主体感）。
 const DATE_BODY_SIZE = 20;
 
+// ── 成图版式（2026-10-12）──────────────────────────────────────────────────
+// band / signature / minimal / masthead / headline 这 5 种是**成图**，不是卡片：
+// 固定 3:4 竖幅（340×453）、文字压在全出血照片上、底部只有两行品牌信息，
+// **不带**类型胶囊 / 右上品牌水印 / 外框 / 分隔线（参考图上都没有）。
+// 走独立的 buildFrameModel：卡片版式的流式高度 + 控件锚点，与成图的「比例感」天生冲突，
+// 硬塞进同一条流水线只会两头都不像。
+const FRAME_H = Math.round(W * 4 / 3);   // 340 × 453，3:4 竖幅
+const QR_S = 44;                          // 成图模式的码：比卡片版的 56 小一档，让位给版式
+const FRAME_LAYOUTS = { band: 1, signature: 1, minimal: 1, masthead: 1, headline: 1 };
+
 function countLines(text, width, fontPx, measure, clamp) {
   return Math.min(wrapText(String(text || ''), width, measure, fontPx).length, clamp);
+}
+
+/**
+ * 成图版式构建器（3:4 竖幅，底部两行品牌行 + 右下角小程序码）。
+ *
+ * 坐标系：整幅 340×453；底部锚点自下往上算——
+ *   小程序码 bottom=PAD、两行品牌行紧贴码的上方（行2 在下、行1 在上），
+ *   主体内容（色带/正文/大字）放在中上部。这样无论文字长短，底部的「署名区」
+ *   永远在同一位置，一组图连发时不会跳。
+ */
+function buildFrameModel(type, themeId, data, opts, S, L) {
+  const p = palette(themeId);
+  const d = data || {};
+  const measure = (opts && opts.measure) || defaultMeasure;
+  const onPhoto = !!d.bgImg;
+  const ink = onPhoto ? '#ffffff' : p.ink;
+  const sub = onPhoto ? 'rgba(255,255,255,0.88)' : p.sub;
+  const faint = onPhoto ? 'rgba(255,255,255,0.62)' : fontKit.alpha(p.sub, 0.85);
+  const font = p.cjkFont;
+  const serif = fontKit.familyOf(S.titleFont);
+  const kai = fontKit.familyOf('kai');
+  const H = FRAME_H;
+  const innerW = W - PAD * 2;
+  const typeName = CARD_TYPES[type].name;
+  const children = [];
+
+  // 文字节点助手：照片背景下自动挂投影（照参考图：白字直接压图，靠投影保可读）。
+  // 例外——压在**浅色带**里的文字（色带版式）必须 noShadow，浅底上挂黑影会糊成一团。
+  const txt = (content, o) => {
+    const node = Object.assign({ type: 'text', content: String(content == null ? '' : content), fontFamily: font }, o);
+    if (onPhoto && !node.shadow && !node.noShadow) {
+      node.shadow = { color: 'rgba(0,0,0,0.55)', blur: Math.max(3, Math.round((node.fontSize || 14) * 0.35)), y: 1 };
+    }
+    delete node.noShadow;
+    children.push(node);
+  };
+  const rect = (o) => children.push(Object.assign({ type: 'rect' }, o));
+
+  // ── 底部锚点（所有成图版式共用，保证一组图的署名区永远在同一位置）──
+  const qrTop = H - PAD - QR_S;        // 389
+  const l2Top = qrTop - 6 - 14;        // 369  行2：年份｜品牌 @人名
+  const l1Top = l2Top - 16;            // 353  行1：标签链 / 栏脚
+  const author = d.author || d.source || '';
+
+  // ① 色带：整宽出血的浅色磨砂带 + 带内深色字（照参考图的「提亮带 + 黑字」，
+  //    关键差异：**不是**暗色蒙版 + 白字——带子是提亮的，字必须转深色才清楚）。
+  if (L === 'band') {
+    const bodyFs = S.bodySize, bodyLh = S.bodyLineHeight;
+    const bodyLines = d.body ? countLines(d.body, innerW - 8, bodyFs, measure, 4) : 0;
+    const subLines = d.subtitle ? countLines(d.subtitle, innerW - 8, 12, measure, 2) : 0;
+    let innerH = 0;
+    if (d.title) innerH += 12 + 6;
+    if (bodyLines) innerH += bodyLines * bodyLh;
+    if (subLines) innerH += 6 + subLines * 18;
+    if (author) innerH += 10 + 15;
+    const bandH = innerH + 44;
+    const bandTop = Math.round(H * 0.30);                  // 参考图带子在中部偏下
+    // 带色：照片上必须用白（0.55 叠深色照片会成中灰，像压暗带；参考图是明显提亮的
+    // 浅白带，所以拉到 0.75）。**没有照片**时底本身就是浅米色，再叠白等于没画——
+    // 改用主题主色的 10% 淡染，带子才看得见，深色字照样清楚。
+    const bandBg = onPhoto ? 'rgba(255,255,255,0.75)' : fontKit.alpha(p.primary, 0.10);
+    rect({ left: 0, top: bandTop, width: W, height: bandH, background: bandBg });
+    let by = bandTop + 22;
+    if (d.title) {
+      txt(d.title, { left: PAD, top: by, width: innerW, color: '#3d3d3d', fontSize: 12, lineHeight: 12, lineClamp: 1, textAlign: 'center', noShadow: true });
+      by += 18;
+    }
+    if (d.body) {
+      txt(d.body, { left: PAD + 4, top: by, width: innerW - 8, color: '#1f1f1f', fontSize: bodyFs,
+        lineHeight: bodyLh, lineClamp: 4, textAlign: 'center', noShadow: true });
+      by += bodyLines * bodyLh;
+    }
+    if (subLines) {
+      txt(d.subtitle, { left: PAD + 4, top: by + 6, width: innerW - 8, color: '#3d3d3d', fontSize: 12,
+        lineHeight: 18, lineClamp: 2, textAlign: 'center', noShadow: true });
+      by += 6 + subLines * 18;
+    }
+    if (author) {
+      txt('—— ' + author, { left: PAD + 4, top: by + 10, width: innerW - 8, color: '#4a4a4a',
+        fontSize: 11, lineHeight: 15, lineClamp: 1, textAlign: 'right', noShadow: true });
+    }
+    // 底部：参考图是「英文小字行 + 品牌 logo」两行栏脚。
+    // 行1 用逐字空格的年份英译行（补之前缺的英文行），行2 是居中品牌名。
+    txt(brand.yearLine(), { left: PAD, top: l1Top, width: innerW, color: faint,
+      fontSize: 10, lineHeight: 14, lineClamp: 1, textAlign: 'center' });
+    txt(d.brandName || brand.BRAND, { left: PAD, top: l2Top, width: innerW, color: ink,
+      fontSize: 11, lineHeight: 15, lineClamp: 1, textAlign: 'center', fontFamily: serif });
+  }
+
+  // ② 签名：右上角手写署名（楷体）+ 一条短装饰线；底部标签链 + 品牌行
+  if (L === 'signature') {
+    const sign = author || brand.BRAND;
+    const sw = Math.ceil(measure(sign, 15) * 1.3) + 6;
+    txt(sign, { left: W - PAD - sw, top: 14, width: sw, color: ink, fontSize: 15,
+      fontWeight: 'bold', lineHeight: 20, fontFamily: kai, textAlign: 'right' });
+    rect({ left: W - PAD - 34, top: 38, width: 34, height: 1,
+      background: onPhoto ? 'rgba(255,255,255,0.7)' : fontKit.alpha(p.primary, 0.7) });
+    if (d.title) {
+      txt(d.title, { left: PAD, top: Math.round(H * 0.28), width: innerW, color: sub,
+        fontSize: 12, lineHeight: 16, lineClamp: 1, textAlign: 'center' });
+    }
+    if (d.body) {
+      txt(d.body, { left: PAD, top: Math.round(H * 0.36), width: innerW, color: ink,
+        fontSize: S.bodySize, lineHeight: S.bodyLineHeight, lineClamp: 5, textAlign: 'center' });
+    }
+    txt(brand.tagLine(d.brandTags), { left: PAD, top: l1Top, width: innerW, color: sub,
+      fontSize: 11, lineHeight: 15, lineClamp: 1, textAlign: 'center' });
+    txt(brand.signLine(author, d.brandName), { left: PAD, top: l2Top, width: innerW, color: faint,
+      fontSize: 10, lineHeight: 14, lineClamp: 1, textAlign: 'center' });
+  }
+
+  // ③ 极简：什么都不加，只有正文 + 左下角两行极小水印（照参考图 3）
+  if (L === 'minimal') {
+    if (d.title) {
+      txt(d.title, { left: PAD, top: Math.round(H * 0.34), width: innerW, color: sub,
+        fontSize: 12, lineHeight: 16, lineClamp: 1, textAlign: 'left' });
+    }
+    if (d.body) {
+      txt(d.body, { left: PAD, top: Math.round(H * 0.42), width: innerW - 40, color: ink,
+        fontSize: S.bodySize, lineHeight: S.bodyLineHeight, lineClamp: 6, textAlign: 'left' });
+    }
+    txt(brand.watermarkLine(), { left: PAD, top: H - PAD - 27, width: innerW - 56, color: faint,
+      fontSize: 10, lineHeight: 14, lineClamp: 1, textAlign: 'left' });
+    txt(d.brandSlogan || brand.DEFAULT_SLOGAN, { left: PAD, top: H - PAD - 13, width: innerW - 56,
+      color: onPhoto ? 'rgba(255,255,255,0.5)' : fontKit.alpha(p.sub, 0.7), fontSize: 10, lineHeight: 13, lineClamp: 1 });
+  }
+
+  // ④ 刊头：贴顶的极淡栏目字链（照参考图 4 顶部「M E W O R L D T E A M」——小、淡、字距大）
+  //    + 正文居中 + 底部两行栏脚
+  if (L === 'masthead') {
+    const chain = brand.spaced(typeName);
+    const cw = Math.ceil(measure(chain, 10) * 1.2);
+    txt(chain, { left: (W - cw) / 2, top: 10, width: cw,
+      color: onPhoto ? 'rgba(255,255,255,0.5)' : fontKit.alpha(p.primary, 0.45),
+      fontSize: 10, lineHeight: 14, lineClamp: 1, textAlign: 'center' });
+    if (d.title) {
+      txt(d.title, { left: PAD, top: Math.round(H * 0.34), width: innerW, color: sub,
+        fontSize: 12, lineHeight: 16, lineClamp: 1, textAlign: 'center' });
+    }
+    if (d.body) {
+      txt(d.body, { left: PAD, top: Math.round(H * 0.42), width: innerW, color: ink,
+        fontSize: S.bodySize, lineHeight: S.bodyLineHeight, lineClamp: 5, textAlign: 'center' });
+    }
+    txt(brand.BRAND + ' ❄ ' + typeName + ' ｜ 记录生活·分享美好', { left: PAD, top: l1Top, width: innerW,
+      color: sub, fontSize: 11, lineHeight: 15, lineClamp: 1, textAlign: 'center' });
+    // 行2 带年份 + 品牌（与其余成图版式同构，一组图扫下来署名区才齐整）
+    txt(brand.signLine(author, d.brandName), { left: PAD, top: l2Top, width: innerW,
+      color: faint, fontSize: 10, lineHeight: 14, lineClamp: 1, textAlign: 'center' });
+  }
+
+  // ⑤ 大字：底部衬线大字压阵，两字之间嵌一列竖排小字（照参考图 5「早(美/學)餐」）
+  if (L === 'headline') {
+    // 大字主体取「标题」优先（标题是主题词，如「早餐」）；没有标题（金句卡）时才退而用正文。
+    const heroIsTitle = !!(d.title && Array.from(String(d.title)).length <= 6);
+    const heroText = heroIsTitle ? String(d.title) : String(d.body || '');
+    const heroChars = Array.from(heroText);
+    // 竖排嵌字只在「2–4 个字的主题词」时启用——长句子中间插字会变成排版事故
+    const useInset = heroIsTitle && heroChars.length >= 2 && heroChars.length <= 4;
+    if (heroIsTitle && d.body) {
+      txt(d.body, { left: PAD, top: Math.round(H * 0.30), width: innerW, color: sub,
+        fontSize: 15, lineHeight: 26, lineClamp: 4, textAlign: 'center' });
+    }
+    if (!heroIsTitle && d.title) {
+      // 标题没被当成大字（如日签卡的「10月7日 · 星期二」这种元信息），退成顶部一行小字，
+      // 不能直接丢掉——日期/来源这类信息用户是需要的。
+      txt(d.title, { left: PAD, top: Math.round(H * 0.30), width: innerW, color: sub,
+        fontSize: 12, lineHeight: 16, lineClamp: 1, textAlign: 'center' });
+    }
+    if (useInset) {
+      const heroFs = heroChars.length <= 2 ? 74 : (heroChars.length === 3 ? 58 : 46);
+      const insetFs = Math.round(heroFs * 0.34);
+      const insetChars = Array.from(String(d.inset || brand.DEFAULT_INSET)).slice(0, 2);
+      const insetW = insetFs + 6;
+      const heroW = heroChars.length * heroFs + insetW;
+      const heroBlockH = heroFs + 8;
+      const heroTop = l1Top - 16 - heroBlockH;
+      let hx = Math.round((W - heroW) / 2);
+      heroChars.forEach((c, i) => {
+        txt(c, { left: hx, top: heroTop, width: heroFs, color: ink, fontSize: heroFs,
+          fontWeight: 'normal', lineHeight: heroBlockH, lineClamp: 1,
+          fontFamily: serif, textAlign: 'center' });
+        hx += heroFs;
+        if (i === 0) {
+          // 竖排：两个字各占一行，整体在大字块里居中
+          const iTop = heroTop + Math.round((heroBlockH - insetChars.length * (insetFs + 4)) / 2);
+          insetChars.forEach((ic, k) => {
+            txt(ic, { left: hx, top: iTop + k * (insetFs + 4), width: insetW, color: faint,
+              fontSize: insetFs, lineHeight: insetFs + 4, lineClamp: 1,
+              fontFamily: serif, textAlign: 'center' });
+          });
+          hx += insetW;
+        }
+      });
+    } else {
+      // 长句大字：按字数自适应字号，衬线居中，最多 3 行
+      const n = heroChars.length;
+      const fs2 = n <= 6 ? 40 : (n <= 10 ? 30 : (n <= 16 ? 24 : 20));
+      const lh = Math.round(fs2 * 1.28);
+      const lines = countLines(heroText, innerW, fs2, measure, 3);
+      txt(heroText, { left: PAD, top: l1Top - 16 - lines * lh, width: innerW, color: ink,
+        fontSize: fs2, lineHeight: lh, lineClamp: 3, fontFamily: serif, textAlign: 'center' });
+    }
+    txt(brand.yearLine(), { left: PAD, top: l1Top, width: innerW,
+      color: onPhoto ? 'rgba(255,255,255,0.9)' : sub, fontSize: 10, lineHeight: 15, lineClamp: 1, textAlign: 'center' });
+    txt(brand.BRAND + ' ❄ ' + typeName + (author ? ' @' + author : ''), { left: PAD, top: l2Top, width: innerW,
+      color: faint, fontSize: 10, lineHeight: 14, lineClamp: 1, textAlign: 'center' });
+  }
+
+  // ⑥ 小程序码：右下角 44px（成图版式也不摘码——回流入口是产品硬需求）
+  children.push({ type: 'qrcode', left: W - PAD - QR_S, top: qrTop, size: QR_S, asset: d.qrAsset });
+
+  const model = {
+    width: W,
+    height: H,               // 固定 3:4，不随内容变高——成图的"比例感"就是它
+    gradient: p.bg,
+    radius: p.radius,
+    children
+  };
+  if (d.bgImg) model.backgroundImage = d.bgImg;
+  if (d.bgVeil) model.bgVeil = d.bgVeil;
+  return model;
 }
 
 function buildCardModel(type, themeId, data, opts) {
@@ -933,6 +1250,13 @@ function buildCardModel(type, themeId, data, opts) {
   // band(色带) / signature(签名) / minimal(极简) / masthead(刊头) / headline(大字)。
   // plain 仅用于「未显式开风格」的历史卡片，保持旧观感（向后兼容单测）。
   const L = styleOn ? (S.layout || 'editorial') : 'plain';
+  // ── 成图版式分流（2026-10-12）──
+  // band/signature/minimal/masthead/headline 是「3:4 成图」：固定画幅 + 底部品牌行 +
+  // 无控件元素，结构与卡片版式完全不同，走独立构建器。
+  // 仍然从 buildCardModel 出去，调用方（5 个页面 / 海报 / 预览工具）无需改一行。
+  if (styleOn && FRAME_LAYOUTS[L]) {
+    return buildFrameModel(type, themeId, data, opts, S, L);
+  }
   const titleFont = styleOn ? fontKit.familyOf(S.titleFont) : font;
   const bodyFont = styleOn ? fontKit.familyOf(S.bodyFont) : font;
   const decoFont = styleOn ? fontKit.familyForRole('deco') : font;
@@ -2575,6 +2899,32 @@ for (const sk of STYLE_KEYS) {
   }
 }
 
+// ── 成图版式 × 照片背景（与 5 张参考图逐张核对的主视图）──
+// 参考图全部是「照片上的成图」：固定竖幅、文字压图、底部栏脚。
+// 只有在照片底上渲染，才能看出色带是不是提亮、白字投影够不够、大字压不压得住。
+const grid5 = document.getElementById('grid5');
+const FRAME_KEYS = ['band', 'signature', 'minimal', 'masthead', 'headline'];
+const FRAME_SAMPLE = { title: '早餐', body: '把窗帘拉开，把心事放下。', author: '杜淳滢' };
+for (const sk of FRAME_KEYS) {
+  const canvas = document.createElement('canvas');
+  try {
+    const model = buildCardModel('quote', 'warm', Object.assign({}, FRAME_SAMPLE, {
+      styleKey: sk, bgImg: 'demo://photo.jpg', qr: true
+    }));
+    const q = model.children.find(c => c.type === 'qrcode');
+    if (q) q.asset = qrAsset;
+    model.backgroundImageAsset = photoAsset;
+    const ctx = canvas.getContext('2d');
+    const layout = computeLayout(model, {}, (t, px) => { ctx.font = px + 'px sans-serif'; return ctx.measureText(t).width; });
+    canvas.width = 340; canvas.height = layout.height;
+    canvas.style.height = Math.round(layout.height * (224 / 340)) + 'px';
+    draw(ctx, layout);
+    addCard(grid5, sk + ' · 照片成图 ' + canvas.width + '×' + canvas.height, canvas);
+  } catch (e) {
+    addCard(grid5, '❌ ' + sk + '：' + e.message, canvas);
+  }
+}
+
 // ── 海报长图：6 主题 × 1 样例（头像用首字占位，展示模板兜底） ──
 const grid3 = document.getElementById('grid3');
 const POSTER_SAMPLE = {
@@ -2621,6 +2971,19 @@ document.getElementById('info').innerHTML =
   ' ｜ 今日推荐（' + daily.dateStrOf() + '）：' + today.text +
   '<br>储备量：金句库 <b>' + daily.poolSize() + '</b> 条；种草/公告/清单/图文各 <b>' +
   daily.poolSizeFor('recommend') + '</b> 条 ｜ 本页由真实引擎源码驱动（render_engine × themes × templates × poster × daily）';
+
+// ── 只看成图区：file://…/card_preview.html#frames ──
+// 与参考图逐张核对时，长图里翻找 5 张成图很费劲，加个 hash 入口直接单屏看。
+if (location.hash === '#frames') {
+  [...document.querySelectorAll('.demo')].forEach(d => {
+    if (!d.querySelector('#grid5')) d.style.display = 'none';
+  });
+  [...document.querySelectorAll('h1')].forEach(h => {
+    const inFrames = h.parentElement && h.parentElement.querySelector && h.parentElement.querySelector('#grid5');
+    if (!inFrames) h.style.display = 'none';
+  });
+  ['grid', 'info'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+}
 </script>
 </body>
 </html>

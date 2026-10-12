@@ -13,6 +13,7 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 const engine = read('utils/core/render_engine.js');
 const themes = read('utils/themes/index.js');
 const fontKit = read('utils/font_kit.js');
+const brandLine = read('utils/brand_line.js');
 const templates = read('utils/templates/index.js');
 const daily = read('utils/templates/daily.js');
 const posterTpl = read('utils/templates/poster.js');
@@ -49,6 +50,10 @@ const html = `<!DOCTYPE html>
   <div class="grid" id="grid4"></div>
 </div>
 <div class="demo">
+  <h1>成图版式（5 种）× 照片背景 · 固定 3:4 —— 与参考图逐张核对用</h1>
+  <div class="grid" id="grid5"></div>
+</div>
+<div class="demo">
   <h1>海报长图（6 主题 + 照片背景 · 头像首字占位 + 昵称 + 专属码）</h1>
   <div class="grid" id="grid3"></div>
 </div>
@@ -59,7 +64,10 @@ function __def(name, fn) { const m = { exports: {} }; fn(m, m.exports, __req); _
 // 2026-10-12 修复：templates/index.js 自排版风格功能起 require('../font_kit.js')，
 // 但本 harness 没有注册它 → 整页脚本报 "module not found" 直接中断，一张卡都画不出来
 // （工具从 2026-10-06 起就已静默失效，本次扩充风格后重建预览时暴露）。
-const __MAP = { '../themes': 'themes', '../themes/index.js': 'themes', '../core/render_engine': 'render_engine', '../font_kit.js': 'font_kit' };
+// 2026-10-12 二次补充：成图版式引入 brand_line.js（品牌行文案源），同样要注册。
+// 教训：harness 的模块白名单必须与 templates/index.js 的 require 清单同步，
+// 否则整页静默失效——图上什么都没有，控制台才是唯一线索。
+const __MAP = { '../themes': 'themes', '../themes/index.js': 'themes', '../core/render_engine': 'render_engine', '../font_kit.js': 'font_kit', '../brand_line.js': 'brand_line', '../templates/brand_line.js': 'brand_line' };
 function __req(p) { const m = __mods[__MAP[p] || p]; if (!m) throw new Error('module not found: ' + p); return m.exports; }
 </script>
 <script>__def('render_engine', function (module, exports, require) {
@@ -70,6 +78,9 @@ ${themes}
 });</script>
 <script>__def('font_kit', function (module, exports, require) {
 ${fontKit}
+});</script>
+<script>__def('brand_line', function (module, exports, require) {
+${brandLine}
 });</script>
 <script>__def('templates', function (module, exports, require) {
 ${templates}
@@ -201,6 +212,32 @@ for (const sk of STYLE_KEYS) {
   }
 }
 
+// ── 成图版式 × 照片背景（与 5 张参考图逐张核对的主视图）──
+// 参考图全部是「照片上的成图」：固定竖幅、文字压图、底部栏脚。
+// 只有在照片底上渲染，才能看出色带是不是提亮、白字投影够不够、大字压不压得住。
+const grid5 = document.getElementById('grid5');
+const FRAME_KEYS = ['band', 'signature', 'minimal', 'masthead', 'headline'];
+const FRAME_SAMPLE = { title: '早餐', body: '把窗帘拉开，把心事放下。', author: '杜淳滢' };
+for (const sk of FRAME_KEYS) {
+  const canvas = document.createElement('canvas');
+  try {
+    const model = buildCardModel('quote', 'warm', Object.assign({}, FRAME_SAMPLE, {
+      styleKey: sk, bgImg: 'demo://photo.jpg', qr: true
+    }));
+    const q = model.children.find(c => c.type === 'qrcode');
+    if (q) q.asset = qrAsset;
+    model.backgroundImageAsset = photoAsset;
+    const ctx = canvas.getContext('2d');
+    const layout = computeLayout(model, {}, (t, px) => { ctx.font = px + 'px sans-serif'; return ctx.measureText(t).width; });
+    canvas.width = 340; canvas.height = layout.height;
+    canvas.style.height = Math.round(layout.height * (224 / 340)) + 'px';
+    draw(ctx, layout);
+    addCard(grid5, sk + ' · 照片成图 ' + canvas.width + '×' + canvas.height, canvas);
+  } catch (e) {
+    addCard(grid5, '❌ ' + sk + '：' + e.message, canvas);
+  }
+}
+
 // ── 海报长图：6 主题 × 1 样例（头像用首字占位，展示模板兜底） ──
 const grid3 = document.getElementById('grid3');
 const POSTER_SAMPLE = {
@@ -247,6 +284,19 @@ document.getElementById('info').innerHTML =
   ' ｜ 今日推荐（' + daily.dateStrOf() + '）：' + today.text +
   '<br>储备量：金句库 <b>' + daily.poolSize() + '</b> 条；种草/公告/清单/图文各 <b>' +
   daily.poolSizeFor('recommend') + '</b> 条 ｜ 本页由真实引擎源码驱动（render_engine × themes × templates × poster × daily）';
+
+// ── 只看成图区：file://…/card_preview.html#frames ──
+// 与参考图逐张核对时，长图里翻找 5 张成图很费劲，加个 hash 入口直接单屏看。
+if (location.hash === '#frames') {
+  [...document.querySelectorAll('.demo')].forEach(d => {
+    if (!d.querySelector('#grid5')) d.style.display = 'none';
+  });
+  [...document.querySelectorAll('h1')].forEach(h => {
+    const inFrames = h.parentElement && h.parentElement.querySelector && h.parentElement.querySelector('#grid5');
+    if (!inFrames) h.style.display = 'none';
+  });
+  ['grid', 'info'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+}
 </script>
 </body>
 </html>
