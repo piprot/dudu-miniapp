@@ -317,8 +317,20 @@ const STYLES = {
 };
 
 const STYLE_LIST = Object.keys(STYLES).map(k => ({
-  id: k, name: STYLES[k].name, titleFont: STYLES[k].titleFont, desc: STYLES[k].desc || ''
+  id: k, name: STYLES[k].name, titleFont: STYLES[k].titleFont, desc: STYLES[k].desc || '',
+  // 出品形态：card=流式卡片（带类型胶囊/外框），frame=固定 3:4 成图（文字压图 + 底部品牌行）
+  frame: !!STYLES[k].frame
 }));
+
+// 出图设置里的分组（用户 2026-10-12 拍板：两组标明，别让用户猜形态差异）。
+// 这两组不是「新旧」而是「用途」：卡片适合站内浏览，成图适合发到朋友圈/社群。
+const STYLE_GROUPS = [
+  { id: 'card', name: '卡片版式', hint: '随内容流式排版，带类型标签', list: [] },
+  { id: 'frame', name: '成图版式 · 3:4', hint: '固定竖幅、文字压图，适合直接发出去', list: [] }
+];
+STYLE_LIST.forEach(s => {
+  STYLE_GROUPS[s.frame ? 1 : 0].list.push(s);
+});
 
 function styleOf(id) {
   return STYLES[id] || STYLES.literary;
@@ -343,6 +355,6 @@ function stats() {
 }
 
 module.exports = {
-  FAMILIES, ROLE_FAMILY, STYLES, STYLE_LIST,
+  FAMILIES, ROLE_FAMILY, STYLES, STYLE_LIST, STYLE_GROUPS,
   familyOf, familyForRole, alpha, styleOf, hasStyle, styleName, styleDesc, stats
 };

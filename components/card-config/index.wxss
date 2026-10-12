@@ -55,3 +55,13 @@
   padding-left: 16rpx;
   border-left: 4rpx solid var(--primary);
 }
+/* 风格分组（2026-10-12）：卡片版式 / 成图版式 · 3:4。
+   两组出品形态不同（有没有小程序码、是不是固定竖幅），必须让用户选之前就看清。 */
+.style-grp { margin-bottom: 16rpx; }
+.style-grp:last-child { margin-bottom: 0; }
+.style-grp-t { display: flex; align-items: baseline; margin-bottom: 10rpx; }
+.style-grp-n { font-size: 22rpx; color: var(--text-body); font-weight: 500; }
+.style-grp-h {
+  font-size: 19rpx; color: var(--text-tertiary);
+  margin-left: 12rpx; flex: 1;
+}

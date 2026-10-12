@@ -47,7 +47,7 @@
   <!-- 出图设置（默认收起）：排版风格 / 背景图（内置 + 相册）/ 主题配色。
        四页共用 components/card-config，结构只此一份。 -->
   <card-config
-    style-list="{{styleList}}" style-key="{{styleKey}}" style-desc="{{styleDesc}}"
+    style-list="{{styleList}}" style-groups="{{styleGroups}}" style-key="{{styleKey}}" style-desc="{{styleDesc}}"
     style-hint="风格决定字体族、字号、字距、对齐与装饰符号。全部用系统字体，不下载、不闪烁。"
     builtin-photos="{{builtinPhotos}}" bg-source="{{bgSource}}" bg-photo-id="{{bgPhotoId}}"
     local-bg="{{localBg}}" photo-mode-label="{{photoModeLabel}}" bg-author="{{bgAuthor}}"

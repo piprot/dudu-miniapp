@@ -68,6 +68,9 @@ t('defaults 含四页共用的全部字段，且默认文艺风', () => {
     + '（内置图没有服务端灰度，只有蒙版强度——不要承诺做不到的事）');
   assert.strictEqual(d.localBg, '', '相册图默认必须为空');
   assert.strictEqual(d.styleList.length, fontKit.STYLE_LIST.length);
+  // 分组数据必须一起注入：组件按 styleGroups 渲染，页面 data 里没有它 → 分组区空白
+  assert.ok(Array.isArray(d.styleGroups) && d.styleGroups.length === 2,
+    'defaults 必须注入 styleGroups（两组：卡片版式 / 成图版式）');
   assert.strictEqual(d.bgSource, 'builtin', '默认背景来源必须是内置兜底（零网络）');
   assert.strictEqual(d.builtinPhotos.length, bgPack.BUILTIN.length, '内置图数量不对');
   assert.ok(d.builtinPhotos.every(p => String(p.url).indexOf('/images/bg/') === 0), '内置图必须是包内路径');

@@ -119,6 +119,29 @@ t('9 种风格齐全，每种都带一句话说明（出图设置那一行就靠
   assert.ok(kit.styleDesc('nope').length > 0, '未知风格说明应回退文艺，不能为空');
 });
 
+t('风格分组：卡片版式 4 种 / 成图版式 5 种，两组不重不漏', () => {
+  // 分组是给用户看形态差异的（卡片 vs 3:4 成图）。分组错了 = 用户会在错误的
+  // 预期下选风格，选完发现「怎么没有小程序码 / 怎么变竖幅了」。
+  const gs = kit.STYLE_GROUPS;
+  assert.strictEqual(gs.length, 2, '应为两组');
+  assert.deepStrictEqual(gs.map(g => g.id), ['card', 'frame']);
+  assert.strictEqual(gs[0].list.length, 4, '卡片组应是文艺/现代/温暖/海报 4 种');
+  assert.strictEqual(gs[1].list.length, 5, '成图组应是色带/签名/极简/刊头/大字 5 种');
+  for (const g of gs) {
+    assert.ok(g.name && g.hint, g.id + ' 组缺 name/hint（分组标题会显示空）');
+  }
+  // 不重不漏：两组 list 拼起来正好是 STYLE_LIST
+  const flat = gs.reduce((a, g) => a.concat(g.list.map(s => s.id)), []);
+  assert.strictEqual(flat.length, kit.STYLE_LIST.length, '分组后有重复或遗漏');
+  assert.deepStrictEqual(flat.slice().sort(), Object.keys(kit.STYLES).sort());
+  // frame 标记必须与 STYLES[k].frame 一致（模板层靠它决定走不走成图构建器）
+  for (const s of kit.STYLE_LIST) {
+    assert.strictEqual(s.frame, !!kit.STYLES[s.id].frame, s.id + ' 的 frame 标记与 STYLES 不一致');
+  }
+  assert.ok(gs[1].list.every(s => s.frame), '成图组里混进了非成图风格');
+  assert.ok(gs[0].list.every(s => !s.frame), '卡片组里混进了成图风格');
+});
+
 // ── 成图版式（用户拍板：固定 3:4 竖幅、隐藏胶囊与水印、保留小程序码）──
 // 这些断言守的是「成图 ≠ 卡片」这条边界：一旦有人把胶囊/外框/分隔线加回来，
 // 出图就会退回卡片观感，与参考图对不上 —— 所以逐条钉死。

@@ -118,7 +118,7 @@
        四页共用 components/card-config，结构只此一份；默认收起是刻意的
        渐进披露——出图是主任务，调字号配色是次要动作，不该占首屏。 -->
   <card-config
-    style-list="{{styleList}}" style-key="{{styleKey}}" style-desc="{{styleDesc}}"
+    style-list="{{styleList}}" style-groups="{{styleGroups}}" style-key="{{styleKey}}" style-desc="{{styleDesc}}"
     style-hint="风格决定字体族、字号、字距、对齐与装饰符号。全部用系统字体，不下载、不闪烁。"
     builtin-photos="{{builtinPhotos}}" bg-source="{{bgSource}}" bg-photo-id="{{bgPhotoId}}"
     local-bg="{{localBg}}" photo-mode-label="{{photoModeLabel}}" bg-author="{{bgAuthor}}"

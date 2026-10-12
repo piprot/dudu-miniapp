@@ -35,6 +35,8 @@ const html = `<!DOCTYPE html>
   .cell .tag { font-size: 12px; color: #9a958a; margin-bottom: 6px; }
   .cell canvas { width: 224px; box-shadow: 0 6px 24px rgba(0,0,0,.45); border-radius: 10px; }
   .demo { margin-top: 28px; padding-top: 18px; border-top: 1px dashed #3a3b40; }
+  /* 风格分组小标题：占满整行，把 flex 换行打断（与小程序出图设置的分组对应） */
+  .grp-t { flex: 0 0 100%; margin: 10px 0 -4px; font-size: 13px; color: #cfc7b4; }
 </style>
 </head>
 <body>
@@ -197,17 +199,24 @@ const grid2 = document.getElementById('grid2');
 });
 
 // ── 9 种排版风格 × 金句卡 / 日签卡（2026-10-12 风格 4→9 扩充的可视化验证）──
-// 色带/签名/极简/刊头/大字 5 种新骨架是否真的长出来，在这里一眼可见。
+// 按 STYLE_GROUPS 分组渲染 —— 与小程序出图设置读的是**同一份分组数据**，
+// 所以这份预览里看到的分组，就是用户在小程序里看到的分组（不会漂移）。
 const grid4 = document.getElementById('grid4');
-const STYLE_KEYS = ['literary', 'modern', 'warm', 'poster', 'band', 'signature', 'minimal', 'masthead', 'headline'];
-for (const sk of STYLE_KEYS) {
-  for (const [tp, name] of [['quote', '金句卡'], ['dailysign', '日签卡']]) {
-    const canvas = document.createElement('canvas');
-    try {
-      renderCard(canvas, tp, 'warm', Object.assign({}, SAMPLE[tp], { styleKey: sk, author: '杜淳滢' }));
-      addCard(grid4, sk + ' · ' + name, canvas);
-    } catch (e) {
-      addCard(grid4, '❌ ' + sk + ' · ' + name + '：' + e.message, canvas);
+const { STYLE_GROUPS } = __req('font_kit');
+for (const grp of STYLE_GROUPS) {
+  const gh = document.createElement('div');
+  gh.className = 'grp-t';
+  gh.textContent = grp.name + ' —— ' + grp.hint;
+  grid4.appendChild(gh);
+  for (const sk of grp.list.map(s => s.id)) {
+    for (const [tp, name] of [['quote', '金句卡'], ['dailysign', '日签卡']]) {
+      const canvas = document.createElement('canvas');
+      try {
+        renderCard(canvas, tp, 'warm', Object.assign({}, SAMPLE[tp], { styleKey: sk, author: '杜淳滢' }));
+        addCard(grid4, sk + ' · ' + name, canvas);
+      } catch (e) {
+        addCard(grid4, '❌ ' + sk + ' · ' + name + '：' + e.message, canvas);
+      }
     }
   }
 }
@@ -285,17 +294,24 @@ document.getElementById('info').innerHTML =
   '<br>储备量：金句库 <b>' + daily.poolSize() + '</b> 条；种草/公告/清单/图文各 <b>' +
   daily.poolSizeFor('recommend') + '</b> 条 ｜ 本页由真实引擎源码驱动（render_engine × themes × templates × poster × daily）';
 
-// ── 只看成图区：file://…/card_preview.html#frames ──
-// 与参考图逐张核对时，长图里翻找 5 张成图很费劲，加个 hash 入口直接单屏看。
-if (location.hash === '#frames') {
+// ── 单屏入口：只看某一区块 ──
+//   file://…/card_preview.html#styles  9 种风格（含分组标题）
+//   file://…/card_preview.html#frames  5 种成图 × 照片背景
+// 与参考图逐张核对时长图里翻找太费劲，加 hash 直接单屏看。
+const ONLY = { '#styles': 'grid4', '#frames': 'grid5' }[location.hash];
+if (ONLY) {
   [...document.querySelectorAll('.demo')].forEach(d => {
-    if (!d.querySelector('#grid5')) d.style.display = 'none';
+    if (!d.querySelector('#' + ONLY)) d.style.display = 'none';
   });
   [...document.querySelectorAll('h1')].forEach(h => {
-    const inFrames = h.parentElement && h.parentElement.querySelector && h.parentElement.querySelector('#grid5');
-    if (!inFrames) h.style.display = 'none';
+    const keep = h.parentElement && h.parentElement.querySelector && h.parentElement.querySelector('#' + ONLY);
+    if (!keep) h.style.display = 'none';
   });
-  ['grid', 'info'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  ['grid', 'info'].forEach(id => {
+    if (id === ONLY) return;
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
 }
 </script>
 </body>
