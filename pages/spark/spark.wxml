@@ -38,17 +38,24 @@
     <button class="btn primary" bindtap="onPreview">🖼️ 预览成卡（{{cardCost}} 积分）</button>
   </view>
 
-  <view class="theme-row">
-    <view wx:for="{{themes}}" wx:key="id"
-      class="theme-chip {{theme === item.id ? 'on' : ''}}"
-      bindtap="onPickTheme" data-id="{{item.id}}"><view class="dot" style="background:{{item.color}}" aria-hidden="true"></view>{{item.name}}</view>
-  </view>
-
   <view class="canvas-wrap">
     <canvas type="2d" id="sparkCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
-    <view wx:if="{{!rendered}}" class="canvas-ph">点「🖼️ 预览成卡（{{cardCost}} 积分）」，日签显示在这里</view>
+    <view wx:if="{{!rendered}}" class="canvas-ph">换背景 / 风格可实时预览 · 点「预览成卡」出图</view>
     <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
   </view>
+
+  <!-- 出图设置（默认收起）：排版风格 / 背景图（内置 + 相册）/ 主题配色。
+       四页共用 components/card-config，结构只此一份。 -->
+  <card-config
+    style-list="{{styleList}}" style-key="{{styleKey}}"
+    style-hint="风格决定字体族、字号、字距、对齐与装饰符号。全部用系统字体，不下载、不闪烁。"
+    builtin-photos="{{builtinPhotos}}" bg-source="{{bgSource}}" bg-photo-id="{{bgPhotoId}}"
+    local-bg="{{localBg}}" photo-mode-label="{{photoModeLabel}}" bg-author="{{bgAuthor}}"
+    bg-hint="内置 60 张随包压缩，不走网络、不需服务器域名白名单，永远可用。"
+    themes="{{themes}}" theme="{{theme}}"
+    bind:style="onPickStyle" bind:builtin="onPickBuiltinBg" bind:album="onPickAlbumBg"
+    bind:clearphoto="onClearPhoto" bind:shufflephoto="onShufflePhoto"
+    bind:cyclemode="onCyclePhotoMode" bind:theme="onPickTheme" />
 
   <view class="err" wx:if="{{err}}">{{err}}</view>
   <view class="tip">文案来自小程序内置语料库，仅保存在你手机本地，不上传服务器。</view>

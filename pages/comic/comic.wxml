@@ -44,6 +44,15 @@
     </view>
   </view>
 
+  <!-- 背景图（可选）：手机相册图作整页背景，分镜叠在其上；生成后可免费换背景 -->
+  <view class="seg-row">
+    <view class="seg-label">背景图</view>
+    <view class="seg">
+      <view class="seg-item {{bgImg ? 'on' : ''}}" bindtap="onChooseBgImage">{{bgImg ? '已选背景图 · 重选' : '选相册背景图'}}</view>
+      <view class="seg-item" wx:if="{{bgImg}}" bindtap="onClearBgImage">取消背景</view>
+    </view>
+  </view>
+
   <button class="btn primary gen" bindtap="onGenComic">生成分镜（{{comicCost}} 积分）</button>
   <view class="err" wx:if="{{err}}">{{err}}</view>
 

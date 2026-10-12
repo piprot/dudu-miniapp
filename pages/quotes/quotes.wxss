@@ -12,9 +12,13 @@
 .input, .ta {
   width: 100%; box-sizing: border-box; background: var(--bg-card);
   border: 1rpx solid var(--border); border-radius: 14rpx; padding: 18rpx 20rpx;
-  font-size: 27rpx; line-height: 1.6; color: var(--ink);
+  font-size: 27rpx; color: var(--ink);
 }
-.ta { min-height: 150rpx; }
+.input:focus, .ta:focus { border-color: var(--primary); }
+/* 单行输入：显式高度，避免微信 <input> 文字只显示一半（原生组件不把 padding 计入自身高度） */
+.input { height: 92rpx; line-height: 92rpx; }
+/* 多行输入：line-height 用「绝对 rpx」根治「半个字」截断 */
+.ta { min-height: 150rpx; line-height: 44rpx; }
 
 /* 旧 .tags / .cats（一次性平铺标签云与大类）已删——
    改用 app.wxss 的 .picker 分层选择器（常用→大类→小类）。

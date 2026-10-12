@@ -178,6 +178,9 @@ function pickVal(e, field) {
   return '';
 }
 
+// ⚠️ repaint 仅「重绘当前已出的卡」（切背景/换风格/换衬底时调用），
+//    **绝不扣积分**。扣积分的唯一出口在各页的 renderXxx（金句馆=renderQuote『成卡』）。
+//    不要把 charge() 加进这里，否则「换图」就会扣费（用户明确反对）。
 function repaint(page) {
   const o = page && page._cardOpts;
   if (!o) return;

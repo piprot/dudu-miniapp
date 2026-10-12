@@ -21,7 +21,7 @@
 .label { font-size: 25rpx; font-weight: 600; color: var(--text-title); letter-spacing: 0.5rpx; }
 .count { font-size: 22rpx; color: var(--accent-blue); font-weight: 600; }
 
-.script { width: 100%; box-sizing: border-box; background: var(--bg-soft); border: 1rpx solid var(--border); border-radius: 14rpx; padding: 18rpx 20rpx; font-size: 26rpx; line-height: 1.7; color: var(--ink); min-height: 360rpx; font-family: "Menlo", "Consolas", "Courier New", "PingFang SC", monospace; transition: border-color .15s ease, box-shadow .15s ease; }
+.script { width: 100%; box-sizing: border-box; background: var(--bg-soft); border: 1rpx solid var(--border); border-radius: 14rpx; padding: 18rpx 20rpx; font-size: 26rpx; line-height: 44rpx; color: var(--ink); min-height: 360rpx; font-family: "Menlo", "Consolas", "Courier New", "PingFang SC", monospace; transition: border-color .15s ease, box-shadow .15s ease; }
 .script:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3rpx rgba(55, 138, 221, 0.12); }
 
 .row { display: flex; gap: 16rpx; margin-top: 14rpx; }

@@ -39,6 +39,7 @@ const __pageCfg = {
     script: SAMPLE,       // 分镜脚本（textarea 双向）
     themes: THEME_LIST.map(t => ({ id: t.id, name: t.name, color: t.colors.primary })),
     theme: 'warm',
+    bgImg: '',            // 整页背景图（用户相册图，可选；本地加载，不上传）
     cols: 2,              // 每行列数（2 / 3）
     rendered: false,
     canvasH: 0,
@@ -51,6 +52,7 @@ const __pageCfg = {
   },
 
   onLoad() {
+    this._charged = false;   // 付费闸门：仅「生成分镜」成功后置 true，之后换背景才免费重绘并允许保存
     this.refreshPanelCount();
   },
 
@@ -100,6 +102,31 @@ const __pageCfg = {
     this.setData({ cols: c, rendered: false });
   },
 
+  // 选手机相册图作整页背景（可选）。已生成过（付费）则换背景即时免费重绘；
+  // 未生成则只记录，下次点「生成分镜」时随成图一并生效（不开放未付费出图）。
+  onChooseBgImage() {
+    const self = this;
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['album', 'camera'],
+      success(r) {
+        const p = r.tempFiles && r.tempFiles[0] && r.tempFiles[0].tempFilePath;
+        if (!p) return;
+        self.setData({ bgImg: p });
+        if (self._charged) self.renderComic();   // 免费重绘：只换背景，不重复扣费
+        wx.showToast({ title: '已设背景图', icon: 'none' });
+      },
+      fail(e) { handlePrivacyApiFail(self, '选背景图', e); }
+    });
+  },
+
+  // 取消背景，回到主题底色
+  onClearBgImage() {
+    this.setData({ bgImg: '' });
+    if (this._charged) this.renderComic();
+  },
+
   onToggleHelp() {
     this.setData({ showHelp: !this.data.showHelp });
   },
@@ -115,6 +142,7 @@ const __pageCfg = {
     const cost = this.data.comicCost;
     this.setData({ err: '' });
     charge('comicGen', { label: '生成分镜' }).then(() => {
+      self._charged = true;   // 已付费：此后换背景可免费重绘，且允许保存到相册
       self.renderComic();
       wx.showToast({ title: '已生成分镜（-' + cost + '）', icon: 'none' });
     }).catch((e) => {
@@ -149,17 +177,29 @@ const __pageCfg = {
         canvas.width = Math.round(layout.width * k * dpr);
         canvas.height = Math.round(layout.height * k * dpr);
         ctx.scale(dpr * k, dpr * k);
-        draw(ctx, layout, { theme: pal });
-        self.canvasNode = canvas;
-        self._lastRecord = {
-          kind: 'comic',
-          theme: self.data.theme,
-          cols: self.data.cols,
-          title: model.title || '',
-          panels: model.panels.length,
-          script: String(self.data.script || '').slice(0, 60)
+        const finish = () => {
+          self.canvasNode = canvas;
+          self._lastRecord = {
+            kind: 'comic',
+            theme: self.data.theme,
+            cols: self.data.cols,
+            title: model.title || '',
+            panels: model.panels.length,
+            script: String(self.data.script || '').slice(0, 60)
+          };
+          self.setData({ canvasH: Math.round(layout.height * k), rendered: true, err: '' });
         };
-        self.setData({ canvasH: Math.round(layout.height * k), rendered: true, err: '' });
+        const bgPath = self.data.bgImg || '';
+        if (bgPath) {
+          // 相册背景图需异步加载为 Image 再交给 draw；加载失败回退主题底色，不白卡。
+          const bg = canvas.createImage();
+          bg.onload = () => { draw(ctx, layout, { theme: pal, bgImage: bg }); finish(); };
+          bg.onerror = () => { draw(ctx, layout, { theme: pal }); finish(); };
+          bg.src = bgPath;
+        } else {
+          draw(ctx, layout, { theme: pal });
+          finish();
+        }
       } catch (e) {
         self.setData({ err: '分镜渲染失败：' + ((e && e.message) || e || '未知错误') });
       }

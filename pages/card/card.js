@@ -32,7 +32,7 @@ function getDpr() {
 // 各模板的默认占位文本，降低首用门槛。
 // 日签正文不再写死：直接取「今日推荐」——每天自动换一条，同一自然日所有人看到同一条。
 const SEED = {
-  dailysign: { type: 'dailysign', title: todayLabel(), body: daily.todayQuote().text },
+  dailysign: { type: 'dailysign', title: todayLabel(), body: daily.dailySignQuote().text },
   quote: { type: 'quote', title: '', body: '把复杂的事，讲简单；把简单的事，做扎实。', author: '' },
   recommend: { type: 'recommend', title: '推荐一件好物', body: '用了就回不去的小确幸，今天安利给你。', tag: '¥ 39 起', cover: '' },
   notice: { type: 'notice', title: '活动公告', body: '本周六晚 8 点，社群分享会准时开始，欢迎来聊。', author: '' },
@@ -78,7 +78,7 @@ const __pageCfg = {
     // 每类卡片都从自己的文案库取「今日推荐」种子（结构化类型返回 title/body/tag/items）
     let seed;
     if (k === 'dailysign') {
-      seed = { type: 'dailysign', title: todayLabel(), body: daily.todayQuote().text };
+      seed = { type: 'dailysign', title: todayLabel(), body: daily.dailySignQuote().text };
     } else if (k === 'quote') {
       seed = { type: 'quote', title: '', body: daily.todayQuote().text, author: '' };
     } else {
@@ -96,7 +96,7 @@ const __pageCfg = {
     const t = this.data.type;
     this._quoteOffset = (this._quoteOffset || 0) + 1;
     if (t === 'dailysign' || t === 'quote') {
-      const q = daily.todayQuote(this._quoteOffset);
+      const q = (t === 'dailysign') ? daily.dailySignQuote(this._quoteOffset) : daily.todayQuote(this._quoteOffset);
       this.setData({ form: Object.assign({}, this.data.form, { body: q.t }), rendered: false });
       return;
     }
@@ -171,7 +171,7 @@ const __pageCfg = {
     // 每日日签：标题留空时自动用今天日期；正文留空时自动取「今日推荐」。
     if (this.data.type === 'dailysign') {
       d.title = d.title || todayLabel();
-      d.body = d.body || daily.todayQuote().text;
+      d.body = d.body || daily.dailySignQuote().text;
     }
     // 背景图（可选，铺满整卡；模板层会自动转白字 + 引擎叠暗色蒙版保证可读）。
     if (this.data.bgImg) d.bgImg = this.data.bgImg;

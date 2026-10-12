@@ -34,7 +34,7 @@ const __pageCfg = {
     theme: 'warm',
     form: {
       title: '',
-      quote: daily.todayQuote().text,   // 默认带今日金句，每天自动换
+      quote: daily.posterQuote().text,   // 默认带海报文案，每天自动换（独立文案库，不与日签卡重复）
       body: ''
     },
     bgImg: '',
@@ -45,7 +45,7 @@ const __pageCfg = {
     canvasH: 0,
     savedTick: 0,          // 保存成功翻转计数（奇偶交替换 keyframes，铁律 5）
     savedKey: '',          // 'a'/'b' = 翻转中，'' = 常态
-    quotePoolSize: daily.poolSize(),          // 金句库储备量
+    quotePoolSize: daily.posterPoolSize(),          // 海报文案库储备量
     posterCost: costOf('posterGen') || 20
   },
 
@@ -69,10 +69,10 @@ const __pageCfg = {
     this.setData({ showHelp: !this.data.showHelp });
   },
 
-  // 「换一套」：从每日金句库跳到下一套（同一天内不撞车，跨天回到当日主推）
+  // 「换一套」：从海报文案库跳到下一套（同一天内不撞车，跨天回到当日主推）
   onShuffleQuote() {
     this._quoteOffset = (this._quoteOffset || 0) + 1;
-    const q = daily.todayQuote(this._quoteOffset);
+    const q = daily.posterQuote(this._quoteOffset);
     this.setData({ form: Object.assign({}, this.data.form, { quote: q.t }), rendered: false });
   },
 
@@ -105,7 +105,7 @@ const __pageCfg = {
     };
     if (this.data.bgImg) d.bgImg = this.data.bgImg;
     // 金句留空且没有任何内容时，自动回填今日金句，保证首用永远有产出
-    if (!d.quote && !d.title && !d.body) d.quote = daily.todayQuote().text;
+    if (!d.quote && !d.title && !d.body) d.quote = daily.posterQuote().text;
     return d;
   },
 

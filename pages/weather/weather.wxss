@@ -21,7 +21,7 @@
 .cell-ico { font-size: 40rpx; line-height: 1.1; }
 .cell-name { font-size: 23rpx; color: var(--text-body); margin-top: 6rpx; }
 
-.ta { width: 100%; box-sizing: border-box; background: var(--bg-card); border: 1rpx solid var(--border); border-radius: 14rpx; padding: 18rpx 20rpx; font-size: 27rpx; line-height: 1.6; color: var(--ink); min-height: 120rpx; }
+.ta { width: 100%; box-sizing: border-box; background: var(--bg-card); border: 1rpx solid var(--border); border-radius: 14rpx; padding: 18rpx 20rpx; font-size: 27rpx; line-height: 44rpx; color: var(--ink); min-height: 150rpx; }
 .btn { font-size: 28rpx; color: var(--text-body); background: var(--bg-surface-4); border-radius: 14rpx; padding: 18rpx 0; line-height: 1.4; margin: 0; }
 .btn.ghost { flex: none; padding: 14rpx 30rpx; font-size: 25rpx; background: var(--bg-surface-1); color: var(--primary-deep); border: 1rpx solid var(--border); }
 .btn.pick { margin-top: 14rpx; }

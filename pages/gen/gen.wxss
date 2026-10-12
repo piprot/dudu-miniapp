@@ -121,7 +121,8 @@
 /* 多行输入（textarea）：高度交给 auto-height 自适应，内边距用 padding 撑 */
 .field-area {
   height: auto; min-height: 170rpx;
-  line-height: 1.6; padding: 20rpx 22rpx;
+  /* 绝对 rpx 根治微信 textarea（auto-height）首行「半个字」截断 */
+  line-height: 44rpx; padding: 20rpx 22rpx;
 }
 .field-input:focus { border-color: var(--primary); }
 
@@ -285,7 +286,7 @@
 /* ── 排版优化器 ── */
 .opt-tip { font-size: 24rpx; color: #8a7554; line-height: 1.6; margin-bottom: 16rpx; }
 .opt-input-wrap { position: relative; margin-bottom: 18rpx; }
-.opt-input { width: 100%; box-sizing: border-box; min-height: 220rpx; background: var(--bg-surface-1); border: 2rpx solid var(--bg-surface-2); border-radius: 16rpx; padding: 22rpx; font-size: 28rpx; color: var(--text-title); line-height: 1.7; }
+.opt-input { width: 100%; box-sizing: border-box; min-height: 220rpx; background: var(--bg-surface-1); border: 2rpx solid var(--bg-surface-2); border-radius: 16rpx; padding: 22rpx; font-size: 28rpx; color: var(--text-title); line-height: 46rpx; }
 .opt-paste { position: absolute; right: 20rpx; bottom: 18rpx; font-size: 24rpx; color: var(--primary); font-weight: 700; background: var(--bg-surface-3); border-radius: 999rpx; padding: 8rpx 22rpx; }
 .opt-inspire { margin: -6rpx 0 16rpx; font-size: 23rpx; color: #8a7554; background: var(--bg-soft); border: 1rpx dashed var(--bg-surface-5); border-radius: 12rpx; padding: 12rpx 18rpx; line-height: 1.6; }
 .opt-inspire:active { background: var(--bg-surface-1); }
@@ -304,8 +305,8 @@
 .kb-field { margin-bottom: 16rpx; }
 .kb-field.col { display: flex; flex-direction: column; }
 .kb-label { font-size: 24rpx; color: #8a7554; margin-bottom: 8rpx; display: block; }
-.kb-input { background: #ffffff; border: 2rpx solid var(--bg-surface-2); border-radius: 12rpx; padding: 16rpx 18rpx; font-size: 28rpx; color: var(--text-title); }
-.kb-area { background: #ffffff; border: 2rpx solid var(--bg-surface-2); border-radius: 12rpx; padding: 16rpx 18rpx; font-size: 28rpx; color: var(--text-title); min-height: 160rpx; width: 100%; box-sizing: border-box; }
+.kb-input { background: #ffffff; border: 2rpx solid var(--bg-surface-2); border-radius: 12rpx; padding: 0 18rpx; height: 96rpx; line-height: 96rpx; font-size: 28rpx; color: var(--text-title); width: 100%; box-sizing: border-box; }
+.kb-area { background: #ffffff; border: 2rpx solid var(--bg-surface-2); border-radius: 12rpx; padding: 16rpx 18rpx; font-size: 28rpx; color: var(--text-title); min-height: 160rpx; width: 100%; box-sizing: border-box; line-height: 46rpx; }
 .kb-save { background: linear-gradient(135deg, #ffd98a, #ffb84d); color: #6b4a0e; font-weight: 700; border-radius: 14rpx; font-size: 28rpx; margin-top: 6rpx; }
 
 .kb-quotes { margin-top: 18rpx; background: #f3f7fb; border: 2rpx solid #d7e6f5; border-radius: 16rpx; padding: 20rpx; }

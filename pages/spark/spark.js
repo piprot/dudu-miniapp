@@ -7,6 +7,7 @@ const daily = require('../../utils/templates/daily');
 const { renderCard, saveCanvas } = require('../../utils/quote_card_render');
 const { addQuote } = require('../../utils/quotes_store');
 const { THEME_LIST } = require('../../utils/themes/index.js');
+const cardStyle = require('../../utils/card_style_mixin');  // 排版风格 + 背景图（相册/内置背景，四页共用）
 const privacyPanel = require('../../utils/privacy_panel.js');
 const { charge } = require('../../utils/charge.js');
 const points = require('../../utils/points.js');   // 余额显示（扣费提示用）
@@ -19,7 +20,7 @@ function dateLabel() {
 }
 
 const __pageCfg = {
-  data: {
+  data: Object.assign({
     privacyShow: false,
     themes: THEME_LIST.map(t => ({ id: t.id, name: t.name, color: t.colors.primary })),
     theme: 'warm',
@@ -40,7 +41,7 @@ const __pageCfg = {
     cardCost: 0,        // 成卡单价（按钮上明写）
     savedTick: 0,
     savedKey: ''
-  },
+  }, cardStyle.defaults('literary')),
 
   // 点余额条去积分页（充值/签到）
 
@@ -73,6 +74,8 @@ const __pageCfg = {
 
   onLoad() {
     this._offset = 0;
+    this._charged = false;
+    this.initCardStyle('literary');   // 恢复持久化的排版风格 / 背景图选择
     const q = daily.todayQuote(0);
     this.setData({ quote: { text: q.text, c: q.c }, dateLabel: dateLabel() });
     this.loadAlmanac();
@@ -118,24 +121,40 @@ const __pageCfg = {
   },
 
   onPickTheme(e) {
-    const id = e.currentTarget.dataset.id;
+    // ⚠️ 兼容 card-config 组件上抛（e.detail.id）与页面直绑（e.currentTarget.dataset.id）。
+    const id = ((e && e.detail && e.detail.id) ||
+      (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id));
     if (!id || id === this.data.theme) return;
     this.setData({ theme: id });
-    if (this._lastPreview) {
-      renderCard(this, { canvasId: '#sparkCanvas', type: 'dailysign', theme: id, data: this._lastPreview }).catch(() => {});
-    }
+    // 换主题只重绘已出的卡（走 mixin.repaint，不重复扣费）。
+    if (this._cardOpts) cardStyle.repaint(this);
+  },
+
+  // 免费预览：进页即渲染一张，成卡前的换背景 / 换风格 / 换主题都能实时看到。
+  // 保存需先「成卡」（onSaveImage 用 _charged 闸门拦截，防止免费存图）。
+  onReady() { this.seedPreview(); },
+  seedPreview() {
+    const base = { title: this.data.dateLabel, body: this.data.quote.text, author: '每日一句 · ' + (this.data.quote.c || '') };
+    const data = cardStyle.applyCardStyle(this, base);   // 注入风格 + 背景（相册图优先）
+    this._lastPreview = data;
+    this._cardOpts = { canvasId: '#sparkCanvas', type: 'dailysign', theme: this.data.theme, data };
+    this._charged = false;
+    renderCard(this, this._cardOpts).catch(() => {});
   },
 
   onPreview() {
-    const data = { title: this.data.dateLabel, body: this.data.quote.text, author: '每日一句 · ' + (this.data.quote.c || '') };
+    const base = { title: this.data.dateLabel, body: this.data.quote.text, author: '每日一句 · ' + (this.data.quote.c || '') };
+    const data = cardStyle.applyCardStyle(this, base);   // 注入风格 + 背景（相册图优先于内置，都空则主题渐变）
     const self = this;
     // ⚠️ 扣费在前、渲染在后：积分不足时**不产出**（charge 会 reject 并弹引导）。
-    //    切主题走 mixin.repaint 只重绘已出的卡，不重复扣费。
+    //    切主题/换背景走 mixin.repaint 只重绘已出的卡，不重复扣费。
     //    改价只动 utils/config.js 的 POINTS.cost.sparkCard，云函数 GEN_COST 同名同值。
     charge('sparkCard', { onDone: (r) => this.setData({ points: (r && r.points) || 0 }), label: '每日一句卡' }).then(() => {
       this._lastPreview = data;
+      this._cardOpts = { canvasId: '#sparkCanvas', type: 'dailysign', theme: self.data.theme, data };
+      this._charged = true;   // 已付费：解锁保存到相册
       this.setData({ err: '' });
-      return renderCard(self, { canvasId: '#sparkCanvas', type: 'dailysign', theme: self.data.theme, data })
+      return renderCard(self, this._cardOpts)
         .catch(err => { self.setData({ err: (err && err.message) || '生成失败' }); });
     }).catch(() => {
       self.setData({ err: '' });
@@ -150,6 +169,11 @@ const __pageCfg = {
   },
 
   onSaveImage() {
+    // ⚠️ 闸门：免费预览卡（未点过「成卡」）不允许存相册，防止白嫖出图。
+    if (!this._charged) {
+      wx.showToast({ title: '请先点「预览成卡」生成后再保存', icon: 'none', duration: 2200 });
+      return;
+    }
     const self = this;
     saveCanvas(self, {
       savingKey: '_saving',
@@ -168,5 +192,8 @@ const __pageCfg = {
   }
 };
 
+// 注入风格/背景交互（onPickStyle / onPickBuiltinBg / onPickAlbumBg / onShufflePhoto /
+// onCyclePhotoMode / onClearPhoto / initCardStyle）——与金句/天气/节气/台词同一套
+Object.assign(__pageCfg, cardStyle.cardStyleMethods);
 Object.assign(__pageCfg, privacyPanel.privacyPanelMethods);
 Page(__pageCfg);

@@ -143,8 +143,19 @@ function draw(ctx, layout, opts) {
   const measure = (t, f) => { ctx.font = f; return ctx.measureText(t).width; };
 
   ctx.clearRect(0, 0, layout.width, layout.height);
-  ctx.fillStyle = pal ? pal.bgSolid : o.bg;
-  ctx.fillRect(0, 0, layout.width, layout.height);
+  if (o.bgImage) {
+    // 用户相册图作为整页背景：cover-fit 居中铺满，再叠一层淡蒙版，
+    // 保证叠在其上的分镜边框 / 对白气泡 / 文字可读（分镜与气泡本身是不透明色）。
+    const iw = o.bgImage.width || 1, ih = o.bgImage.height || 1;
+    const s = Math.max(layout.width / iw, layout.height / ih);
+    const dw = iw * s, dh = ih * s;
+    ctx.drawImage(o.bgImage, (layout.width - dw) / 2, (layout.height - dh) / 2, dw, dh);
+    ctx.fillStyle = 'rgba(0,0,0,0.20)';
+    ctx.fillRect(0, 0, layout.width, layout.height);
+  } else {
+    ctx.fillStyle = pal ? pal.bgSolid : o.bg;
+    ctx.fillRect(0, 0, layout.width, layout.height);
+  }
 
   let y = o.pad;
   if (layout.title) {

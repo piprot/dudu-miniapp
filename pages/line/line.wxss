@@ -26,9 +26,13 @@
 .input, .ta {
   width: 100%; box-sizing: border-box; background: var(--bg-card);
   border: 1rpx solid var(--border); border-radius: 14rpx; padding: 18rpx 20rpx;
-  font-size: 27rpx; line-height: 1.6; color: var(--ink);
+  font-size: 27rpx; color: var(--ink);
 }
-.ta { min-height: 150rpx; }
+.input:focus, .ta:focus { border-color: var(--primary); }
+/* 单行输入：显式高度，避免微信 <input> 文字只显示一半（原生组件不把 padding 计入自身高度） */
+.input { height: 92rpx; line-height: 92rpx; }
+/* 多行输入：line-height 用「绝对 rpx」根治「半个字」截断 */
+.ta { min-height: 150rpx; line-height: 44rpx; }
 
 .btn { font-size: 28rpx; color: var(--text-body); background: var(--bg-surface-4); border-radius: 14rpx; padding: 18rpx 0; line-height: 1.4; margin: 0; }
 .btn.ghost { flex: none; padding: 14rpx 30rpx; font-size: 25rpx; background: var(--bg-surface-1); color: var(--primary-deep); border: 1rpx solid var(--border); }

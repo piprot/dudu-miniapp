@@ -61,10 +61,14 @@
 .input, .ta {
   width: 100%; box-sizing: border-box; background: var(--bg-card);
   border: 1rpx solid var(--border); border-radius: 14rpx; padding: 18rpx 20rpx;
-  font-size: 27rpx; line-height: 1.6; color: var(--ink);
+  font-size: 27rpx; color: var(--ink);
 }
 .input:focus, .ta:focus { border-color: var(--primary); }
-.ta { min-height: 150rpx; }
+/* 单行输入：显式高度，避免微信 <input> 文字只显示一半（原生组件不把 padding 计入自身高度） */
+.input { height: 92rpx; line-height: 92rpx; }
+/* 多行输入：line-height 用「绝对 rpx」而非无单位倍数 —— 微信 textarea 对无单位
+   line-height 会按 font-size 计算首行高度导致「半个字」截断，绝对值可根治 */
+.ta { min-height: 150rpx; line-height: 44rpx; }
 .cover-mini { font-size: 22rpx; color: var(--success); margin-top: 10rpx; }
 
 .hint { margin-top: 10rpx; font-size: 22rpx; color: var(--text-tertiary); line-height: 1.5; }

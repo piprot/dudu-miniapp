@@ -76,6 +76,23 @@ const __pageCfg = {
 
   onShow() { this.refresh(); },
 
+  // 首次进入预置一张「免费预览」卡：让成卡前的换背景 / 换风格 / 换衬底也能实时重绘，
+  // 不必先成卡。预览**不开放免费保存**——onSaveImage 用 _charged 闸门拦截，
+  // 只有真正点过「成卡」（charge 成功）才能存相册，避免白嫖出图。
+  onReady() { this.seedPreview(); },
+
+  // 用「今日推荐」作底稿，构造 _cardOpts + _lastQuote 并立即渲染一张预览卡。
+  // 这样 repaint（换背景/风格）在第一次成卡前就有数据可重绘，改背景即时可见。
+  seedPreview() {
+    const tp = this.data.todayPick;
+    const base = { body: (tp && tp.text) || '今天也要认真生活。', author: (tp && tp.source) || 'dudu 画面感' };
+    this._lastQuote = base;
+    const data = cardStyle.applyCardStyle(this, base);
+    this._cardOpts = { canvasId: '#quotesCanvas', type: 'quote', theme: this.data.theme, data };
+    this._charged = false;
+    renderCard(this, this._cardOpts).catch(() => {});
+  },
+
   // 分层选择器初始化：大类=分类，小类=该类下真实存在的标签
   initPicker() {
     const picker = catPicker.build({
@@ -168,6 +185,7 @@ const __pageCfg = {
     const self = this;
     return charge('quoteCard', { onDone: (r) => this.setData({ points: (r && r.points) || 0 }), label: '金句卡' }).then(() => {
       this._lastQuote = base;
+      this._charged = true;   // 已付费：解锁「保存到相册」（预览阶段 _charged=false，拦截免费存图）
       const data = cardStyle.applyCardStyle(this, base);
       this._cardOpts = { canvasId: '#quotesCanvas', type: 'quote', theme: this.data.theme, data };
       this.setData({ err: '' });
@@ -316,6 +334,11 @@ const __pageCfg = {
   },
 
   onSaveImage() {
+    // ⚠️ 闸门：免费预览卡（未点过「成卡」）不允许存相册，否则等于白嫖出图。
+    if (!this._charged) {
+      wx.showToast({ title: '请先点「成卡」生成后再保存', icon: 'none', duration: 2200 });
+      return;
+    }
     const self = this;
     saveCanvas(self, {
       savingKey: '_saving',

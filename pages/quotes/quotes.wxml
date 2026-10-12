@@ -91,7 +91,7 @@
 
   <view class="canvas-wrap">
     <canvas type="2d" id="quotesCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
-    <view wx:if="{{!rendered}}" class="canvas-ph">点某条金句的「🖼️ 成卡」，预览显示在这里</view>
+    <view wx:if="{{!rendered}}" class="canvas-ph">选一句金句，或先换背景预览 · 点「🖼️ 成卡」出图</view>
     <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
   </view>
 
