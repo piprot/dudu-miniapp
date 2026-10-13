@@ -43,13 +43,17 @@ const DATE_LABEL_SIZE = 15;
 // 节日/日签卡金句正文字号（同上口径，比日期大5px 撑起主体感）。
 const DATE_BODY_SIZE = 20;
 
-// ── 成图版式（2026-10-12）──────────────────────────────────────────────────
+// ── 成图版式（2026-10-12 起；2026-10-13 改 4:3 横幅）──────────────────────
 // band / signature / minimal / masthead / headline 这 5 种是**成图**，不是卡片：
-// 固定 3:4 竖幅（340×453）、文字压在全出血照片上、底部只有两行品牌信息，
+// 固定 4:3 横幅（453×340）、文字压在全出血照片上、底部只有两行品牌信息，
 // **不带**类型胶囊 / 右上品牌水印 / 外框 / 分隔线（参考图上都没有）。
 // 走独立的 buildFrameModel：卡片版式的流式高度 + 控件锚点，与成图的「比例感」天生冲突，
 // 硬塞进同一条流水线只会两头都不像。
-const FRAME_H = Math.round(W * 4 / 3);   // 340 × 453，3:4 竖幅
+// ⚠️ 2026-10-13 用户反馈：3:4 竖幅发朋友圈「好长不好看」，改 4:3 横幅。
+//   FRAME_W / FRAME_H 是成图**专用**尺寸，与卡片逻辑宽 W(340) 解耦——
+//   不能把比例改在全局 W 上，否则卡片版式（也用 W）会跟着变。
+const FRAME_W = 453;                          // 成图专用宽（4:3，与卡片宽 W 解耦）
+const FRAME_H = Math.round(FRAME_W * 3 / 4);  // 453 × 340，4:3 横幅
 const QR_S = 44;                          // 成图模式的码：比卡片版的 56 小一档，让位给版式
 const FRAME_LAYOUTS = { band: 1, signature: 1, minimal: 1, masthead: 1, headline: 1 };
 
@@ -58,9 +62,9 @@ function countLines(text, width, fontPx, measure, clamp) {
 }
 
 /**
- * 成图版式构建器（3:4 竖幅，底部两行品牌行 + 右下角小程序码）。
+ * 成图版式构建器（4:3 横幅，底部两行品牌行 + 右下角小程序码）。
  *
- * 坐标系：整幅 340×453；底部锚点自下往上算——
+ * 坐标系：整幅 453×340；底部锚点自下往上算——
  *   小程序码 bottom=PAD、两行品牌行紧贴码的上方（行2 在下、行1 在上），
  *   主体内容（色带/正文/大字）放在中上部。这样无论文字长短，底部的「署名区」
  *   永远在同一位置，一组图连发时不会跳。
@@ -77,7 +81,7 @@ function buildFrameModel(type, themeId, data, opts, S, L) {
   const serif = fontKit.familyOf(S.titleFont);
   const kai = fontKit.familyOf('kai');
   const H = FRAME_H;
-  const innerW = W - PAD * 2;
+  const innerW = FRAME_W - PAD * 2;
   const typeName = CARD_TYPES[type].name;
   const children = [];
 
@@ -116,7 +120,7 @@ function buildFrameModel(type, themeId, data, opts, S, L) {
     // 浅白带，所以拉到 0.75）。**没有照片**时底本身就是浅米色，再叠白等于没画——
     // 改用主题主色的 10% 淡染，带子才看得见，深色字照样清楚。
     const bandBg = onPhoto ? 'rgba(255,255,255,0.75)' : fontKit.alpha(p.primary, 0.10);
-    rect({ left: 0, top: bandTop, width: W, height: bandH, background: bandBg });
+    rect({ left: 0, top: bandTop, width: FRAME_W, height: bandH, background: bandBg });
     let by = bandTop + 22;
     if (d.title) {
       txt(d.title, { left: PAD, top: by, width: innerW, color: '#3d3d3d', fontSize: 12, lineHeight: 12, lineClamp: 1, textAlign: 'center', noShadow: true });
@@ -148,9 +152,9 @@ function buildFrameModel(type, themeId, data, opts, S, L) {
   if (L === 'signature') {
     const sign = author || brand.BRAND;
     const sw = Math.ceil(measure(sign, 15) * 1.3) + 6;
-    txt(sign, { left: W - PAD - sw, top: 14, width: sw, color: ink, fontSize: 15,
-      fontWeight: 'bold', lineHeight: 20, fontFamily: kai, textAlign: 'right' });
-    rect({ left: W - PAD - 34, top: 38, width: 34, height: 1,
+      txt(sign, { left: FRAME_W - PAD - sw, top: 14, width: sw, color: ink, fontSize: 15,
+        fontWeight: 'bold', lineHeight: 20, fontFamily: kai, textAlign: 'right' });
+    rect({ left: FRAME_W - PAD - 34, top: 38, width: 34, height: 1,
       background: onPhoto ? 'rgba(255,255,255,0.7)' : fontKit.alpha(p.primary, 0.7) });
     if (d.title) {
       txt(d.title, { left: PAD, top: Math.round(H * 0.28), width: innerW, color: sub,
@@ -187,7 +191,7 @@ function buildFrameModel(type, themeId, data, opts, S, L) {
   if (L === 'masthead') {
     const chain = brand.spaced(typeName);
     const cw = Math.ceil(measure(chain, 10) * 1.2);
-    txt(chain, { left: (W - cw) / 2, top: 10, width: cw,
+    txt(chain, { left: (FRAME_W - cw) / 2, top: 10, width: cw,
       color: onPhoto ? 'rgba(255,255,255,0.5)' : fontKit.alpha(p.primary, 0.45),
       fontSize: 10, lineHeight: 14, lineClamp: 1, textAlign: 'center' });
     if (d.title) {
@@ -231,7 +235,7 @@ function buildFrameModel(type, themeId, data, opts, S, L) {
       const heroW = heroChars.length * heroFs + insetW;
       const heroBlockH = heroFs + 8;
       const heroTop = l1Top - 16 - heroBlockH;
-      let hx = Math.round((W - heroW) / 2);
+      let hx = Math.round((FRAME_W - heroW) / 2);
       heroChars.forEach((c, i) => {
         txt(c, { left: hx, top: heroTop, width: heroFs, color: ink, fontSize: heroFs,
           fontWeight: 'normal', lineHeight: heroBlockH, lineClamp: 1,
@@ -264,11 +268,11 @@ function buildFrameModel(type, themeId, data, opts, S, L) {
   }
 
   // ⑥ 小程序码：右下角 44px（成图版式也不摘码——回流入口是产品硬需求）
-  children.push({ type: 'qrcode', left: W - PAD - QR_S, top: qrTop, size: QR_S, asset: d.qrAsset });
+  children.push({ type: 'qrcode', left: FRAME_W - PAD - QR_S, top: qrTop, size: QR_S, asset: d.qrAsset });
 
   const model = {
-    width: W,
-    height: H,               // 固定 3:4，不随内容变高——成图的"比例感"就是它
+    width: FRAME_W,
+    height: H,               // 固定 4:3，不随内容变宽高——成图的"比例感"就是它
     gradient: p.bg,
     radius: p.radius,
     children
@@ -316,7 +320,7 @@ function buildCardModel(type, themeId, data, opts) {
   // plain 仅用于「未显式开风格」的历史卡片，保持旧观感（向后兼容单测）。
   const L = styleOn ? (S.layout || 'editorial') : 'plain';
   // ── 成图版式分流（2026-10-12）──
-  // band/signature/minimal/masthead/headline 是「3:4 成图」：固定画幅 + 底部品牌行 +
+  // band/signature/minimal/masthead/headline 是「4:3 成图」：固定画幅 + 底部品牌行 +
   // 无控件元素，结构与卡片版式完全不同，走独立构建器。
   // 仍然从 buildCardModel 出去，调用方（5 个页面 / 海报 / 预览工具）无需改一行。
   if (styleOn && FRAME_LAYOUTS[L]) {

@@ -94,7 +94,8 @@ function renderCard(page, opts) {
         Promise.all(jobs).then(() => {
           try {
             const layout = computeLayout(model, {}, measure);
-            // 引擎按 340 逻辑宽布局；画布元素实际 css 宽 cssW → 等比缩放绘制，清晰不变形
+            // 引擎按 model 逻辑宽布局（卡片 340 / 成图 4:3 为 453）；画布元素实际 css 宽 cssW
+            // → 等比缩放绘制，清晰不变形。⚠️ 别把宽写死，成图改比例后会整体压扁。
             const k = cssW / layout.width;
             canvas.width = Math.round(layout.width * k * dpr);
             canvas.height = Math.round(layout.height * k * dpr);

@@ -56,7 +56,7 @@ function defaults(defaultStyleKey) {
     // 排版风格
     styleKey: def,
     styleList: fontKit.STYLE_LIST,
-    // 分组渲染用（卡片版式 / 成图版式 · 3:4）——9 种风格分两种出品形态，
+    // 分组渲染用（卡片版式 / 成图版式 · 4:3）——9 种风格分两种出品形态，
     // 不分组用户只能靠名字猜，选完才发现「怎么没有小程序码」。
     styleGroups: fontKit.STYLE_GROUPS,
     styleDefault: def,
