@@ -102,6 +102,182 @@ t('styleOf 未知 id 回退 literary，styleName 同步', () => {
   assert.ok(kit.styleName('nope').length > 0, 'styleName 未知 id 应有回退名');
 });
 
+// ── 2026-10-12：风格由 4 种扩到 9 种（色带/签名/极简/刊头/大字）──
+t('9 种风格齐全，每种都带一句话说明（出图设置那一行就靠它）', () => {
+  const ids = Object.keys(kit.STYLES);
+  assert.strictEqual(ids.length, 9, '风格数应为 9，实际 ' + ids.length);
+  for (const id of ids) {
+    const s = kit.STYLES[id];
+    assert.ok(s.layout, id + ' 缺 layout 骨架 id（模板层靠它选构图）');
+    assert.ok(s.desc && s.desc.length >= 8, id + ' 缺 desc / 太短（用户看不出这风格长什么样）');
+    assert.strictEqual(kit.styleDesc(id), s.desc, id + ' styleDesc 与 STYLES 不一致');
+  }
+  assert.strictEqual(kit.STYLE_LIST.length, 9, 'STYLE_LIST 应同步到 9');
+  assert.ok(kit.STYLE_LIST.every(x => x.desc && x.desc.length),
+    'STYLE_LIST 必须带 desc —— 组件 card-config 直接遍历它渲染，缺了说明行就是空的');
+  // 未知识别回退，不能返回空串（空串会让组件那一行塌成 0 高）
+  assert.ok(kit.styleDesc('nope').length > 0, '未知风格说明应回退文艺，不能为空');
+});
+
+t('风格分组：卡片版式 4 种 / 成图版式 5 种，两组不重不漏', () => {
+  // 分组是给用户看形态差异的（卡片 vs 3:4 成图）。分组错了 = 用户会在错误的
+  // 预期下选风格，选完发现「怎么没有小程序码 / 怎么变竖幅了」。
+  const gs = kit.STYLE_GROUPS;
+  assert.strictEqual(gs.length, 2, '应为两组');
+  assert.deepStrictEqual(gs.map(g => g.id), ['card', 'frame']);
+  assert.strictEqual(gs[0].list.length, 4, '卡片组应是文艺/现代/温暖/海报 4 种');
+  assert.strictEqual(gs[1].list.length, 5, '成图组应是色带/签名/极简/刊头/大字 5 种');
+  for (const g of gs) {
+    assert.ok(g.name && g.hint, g.id + ' 组缺 name/hint（分组标题会显示空）');
+  }
+  // 不重不漏：两组 list 拼起来正好是 STYLE_LIST
+  const flat = gs.reduce((a, g) => a.concat(g.list.map(s => s.id)), []);
+  assert.strictEqual(flat.length, kit.STYLE_LIST.length, '分组后有重复或遗漏');
+  assert.deepStrictEqual(flat.slice().sort(), Object.keys(kit.STYLES).sort());
+  // frame 标记必须与 STYLES[k].frame 一致（模板层靠它决定走不走成图构建器）
+  for (const s of kit.STYLE_LIST) {
+    assert.strictEqual(s.frame, !!kit.STYLES[s.id].frame, s.id + ' 的 frame 标记与 STYLES 不一致');
+  }
+  assert.ok(gs[1].list.every(s => s.frame), '成图组里混进了非成图风格');
+  assert.ok(gs[0].list.every(s => !s.frame), '卡片组里混进了成图风格');
+});
+
+// ── 成图版式（用户拍板：固定 3:4 竖幅、隐藏胶囊与水印、保留小程序码）──
+// 这些断言守的是「成图 ≠ 卡片」这条边界：一旦有人把胶囊/外框/分隔线加回来，
+// 出图就会退回卡片观感，与参考图对不上 —— 所以逐条钉死。
+t('5 种成图风格：固定 3:4 竖幅、无胶囊外框分隔线、保留小程序码、底部品牌行', () => {
+  // 自带样例数据，不引用文件下方的 DATA（const 在 TDZ 里，提前引用会抛
+  // "Cannot access 'DATA' before initialization"）
+  const D = { title: '早餐', body: '把窗帘拉开，把心事放下。', author: '杜淳滢', qr: true };
+  const FRAMES = ['band', 'signature', 'minimal', 'masthead', 'headline'];
+  const build = k => buildCardModel('quote', 'warm', Object.assign({ styleKey: k }, D));
+
+  for (const k of FRAMES) {
+    const m = build(k);
+    const cs = m.children;
+    const texts = cs.filter(c => c.type === 'text');
+    const at = k + ': ';
+
+    // ① 固定 3:4（340×453），不再随内容流式增高
+    assert.strictEqual(m.width, 340, at + '宽应为 340');
+    assert.strictEqual(m.height, 453, at + '高应固定 453（3:4），实际 ' + m.height);
+
+    // ② 保留小程序码（用户明确拍板保留）
+    assert.ok(cs.some(c => c.type === 'qrcode'), at + '应保留小程序码');
+
+    // ③ 无类型胶囊（成图不出现「金句卡」这类 UI 控件）
+    assert.ok(!texts.some(c => /^金句卡$/.test((c.content || '').trim())),
+      at + '不应有类型胶囊文案');
+
+    // ④ 无整卡外框（left/top 归零、铺满全卡的描边 rect）
+    assert.ok(!cs.some(c => c.type === 'rect' && c.left === 0 && c.top === 0 &&
+      c.width === m.width && c.height === m.height), at + '不应有整卡外框');
+
+    // ⑤ 无分隔线（卡片版式靠线分栏，成图靠留白）
+    assert.ok(!cs.some(c => c.type === 'line'), at + '不应有分隔线');
+
+    // ⑥ 底部品牌行（年份，可能是逐字插空格的 2 0 2 6）
+    assert.ok(texts.some(x => /2\s*0\s*2\s*6/.test(x.content || '')),
+      at + '底部应有带年份的品牌行，实际: ' + JSON.stringify(texts.map(x => x.content)));
+
+    // ⑦ 品牌行确实在下半幅（不是飘在中间）
+    const foot = texts.filter(x => x.top >= m.height * 0.75);
+    assert.ok(foot.length >= 1, at + '品牌行应落在底部 25% 区域');
+  }
+});
+
+t('色带风：整宽浅色磨砂带 + 带内深色字（参考图的提亮带，不是压暗带）', () => {
+  const D = { title: '早餐', body: '把窗帘拉开，把心事放下。', author: '杜淳滢', qr: true };
+  const m = buildCardModel('quote', 'warm', Object.assign({ styleKey: 'band' }, D));
+  const bandOf = mm => mm.children.filter(c => c.type === 'rect' && c.left === 0 && c.width === mm.width);
+  // 整宽出血的色带
+  assert.ok(bandOf(m).length >= 1, '色带风应有整宽色带');
+  // 照片底：半透明白（提亮照片，不是压暗）
+  const onPhoto = buildCardModel('quote', 'warm',
+    Object.assign({ styleKey: 'band', bgImg: 'demo://photo.jpg' }, D));
+  assert.ok(/rgba\(\s*255\s*,\s*255\s*,\s*255/.test(String(bandOf(onPhoto)[0].background)),
+    '照片上色带应是半透明白（提亮），实际: ' + bandOf(onPhoto)[0].background);
+  // 无照片底：底色本身已经浅，再用白叠等于没画 → 必须是主色淡染
+  assert.ok(!/255\s*,\s*255\s*,\s*255/.test(String(bandOf(m)[0].background)),
+    '无照片时不该用白色带（浅底上看不出带子），实际: ' + bandOf(m)[0].background);
+  assert.ok(/rgba\(/.test(String(bandOf(m)[0].background)), '无照片色带应是半透明淡染');
+  // 带内文字必须是深色（浅底深字才可读）
+  const b = bandOf(m)[0];
+  const inside = m.children.filter(c => c.type === 'text' &&
+    c.top >= b.top && c.top <= b.top + b.height);
+  assert.ok(inside.length >= 2, '带内应有标题+正文，实际 ' + inside.length);
+  for (const x of inside) {
+    const c = String(x.color || '');
+    if (/^rgba/.test(c)) continue; // 允许半透明深色
+    assert.ok(c === '#1f1f1f' || c === '#3d3d3d' || c === '#4a4a4a' ||
+      /^#(1|2|3|4)/.test(c), '浅色带内文字必须是深色，实际: ' + c);
+  }
+  // 出处右对齐（参考图里署名靠右）
+  const src = inside.find(x => /——/.test(x.content || ''));
+  assert.ok(src, '带内应有「—— 作者」出处行');
+  // 注意字段名是 textAlign（模板层约定），不是 align
+  assert.strictEqual(src.textAlign, 'right', '出处应右对齐，实际 textAlign=' + src.textAlign);
+});
+
+t('刊头风：贴顶极小极淡字链（参考图的团队名式刊头）', () => {
+  const D = { title: '早餐', body: '把窗帘拉开，把心事放下。', author: '杜淳滢', qr: true };
+  const cs = buildCardModel('quote', 'warm', Object.assign({ styleKey: 'masthead' }, D)).children;
+  const head = cs.filter(c => c.type === 'text' && c.top <= 12);
+  assert.ok(head.length >= 1, '刊头应贴顶（top<=12）');
+  const h = head[0];
+  assert.ok(h.fontSize <= 10, '刊头应极小（<=10px），实际 ' + h.fontSize);
+  assert.ok(/\s/.test(h.content || ''), '刊头应逐字插空格（引擎不消费 letterSpacing）');
+  assert.ok(/rgba\(/.test(String(h.color)), '刊头应极淡（半透明），实际 ' + h.color);
+});
+
+t('签名风：右上角楷体署名 + ❄ 标签链 + 「年份｜品牌 @作者」', () => {
+  const D = { title: '早餐', body: '把窗帘拉开，把心事放下。', author: '杜淳滢', qr: true };
+  const cs = buildCardModel('quote', 'warm', Object.assign({ styleKey: 'signature' }, D)).children;
+  const texts = cs.filter(c => c.type === 'text');
+  // 署名在右上角：靠右（left 过半）且在顶部
+  const sign = texts.find(x => x.content === D.author);
+  assert.ok(sign, '应有署名节点');
+  assert.ok(sign.top <= 24 && sign.left >= 200, '署名应在右上角，实际 top=' + sign.top + ' left=' + sign.left);
+  assert.ok(/Kaiti|STKaiti|KaiTi/.test(sign.fontFamily), '署名应楷体，实际 ' + sign.fontFamily);
+  // 标签链（❄ 分隔）
+  assert.ok(texts.some(x => /❄/.test(x.content || '')), '应有 ❄ 标签链');
+  // 「2026 ｜ 品牌 @作者」
+  assert.ok(texts.some(x => /^20\d\d ｜ .*@/.test(x.content || '')),
+    '底部应有「年份｜品牌 @作者」，实际: ' + JSON.stringify(texts.map(x => x.content)));
+});
+
+t('极简风：无任何装饰元素，只有文字 + 码', () => {
+  const D = { title: '早餐', body: '把窗帘拉开，把心事放下。', author: '杜淳滢', qr: true };
+  const cs = buildCardModel('quote', 'warm', Object.assign({ styleKey: 'minimal' }, D)).children;
+  const deco = cs.filter(c => c.type !== 'text' && c.type !== 'qrcode' && c.type !== 'image');
+  assert.strictEqual(deco.length, 0, '极简风不应有 rect/line/circle 等装饰，实际: ' +
+    JSON.stringify(deco.map(c => c.type)));
+  // 两行超小水印（逐字空格的年份行 + slogan）
+  const foot = cs.filter(c => c.type === 'text' && c.top >= 400);
+  assert.ok(foot.length >= 2, '底部应有两行水印，实际 ' + foot.length);
+  assert.ok(foot.every(x => x.fontSize <= 10), '水印字号应 <=10');
+});
+
+t('大字风：衬线大字逐字渲染 + 字间竖排嵌字（参考图 5 的招牌构图）', () => {
+  const D = { title: '早餐', body: '把窗帘拉开，把心事放下。', author: '杜淳滢', qr: true };
+  const cs = buildCardModel('quote', 'warm', Object.assign({ styleKey: 'headline' }, D)).children;
+  const texts = cs.filter(c => c.type === 'text');
+  // 两个大字：字号 >=60、衬线、单字
+  const hero = texts.filter(x => x.fontSize >= 60);
+  assert.strictEqual(hero.length, 2, '「早餐」应拆成两个大字，实际 ' + hero.length);
+  assert.ok(hero.every(x => /Songti|Noto Serif|serif/.test(x.fontFamily)), '大字应衬线');
+  assert.ok(hero.every(x => Array.from(x.content).length === 1), '大字节点应单字');
+  assert.ok(hero[0].top === hero[1].top, '两个大字应同一基线');
+  // 字间嵌字：竖排两字、同 x、上下排列、夹在两大字之间
+  const inset = texts.filter(x => x.fontSize >= 20 && x.fontSize < 40);
+  assert.strictEqual(inset.length, 2, '应有竖排嵌字（2 字），实际 ' + inset.length);
+  assert.strictEqual(inset[0].left, inset[1].left, '嵌字应同 x（竖排）');
+  assert.ok(inset[0].top < inset[1].top, '嵌字应上下排列');
+  const l = Math.max(hero[0].left, 0), r = Math.min(hero[1].left, hero[1].left);
+  assert.ok(inset[0].left > hero[0].left && inset[0].left < hero[1].left,
+    '嵌字应夹在两个大字之间（左' + l + ' 嵌' + inset[0].left + ' 右' + r + '）');
+});
+
 // ── 与模板层集成（真正的价值在这里） ──
 const DATA = { title: '今天的风很轻', body: '把窗帘拉开，把心事放下。', author: 'dudu' };
 

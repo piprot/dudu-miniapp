@@ -68,6 +68,9 @@ t('defaults 含四页共用的全部字段，且默认文艺风', () => {
     + '（内置图没有服务端灰度，只有蒙版强度——不要承诺做不到的事）');
   assert.strictEqual(d.localBg, '', '相册图默认必须为空');
   assert.strictEqual(d.styleList.length, fontKit.STYLE_LIST.length);
+  // 分组数据必须一起注入：组件按 styleGroups 渲染，页面 data 里没有它 → 分组区空白
+  assert.ok(Array.isArray(d.styleGroups) && d.styleGroups.length === 2,
+    'defaults 必须注入 styleGroups（两组：卡片版式 / 成图版式）');
   assert.strictEqual(d.bgSource, 'builtin', '默认背景来源必须是内置兜底（零网络）');
   assert.strictEqual(d.builtinPhotos.length, bgPack.BUILTIN.length, '内置图数量不对');
   assert.ok(d.builtinPhotos.every(p => String(p.url).indexOf('/images/bg/') === 0), '内置图必须是包内路径');
@@ -371,6 +374,16 @@ t('onPickStyle 只接受 font_kit 认得的 key，且同值不重复渲染', () 
   p.onPickStyle(ev({ key: 'modern' }));
   assert.strictEqual(p.data.styleKey, 'modern');
   assert.strictEqual(store[mixin.KEY].styleKey, 'modern', '风格未持久化');
+  assert.strictEqual(p.data.styleDesc, fontKit.styleDesc('modern'),
+    '切换风格必须同步更新 styleDesc（出图设置里那行说明，2026-10-12 风格扩到 9 种后新增）');
+
+  // 新增风格也要能被选中（色带/签名/极简/刊头/大字）
+  for (const k of ['band', 'signature', 'minimal', 'masthead', 'headline']) {
+    p.onPickStyle(ev({ key: k }));
+    assert.strictEqual(p.data.styleKey, k, '新风格未被接受: ' + k);
+    assert.strictEqual(p.data.styleDesc, fontKit.styleDesc(k), k + ' 的说明未同步');
+  }
+  p.onPickStyle(ev({ key: 'modern' }));
 
   p.onPickStyle(ev({ key: '不存在的风格' }));
   assert.strictEqual(p.data.styleKey, 'modern', '非法风格被接受了');

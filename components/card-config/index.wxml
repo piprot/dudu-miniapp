@@ -12,11 +12,23 @@
     <!-- ① 排版风格 -->
     <view class="cc-sec">
       <view class="cc-sec-t">排版风格</view>
-      <view class="style-row">
-        <view wx:for="{{styleList}}" wx:key="id"
-          class="style-chip {{styleKey === item.id ? 'on' : ''}}"
-          bindtap="onPickStyle" data-key="{{item.id}}">{{item.name}}</view>
+      <view class="style-grp" wx:for="{{styleGroups}}" wx:for-item="grp" wx:key="id">
+        <!-- 分组标题（2026-10-12）：9 种风格里前 4 种是卡片、后 5 种是 3:4 成图，
+             出品形态完全不同。不分组的话用户只能靠名字猜，选完才发现「怎么没小程序码」。 -->
+        <view class="style-grp-t">
+          <text class="style-grp-n">{{grp.name}}</text>
+          <text class="style-grp-h">{{grp.hint}}</text>
+        </view>
+        <view class="style-row">
+          <view wx:for="{{grp.list}}" wx:key="id"
+            class="style-chip {{styleKey === item.id ? 'on' : ''}}"
+            bindtap="onPickStyle" data-key="{{item.id}}">{{item.name}}</view>
+        </view>
       </view>
+      <!-- 当前风格的一句话说明：2026-10-12 风格从 4 种扩到 9 种后新增——
+           选项一多，光看「色带 / 签名 / 刊头 / 大字」这类两字名字猜不出效果，
+           得有一行说明把「选它就变成什么样」讲清楚。 -->
+      <view wx:if="{{styleDesc}}" class="cc-styledesc">{{styleDesc}}</view>
       <view class="cc-hint">{{styleHint}}</view>
     </view>
 

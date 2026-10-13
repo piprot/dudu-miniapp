@@ -51,6 +51,34 @@ t('card-config 组件四件齐全', () => {
     'index.json 未声明 component: true');
 });
 
+t('出图设置显示当前风格说明，且各页都传了 style-desc（2026-10-12 风格扩到 9 种）', () => {
+  // 9 个两字风格名（色带/签名/刊头/大字…）光看名字猜不出效果，必须有一行说明。
+  assert.ok(/styleDesc/.test(rd(CC_DIR, 'index.wxml')), '组件未渲染 styleDesc（说明行消失）');
+  assert.ok(/styleDesc\s*:\s*\{\s*type\s*:\s*String/.test(rd(CC_DIR, 'index.js')),
+    '组件未声明 styleDesc property');
+  // 页面若不传 style-desc，说明行永远是空的（属性是显式透传的，不是继承的）
+  for (const p of PAGES.concat(['spark'])) {
+    assert.ok(/style-desc="\{\{styleDesc\}\}"/.test(rd(ROOT, 'pages', p, p + '.wxml')),
+      p + ' 页未把 style-desc 透传给 card-config');
+  }
+});
+
+t('风格选项按「卡片版式 / 成图版式」分组渲染，且各页透传 style-groups（2026-10-12）', () => {
+  // 9 种风格是两种出品形态：前 4 种卡片（流式 + 类型胶囊），后 5 种 3:4 成图（文字压图 +
+  // 底部品牌行 + 小程序码）。不分组，用户只能靠两字名字猜，选完才发现形态不对。
+  const wxml = rd(CC_DIR, 'index.wxml');
+  assert.ok(/styleGroups/.test(wxml), '组件未按 styleGroups 分组渲染');
+  assert.ok(/wx:for="\{\{styleGroups\}\}"/.test(wxml), '组件未遍历 styleGroups');
+  assert.ok(/wx:for="\{\{grp\.list\}\}"/.test(wxml), '分组内未遍历该组的风格列表');
+  assert.ok(/style-grp-t/.test(wxml), '缺少分组标题节点（用户看不出形态差异）');
+  assert.ok(/styleGroups\s*:\s*\{\s*type\s*:\s*Array/.test(rd(CC_DIR, 'index.js')),
+    '组件未声明 styleGroups property');
+  for (const p of PAGES.concat(['spark'])) {
+    assert.ok(/style-groups="\{\{styleGroups\}\}"/.test(rd(ROOT, 'pages', p, p + '.wxml')),
+      p + ' 页未把 style-groups 透传给 card-config');
+  }
+});
+
 t('组件必须 addGlobalClass，否则页面 app.wxss 的类进不来', () => {
   // 不加这个，组件内view 的默认样式（字号/颜色）会被隔离，视觉上整块字号突变
   assert.ok(/addGlobalClass\s*:\s*true/.test(rd(CC_DIR, 'index.js')),

@@ -33,7 +33,12 @@ Component({
 
     // ── 排版风格（来自 card_style_mixin.styleList）──
     styleList: { type: Array, value: [] },
+    // 分组渲染（卡片版式 / 成图版式 · 3:4）。styleList 保留给「需要扁平列表」的场景，
+    // 渲染用 styleGroups——否则用户无从知道哪几个选项会出竖幅成图。
+    styleGroups: { type: Array, value: [] },
     styleKey: { type: String, value: '' },
+    // 当前风格的一句话说明（2026-10-12 风格扩到 9 种后新增，来自 fontKit.styleDesc）
+    styleDesc: { type: String, value: '' },
     // 风格说明文案（各页措辞不同，页面自己传，避免组件里写死）
     styleHint: { type: String, value: '' },
 

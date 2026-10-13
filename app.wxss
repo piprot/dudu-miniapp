@@ -101,10 +101,12 @@ page {
    （utils/card_style_mixin.js）。放全局而非各自 wxss：四页 wxss 复制
    必然漂移，且这组控件的属性名互不通用，不会误伤别的页面。 */
 .style-row { display: flex; flex-wrap: wrap; gap: 12rpx; }
+/* 2026-10-12：风格从 4 种扩到 9 种，胶囊收窄一档（padding 28→22、字号 25→24）
+   让一行能排下 6 个，9 个风格两行收完；仍保留 999rpx 全圆角与「选中实心主色」。 */
 .style-chip {
-  padding: 12rpx 28rpx; border-radius: 999rpx;
+  padding: 12rpx 22rpx; border-radius: 999rpx;
   background: #f7f1e6; border: 1rpx solid var(--border);
-  font-size: 25rpx; color: var(--primary-deep);
+  font-size: 24rpx; color: var(--primary-deep);
 }
 .style-chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
 

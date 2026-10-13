@@ -65,6 +65,10 @@
       {
         "value": ".py",
         "type": "suffix"
+      },
+      {
+        "value": ".bak",
+        "type": "suffix"
       }
     ],
     "include": []

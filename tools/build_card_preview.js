@@ -12,6 +12,8 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 
 const engine = read('utils/core/render_engine.js');
 const themes = read('utils/themes/index.js');
+const fontKit = read('utils/font_kit.js');
+const brandLine = read('utils/brand_line.js');
 const templates = read('utils/templates/index.js');
 const daily = read('utils/templates/daily.js');
 const posterTpl = read('utils/templates/poster.js');
@@ -33,6 +35,8 @@ const html = `<!DOCTYPE html>
   .cell .tag { font-size: 12px; color: #9a958a; margin-bottom: 6px; }
   .cell canvas { width: 224px; box-shadow: 0 6px 24px rgba(0,0,0,.45); border-radius: 10px; }
   .demo { margin-top: 28px; padding-top: 18px; border-top: 1px dashed #3a3b40; }
+  /* 风格分组小标题：占满整行，把 flex 换行打断（与小程序出图设置的分组对应） */
+  .grp-t { flex: 0 0 100%; margin: 10px 0 -4px; font-size: 13px; color: #cfc7b4; }
 </style>
 </head>
 <body>
@@ -44,6 +48,14 @@ const html = `<!DOCTYPE html>
   <div class="grid" id="grid2"></div>
 </div>
 <div class="demo">
+  <h1>排版风格（9 种）× 金句卡 / 日签卡 —— 2026-10-12 风格扩充验证</h1>
+  <div class="grid" id="grid4"></div>
+</div>
+<div class="demo">
+  <h1>成图版式（5 种）× 照片背景 · 固定 3:4 —— 与参考图逐张核对用</h1>
+  <div class="grid" id="grid5"></div>
+</div>
+<div class="demo">
   <h1>海报长图（6 主题 + 照片背景 · 头像首字占位 + 昵称 + 专属码）</h1>
   <div class="grid" id="grid3"></div>
 </div>
@@ -51,7 +63,13 @@ const html = `<!DOCTYPE html>
 <script>
 const __mods = {};
 function __def(name, fn) { const m = { exports: {} }; fn(m, m.exports, __req); __mods[name] = m; }
-const __MAP = { '../themes': 'themes', '../core/render_engine': 'render_engine' };
+// 2026-10-12 修复：templates/index.js 自排版风格功能起 require('../font_kit.js')，
+// 但本 harness 没有注册它 → 整页脚本报 "module not found" 直接中断，一张卡都画不出来
+// （工具从 2026-10-06 起就已静默失效，本次扩充风格后重建预览时暴露）。
+// 2026-10-12 二次补充：成图版式引入 brand_line.js（品牌行文案源），同样要注册。
+// 教训：harness 的模块白名单必须与 templates/index.js 的 require 清单同步，
+// 否则整页静默失效——图上什么都没有，控制台才是唯一线索。
+const __MAP = { '../themes': 'themes', '../themes/index.js': 'themes', '../core/render_engine': 'render_engine', '../font_kit.js': 'font_kit', '../brand_line.js': 'brand_line', '../templates/brand_line.js': 'brand_line' };
 function __req(p) { const m = __mods[__MAP[p] || p]; if (!m) throw new Error('module not found: ' + p); return m.exports; }
 </script>
 <script>__def('render_engine', function (module, exports, require) {
@@ -59,6 +77,12 @@ ${engine}
 });</script>
 <script>__def('themes', function (module, exports, require) {
 ${themes}
+});</script>
+<script>__def('font_kit', function (module, exports, require) {
+${fontKit}
+});</script>
+<script>__def('brand_line', function (module, exports, require) {
+${brandLine}
 });</script>
 <script>__def('templates', function (module, exports, require) {
 ${templates}
@@ -174,6 +198,55 @@ const grid2 = document.getElementById('grid2');
   addCard(grid2, '照片背景 · ' + name, canvas);
 });
 
+// ── 9 种排版风格 × 金句卡 / 日签卡（2026-10-12 风格 4→9 扩充的可视化验证）──
+// 按 STYLE_GROUPS 分组渲染 —— 与小程序出图设置读的是**同一份分组数据**，
+// 所以这份预览里看到的分组，就是用户在小程序里看到的分组（不会漂移）。
+const grid4 = document.getElementById('grid4');
+const { STYLE_GROUPS } = __req('font_kit');
+for (const grp of STYLE_GROUPS) {
+  const gh = document.createElement('div');
+  gh.className = 'grp-t';
+  gh.textContent = grp.name + ' —— ' + grp.hint;
+  grid4.appendChild(gh);
+  for (const sk of grp.list.map(s => s.id)) {
+    for (const [tp, name] of [['quote', '金句卡'], ['dailysign', '日签卡']]) {
+      const canvas = document.createElement('canvas');
+      try {
+        renderCard(canvas, tp, 'warm', Object.assign({}, SAMPLE[tp], { styleKey: sk, author: '杜淳滢' }));
+        addCard(grid4, sk + ' · ' + name, canvas);
+      } catch (e) {
+        addCard(grid4, '❌ ' + sk + ' · ' + name + '：' + e.message, canvas);
+      }
+    }
+  }
+}
+
+// ── 成图版式 × 照片背景（与 5 张参考图逐张核对的主视图）──
+// 参考图全部是「照片上的成图」：固定竖幅、文字压图、底部栏脚。
+// 只有在照片底上渲染，才能看出色带是不是提亮、白字投影够不够、大字压不压得住。
+const grid5 = document.getElementById('grid5');
+const FRAME_KEYS = ['band', 'signature', 'minimal', 'masthead', 'headline'];
+const FRAME_SAMPLE = { title: '早餐', body: '把窗帘拉开，把心事放下。', author: '杜淳滢' };
+for (const sk of FRAME_KEYS) {
+  const canvas = document.createElement('canvas');
+  try {
+    const model = buildCardModel('quote', 'warm', Object.assign({}, FRAME_SAMPLE, {
+      styleKey: sk, bgImg: 'demo://photo.jpg', qr: true
+    }));
+    const q = model.children.find(c => c.type === 'qrcode');
+    if (q) q.asset = qrAsset;
+    model.backgroundImageAsset = photoAsset;
+    const ctx = canvas.getContext('2d');
+    const layout = computeLayout(model, {}, (t, px) => { ctx.font = px + 'px sans-serif'; return ctx.measureText(t).width; });
+    canvas.width = 340; canvas.height = layout.height;
+    canvas.style.height = Math.round(layout.height * (224 / 340)) + 'px';
+    draw(ctx, layout);
+    addCard(grid5, sk + ' · 照片成图 ' + canvas.width + '×' + canvas.height, canvas);
+  } catch (e) {
+    addCard(grid5, '❌ ' + sk + '：' + e.message, canvas);
+  }
+}
+
 // ── 海报长图：6 主题 × 1 样例（头像用首字占位，展示模板兜底） ──
 const grid3 = document.getElementById('grid3');
 const POSTER_SAMPLE = {
@@ -220,6 +293,27 @@ document.getElementById('info').innerHTML =
   ' ｜ 今日推荐（' + daily.dateStrOf() + '）：' + today.text +
   '<br>储备量：金句库 <b>' + daily.poolSize() + '</b> 条；种草/公告/清单/图文各 <b>' +
   daily.poolSizeFor('recommend') + '</b> 条 ｜ 本页由真实引擎源码驱动（render_engine × themes × templates × poster × daily）';
+
+// ── 单屏入口：只看某一区块 ──
+//   file://…/card_preview.html#styles  9 种风格（含分组标题）
+//   file://…/card_preview.html#frames  5 种成图 × 照片背景
+//   file://…/card_preview.html#poster  海报长图
+// 与参考图逐张核对时长图里翻找太费劲，加 hash 直接单屏看。
+const ONLY = { '#styles': 'grid4', '#frames': 'grid5', '#poster': 'grid3' }[location.hash];
+if (ONLY) {
+  [...document.querySelectorAll('.demo')].forEach(d => {
+    if (!d.querySelector('#' + ONLY)) d.style.display = 'none';
+  });
+  [...document.querySelectorAll('h1')].forEach(h => {
+    const keep = h.parentElement && h.parentElement.querySelector && h.parentElement.querySelector('#' + ONLY);
+    if (!keep) h.style.display = 'none';
+  });
+  ['grid', 'info'].forEach(id => {
+    if (id === ONLY) return;
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+}
 </script>
 </body>
 </html>
