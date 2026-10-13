@@ -28,9 +28,30 @@ exports.main = async (event) => {
       const data = { updateTime: db.serverDate() };
       if (nickname) data.nickname = nickname;
       if (avatar) data.avatar = avatar;
+      // app_users 仍保留（含访问日志与历史资料，前端 loadProfile 读这里）
       await db.collection('app_users').doc(OPENID).update({ data }).catch(() => {});
+      // 镜像到 vp_users（积分/权益总表）：管理员在云开发控制台看 vp_users 即可读到可读用户名/头像，
+      // 不必再切到 app_users 拼 openid。详见 syncVpProfile 注释（关键：防覆盖积分）。
+      await syncVpProfile(db, OPENID, nickname, avatar);
     }
     return { ok: true, openid: OPENID };
+  }
+
+  // 一次性回填（admin 在 IDE 云函数测试面板手动触发一次）：把 app_users 里**已填过**的昵称/头像
+  // 同步到 vp_users。仅服务「本功能上线前就填过资料的老用户」——他们此前只写进了 app_users，
+  // vp_users 里看不到。日常写入已由 updateProfile→syncVpProfile 自动镜像，无需重复跑。
+  // ⚠️ app_users 超过 1000 条时需重复触发（云数据库单次 get 上限 1000）。
+  if (action === 'backfillProfiles') {
+    let synced = 0, skipped = 0;
+    const list = await db.collection('app_users').limit(1000).get().catch(() => ({ data: [] }));
+    for (const u of (list.data || [])) {
+      const nickname = (u && u.nickname || '').toString().trim();
+      const avatar = (u && u.avatar || '').toString().trim();
+      if (!nickname && !avatar) { skipped++; continue; }
+      await syncVpProfile(db, u._id || u.openid, nickname, avatar);
+      synced++;
+    }
+    return { ok: true, synced, skipped, note: '若 app_users 超过 1000 条请重复触发本 action' };
   }
 
   let unlockedAll = false;
@@ -57,6 +78,32 @@ exports.main = async (event) => {
   }
   return { openid: OPENID, unlockedAll, nickname, avatar };
 };
+
+// 把昵称/头像同步镜像到 vp_users（积分/权益总表，_id = openid）。
+// 为什么单独镜像一份：管理员在云开发控制台看「有哪些用户」时默认看 vp_users（含积分），
+// 此前昵称/头像只写在 app_users，vp_users 里全是 openid 看不出是谁。镜像后 admin 一眼可读。
+//
+// ⚠️ 绝不能 set 整个文档：vp_users 存着 points/coupons/signupBonusAt 等资产，set 会整体覆盖清空积分！
+//    所以先 get 判断文档是否存在：存在 → 仅 update 两个字段；不存在（极罕见：填了资料却从没触发过签到
+//    的新用户）→ 用最小安全默认值 set（此时确实还没积分，不会丢资产）。
+async function syncVpProfile(db, openid, nickname, avatar) {
+  if (!openid || (!nickname && !avatar)) return;
+  const ref = db.collection('vp_users').doc(openid);
+  const r = await ref.get().catch(() => ({ data: null }));
+  const patch = { updateTime: db.serverDate() };
+  if (nickname) patch.nickname = nickname;
+  if (avatar) patch.avatar = avatar;
+  if (r && r.data) {
+    await ref.update({ data: patch }).catch(() => {});
+  } else {
+    await ref.set({
+      data: Object.assign(
+        { openid, points: 0, unlockedAll: false, coupons: [], lastDailyDate: '', dailyStreak: 0, signupBonusAt: 0, createTime: db.serverDate() },
+        patch
+      )
+    }).catch(() => {});
+  }
+}
 
 // 记录/更新用户访问：app_users 以 openid 为 _id。集合不存在时自动创建后重试。
 async function touchUser(db, openid) {

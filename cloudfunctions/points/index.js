@@ -5,6 +5,9 @@
 // 存储：云数据库集合 vp_users（文档 _id = openid），字段：
 //   points(Number) / coupons(Array) / lastDailyDate(String 'YYYY-MM-DD') / dailyStreak(Number)
 //   signupBonusAt(Number) —— 新人礼领取时间戳，**0 = 未领**（见下方 SIGNUP）
+//   nickname(String) / avatar(String cloud fileID) —— 用户**自愿**填写的微信昵称/头像，
+//     由 vp_get_profile 的 updateProfile 镜像写入（见该云函数 syncVpProfile），仅供运营在控制台可读，
+//     非静默采集、不影响积分逻辑。
 //
 // 余额与花费用 db.command.inc 原子增减，避免并发丢更新。
 //
