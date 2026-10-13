@@ -52,7 +52,7 @@ const html = `<!DOCTYPE html>
   <div class="grid" id="grid4"></div>
 </div>
 <div class="demo">
-  <h1>成图版式（5 种）× 照片背景 · 固定 3:4 —— 与参考图逐张核对用</h1>
+  <h1>成图版式（5 种）× 照片背景 · 固定 4:3 —— 与参考图逐张核对用</h1>
   <div class="grid" id="grid5"></div>
 </div>
 <div class="demo">
@@ -222,7 +222,7 @@ for (const grp of STYLE_GROUPS) {
 }
 
 // ── 成图版式 × 照片背景（与 5 张参考图逐张核对的主视图）──
-// 参考图全部是「照片上的成图」：固定竖幅、文字压图、底部栏脚。
+// 参考图全部是「照片上的成图」：固定横幅（4:3）、文字压图、底部栏脚。
 // 只有在照片底上渲染，才能看出色带是不是提亮、白字投影够不够、大字压不压得住。
 const grid5 = document.getElementById('grid5');
 const FRAME_KEYS = ['band', 'signature', 'minimal', 'masthead', 'headline'];
@@ -238,8 +238,10 @@ for (const sk of FRAME_KEYS) {
     model.backgroundImageAsset = photoAsset;
     const ctx = canvas.getContext('2d');
     const layout = computeLayout(model, {}, (t, px) => { ctx.font = px + 'px sans-serif'; return ctx.measureText(t).width; });
-    canvas.width = 340; canvas.height = layout.height;
-    canvas.style.height = Math.round(layout.height * (224 / 340)) + 'px';
+    // ⚠️ 宽必须取 layout.width（成图 453 / 卡片 340）——硬编码 340 会把 4:3 成图横向压扁，
+    //    预览一旦失真，就会把「比例看着不对」误判成模板 bug。
+    canvas.width = layout.width; canvas.height = layout.height;
+    canvas.style.height = Math.round(layout.height * (224 / layout.width)) + 'px';
     draw(ctx, layout);
     addCard(grid5, sk + ' · 照片成图 ' + canvas.width + '×' + canvas.height, canvas);
   } catch (e) {

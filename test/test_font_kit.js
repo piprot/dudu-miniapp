@@ -120,7 +120,7 @@ t('9 种风格齐全，每种都带一句话说明（出图设置那一行就靠
 });
 
 t('风格分组：卡片版式 4 种 / 成图版式 5 种，两组不重不漏', () => {
-  // 分组是给用户看形态差异的（卡片 vs 3:4 成图）。分组错了 = 用户会在错误的
+  // 分组是给用户看形态差异的（卡片 vs 4:3 成图）。分组错了 = 用户会在错误的
   // 预期下选风格，选完发现「怎么没有小程序码 / 怎么变竖幅了」。
   const gs = kit.STYLE_GROUPS;
   assert.strictEqual(gs.length, 2, '应为两组');
@@ -142,10 +142,10 @@ t('风格分组：卡片版式 4 种 / 成图版式 5 种，两组不重不漏',
   assert.ok(gs[0].list.every(s => !s.frame), '卡片组里混进了成图风格');
 });
 
-// ── 成图版式（用户拍板：固定 3:4 竖幅、隐藏胶囊与水印、保留小程序码）──
+// ── 成图版式（用户拍板：固定 4:3 横幅、隐藏胶囊与水印、保留小程序码）──
 // 这些断言守的是「成图 ≠ 卡片」这条边界：一旦有人把胶囊/外框/分隔线加回来，
 // 出图就会退回卡片观感，与参考图对不上 —— 所以逐条钉死。
-t('5 种成图风格：固定 3:4 竖幅、无胶囊外框分隔线、保留小程序码、底部品牌行', () => {
+t('5 种成图风格：固定 4:3 横幅、无胶囊外框分隔线、保留小程序码、底部品牌行', () => {
   // 自带样例数据，不引用文件下方的 DATA（const 在 TDZ 里，提前引用会抛
   // "Cannot access 'DATA' before initialization"）
   const D = { title: '早餐', body: '把窗帘拉开，把心事放下。', author: '杜淳滢', qr: true };
@@ -158,9 +158,10 @@ t('5 种成图风格：固定 3:4 竖幅、无胶囊外框分隔线、保留小�
     const texts = cs.filter(c => c.type === 'text');
     const at = k + ': ';
 
-    // ① 固定 3:4（340×453），不再随内容流式增高
-    assert.strictEqual(m.width, 340, at + '宽应为 340');
-    assert.strictEqual(m.height, 453, at + '高应固定 453（3:4），实际 ' + m.height);
+    // ① 固定 4:3（453×340），不再随内容流式变幅
+    assert.strictEqual(m.width, 453, at + '宽应为 453（4:3 横幅）');
+    assert.strictEqual(m.height, 340, at + '高应固定 340（4:3 横幅），实际 ' + m.height);
+    assert.ok(m.width > m.height, at + '4:3 应为横幅（宽 > 高）');
 
     // ② 保留小程序码（用户明确拍板保留）
     assert.ok(cs.some(c => c.type === 'qrcode'), at + '应保留小程序码');
@@ -180,9 +181,11 @@ t('5 种成图风格：固定 3:4 竖幅、无胶囊外框分隔线、保留小�
     assert.ok(texts.some(x => /2\s*0\s*2\s*6/.test(x.content || '')),
       at + '底部应有带年份的品牌行，实际: ' + JSON.stringify(texts.map(x => x.content)));
 
-    // ⑦ 品牌行确实在下半幅（不是飘在中间）
-    const foot = texts.filter(x => x.top >= m.height * 0.75);
-    assert.ok(foot.length >= 1, at + '品牌行应落在底部 25% 区域');
+    // ⑦ 品牌行确实落在下半幅（不是飘在中间）。
+    //    ⚠️ 4:3 横幅比 3:4 竖幅矮，底部 25% 区仅 85px，物理放不下「两行品牌行 + 右下码」，
+    //      故阈值放宽到底部 40%（0.6）——语义仍是「落底部而非飘中间」。
+    const foot = texts.filter(x => x.top >= m.height * 0.6);
+    assert.ok(foot.length >= 1, at + '品牌行应落在底部 40% 区域');
   }
 });
 
@@ -248,12 +251,15 @@ t('签名风：右上角楷体署名 + ❄ 标签链 + 「年份｜品牌 @作�
 
 t('极简风：无任何装饰元素，只有文字 + 码', () => {
   const D = { title: '早餐', body: '把窗帘拉开，把心事放下。', author: '杜淳滢', qr: true };
-  const cs = buildCardModel('quote', 'warm', Object.assign({ styleKey: 'minimal' }, D)).children;
+  const m = buildCardModel('quote', 'warm', Object.assign({ styleKey: 'minimal' }, D));
+  const cs = m.children;
   const deco = cs.filter(c => c.type !== 'text' && c.type !== 'qrcode' && c.type !== 'image');
   assert.strictEqual(deco.length, 0, '极简风不应有 rect/line/circle 等装饰，实际: ' +
     JSON.stringify(deco.map(c => c.type)));
   // 两行超小水印（逐字空格的年份行 + slogan）
-  const foot = cs.filter(c => c.type === 'text' && c.top >= 400);
+  // ⚠️ 阈值不能用硬编码 400：3:4 竖幅(H=453) 与 4:3 横幅(H=340) 底部落点不同，
+  //    改相对「底部 60px 内」才两种比例都稳。
+  const foot = cs.filter(c => c.type === 'text' && c.top >= m.height - 60);
   assert.ok(foot.length >= 2, '底部应有两行水印，实际 ' + foot.length);
   assert.ok(foot.every(x => x.fontSize <= 10), '水印字号应 <=10');
 });

@@ -185,19 +185,19 @@ const STYLES = {
   },
 
   // ── 2026-10-12 新增 5 种「成图」风格（照 5 张社群成图做的）────────────────
-  // 这一组与上面 4 种**不是同一类东西**：它们是**成图版式**——固定 3:4 竖幅、
+  // 这一组与上面 4 种**不是同一类东西**：它们是**成图版式**——固定 4:3 横幅、
   // 文字压在照片上、底部只有两行品牌信息，**不带类型胶囊 / 右上品牌水印 / 外框 / 分隔线**
   // （参考图上都没有）。小程序码保留，缩到 44px 放右下角（回流入口是产品硬需求）。
-  // 标记字段 frame: '3:4' 由 utils/templates/index.js 识别并走独立构建器 buildFrameModel。
+  // 标记字段 frame: '4:3' 由 utils/templates/index.js 识别并走独立构建器 buildFrameModel。
   //
   // 色带：正文压在一条横向浅色磨砂带里（整宽出血、占画幅约 1/3），带内**深色字**，
   // 出处行右对齐——照「磨砂色带引言卡」。图再花，色带也隔出一块安静的阅读区。
   band: {
     id: 'band',
     name: '色带',
-    desc: '3:4 成图 · 文字压在半透明浅色带里（黑字），出处右对齐',
+    desc: '4:3 成图 · 文字压在半透明浅色带里（黑字），出处右对齐',
     layout: 'band',
-    frame: '3:4',
+    frame: '4:3',
     titleFont: 'serif',
     titleSize: 18,
     titleWeight: 'bold',
@@ -220,9 +220,9 @@ const STYLES = {
   signature: {
     id: 'signature',
     name: '签名',
-    desc: '3:4 成图 · 右上角手写署名 + 底部标签链与品牌行',
+    desc: '4:3 成图 · 右上角手写署名 + 底部标签链与品牌行',
     layout: 'signature',
-    frame: '3:4',
+    frame: '4:3',
     titleFont: 'kai',
     titleSize: 18,
     titleWeight: 'bold',
@@ -244,9 +244,9 @@ const STYLES = {
   minimal: {
     id: 'minimal',
     name: '极简',
-    desc: '3:4 成图 · 无任何装饰，左下角两行极小水印，画面是主角',
+    desc: '4:3 成图 · 无任何装饰，左下角两行极小水印，画面是主角',
     layout: 'minimal',
-    frame: '3:4',
+    frame: '4:3',
     titleFont: 'sans',
     titleSize: 16,
     titleWeight: 'normal',
@@ -269,9 +269,9 @@ const STYLES = {
   masthead: {
     id: 'masthead',
     name: '刊头',
-    desc: '3:4 成图 · 顶部极淡字链刊头 + 底部两行栏脚',
+    desc: '4:3 成图 · 顶部极淡字链刊头 + 底部两行栏脚',
     layout: 'masthead',
-    frame: '3:4',
+    frame: '4:3',
     titleFont: 'serif',
     titleSize: 20,
     titleWeight: 'bold',
@@ -294,9 +294,9 @@ const STYLES = {
   headline: {
     id: 'headline',
     name: '大字',
-    desc: '3:4 成图 · 底部衬线大字 + 字间竖排嵌字，封面感最强',
+    desc: '4:3 成图 · 底部衬线大字 + 字间竖排嵌字，封面感最强',
     layout: 'headline',
-    frame: '3:4',
+    frame: '4:3',
     titleFont: 'serif',
     titleSize: 24,
     titleWeight: 'bold',
@@ -318,7 +318,7 @@ const STYLES = {
 
 const STYLE_LIST = Object.keys(STYLES).map(k => ({
   id: k, name: STYLES[k].name, titleFont: STYLES[k].titleFont, desc: STYLES[k].desc || '',
-  // 出品形态：card=流式卡片（带类型胶囊/外框），frame=固定 3:4 成图（文字压图 + 底部品牌行）
+  // 出品形态：card=流式卡片（带类型胶囊/外框），frame=固定 4:3 成图（文字压图 + 底部品牌行）
   frame: !!STYLES[k].frame
 }));
 
@@ -326,7 +326,7 @@ const STYLE_LIST = Object.keys(STYLES).map(k => ({
 // 这两组不是「新旧」而是「用途」：卡片适合站内浏览，成图适合发到朋友圈/社群。
 const STYLE_GROUPS = [
   { id: 'card', name: '卡片版式', hint: '随内容流式排版，带类型标签', list: [] },
-  { id: 'frame', name: '成图版式 · 3:4', hint: '固定竖幅、文字压图，适合直接发出去', list: [] }
+  { id: 'frame', name: '成图版式 · 4:3', hint: '固定横幅、文字压图，适合直接发出去', list: [] }
 ];
 STYLE_LIST.forEach(s => {
   STYLE_GROUPS[s.frame ? 1 : 0].list.push(s);
