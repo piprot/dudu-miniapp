@@ -9,7 +9,7 @@
 //   详见 utils/region_data.js 顶部说明。个人主体审核下这是合规最优解。
 //
 // 「天天换」实现：文案不写死，取自 utils/content_weather.js 的
-//   8 天气 × 8 心情 = 64 组合 × 4 变体 = 256 条静态文案，
+//   8 天气 × 8 心情 = 64 组合 × 8 变体 = 512 条静态文案（2026-10-13 从 4 变体扩容）；
 //   配合 utils/daily_rotate 按「日期 + 变体计数」轮换 → 同一天稳定、跨天必变、点「换一条」也变。
 const { renderCard, saveCanvas } = require('../../utils/quote_card_render');
 const { THEME_LIST } = require('../../utils/themes/index.js');
@@ -284,7 +284,7 @@ const __pageCfg = {
     const note = (this.data.note || '').trim();
     const locLabel = (this.data.cityLabel || '').trim();
 
-    // 优先级：用户手写 > 静态库自动文案（256 条轮换）> 兜底句
+    // 优先级：用户手写 > 静态库自动文案（512 条轮换）> 兜底句
     const auto = this.currentAutoText();
     const body = note || auto || ('今天' + (locLabel ? '在' + locLabel + '，' : '') + '天气' + wn + '，心情' + mn + '。记录此刻，留下一点画面感。');
     // ⚠️ 城市/天气降到 12px kicker 小字，金句升格为 hero 主体（2026-10-06）。

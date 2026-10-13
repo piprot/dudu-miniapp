@@ -139,13 +139,42 @@ t('seasonOf / timeSlotOf：四季与时段判定正确', () => {
 
 // ─────────────────── ② 库储备量 ───────────────────
 
-t('天气矩阵：8×8 = 64 组合齐全，每组合 ≥4 条（共 ≥256 条）', () => {
+t('天气矩阵：8×8 = 64 组合齐全，每组合 ≥8 条（共 ≥500 条）', () => {
+  // 基线 2026-10-13 上调：原来每组合只有 4 条，选定「晴+开心」后跨天 4 天就转回
+  // 同一句、点「换一条」也只有 4 个可选，用户体感「储备太少」。现在每组合 8 条
+  // （共 512 条），循环周期 4 天 → 8 天。用 ≥500 而不是 ===512：允许微调文案，
+  // 但**悄悄删掉一批**必须报警。
   const st = cw.stats();
   assert.strictEqual(st.combos, 64, '组合数应 64，实际 ' + st.combos);
-  assert.ok(st.total >= 256, '文案总数应 ≥256，实际 ' + st.total);
+  assert.ok(st.total >= 500, '文案总数应 ≥500，实际 ' + st.total);
   WEATHER_KEYS.forEach(w => MOOD_KEYS.forEach(m => {
     const n = cw.variantCount(w, m);
-    assert.ok(n >= 4, w + '|' + m + ' 仅 ' + n + ' 条');
+    assert.ok(n >= 8, w + '|' + m + ' 仅 ' + n + ' 条（扩容后应 ≥8）');
+  }));
+});
+
+t('天气矩阵：全库无重复文案（重复=用户会看到同一句反复出现）', () => {
+  // 扩容是「拼接」操作，最容易出的事故就是新写的撞上旧的、或两批之间撞车。
+  // 单条重复看起来无害，但轮换到它时用户会觉得「怎么又是这句」。
+  const seen = new Map();
+  Object.keys(cw.MATRIX).forEach(k => {
+    cw.MATRIX[k].forEach(s => {
+      assert.ok(!seen.has(s),
+        '文案重复：「' + s + '」同时出现在 ' + seen.get(s) + ' 和 ' + k);
+      seen.set(s, k);
+    });
+  });
+  assert.strictEqual(seen.size, cw.stats().total, '去重后条数应等于总数');
+});
+
+t('天气矩阵：每组合的 8 个变体轮换出来互不重复', () => {
+  // 守卫轮换本身：textFor 取模必须把 8 条都走到，不能只在前 4 条里打转
+  // （否则扩了容、页面上却永远只看到老的那几句——最隐蔽的一种「扩容没生效」）。
+  WEATHER_KEYS.forEach(w => MOOD_KEYS.forEach(m => {
+    const n = cw.variantCount(w, m);
+    const got = new Set();
+    for (let i = 0; i < n; i++) got.add(cw.textFor(w, m, i));
+    assert.strictEqual(got.size, n, w + '|' + m + ' 轮换 ' + n + ' 次只出现 ' + got.size + ' 条不同文案');
   }));
 });
 
@@ -230,7 +259,7 @@ function assertClean(s, label, maxLen) {
   assert.ok(s.length <= maxLen, label + ' 过长(' + s.length + '): ' + s);
 }
 
-t('天气矩阵：全部 256 条文案纯净、无空、无英文、无乱码', () => {
+t('天气矩阵：全部文案纯净、无空、无英文、无乱码', () => {
   let n = 0;
   Object.keys(cw.MATRIX).forEach(k => {
     cw.MATRIX[k].forEach((s, i) => { assertClean(s, k + '[' + i + ']', 60); n++; });
