@@ -78,14 +78,30 @@ t('配图格式：统一 16:10 比例、圆角 12、底部渐晕与内描边', (
   assert.ok(scrim && stroke, '应有底部渐晕与内描边');
 });
 
-t('底部信息行：分割线 + 落款与二维码同行（右下角不空旷）', () => {
+t('底部信息行：落款与二维码同行（右下角不空旷），且**不再画分割线**', () => {
   const model = buildCardModel('notice', 'zen', SAMPLE.notice);
-  const line = model.children.find(c => c.type === 'line');
   const qr = model.children.find(c => c.type === 'qrcode');
   const foot = model.children.find(c => c.type === 'text' && c.content === SAMPLE.notice.author);
-  assert.ok(line && qr && foot, '应有分割线/二维码/落款');
+  assert.ok(qr && foot, '应有二维码与落款');
+  // 2026-10-13 用户反馈「文艺/现代/温暖/海报怎么中间有一条横线，这是不对的」。
+  // 那条线是底部分隔线，旧版渲染引擎把它画成竖线（淡色、几乎看不见），修好 line
+  // 语义后才变成横贯卡面的横线被看到。用户要的是没有线的那版——所以现在**断言不存在**，
+  // 别让它再回来。正文与落款之间靠留白分。
+  assert.ok(!model.children.some(c => c.type === 'line'),
+    '卡片版式不应再有分隔线（' + (model.children.find(c => c.type === 'line') || {}).top + '）');
   const footCenter = foot.top + 9, qrCenter = qr.top + 28;
   assert.ok(Math.abs(footCenter - qrCenter) < 6, '落款应与二维码垂直居中对齐');
+});
+
+t('温暖(warm)：正文不垫色块（2026-10-13 用户否掉「奶油便签」）', () => {
+  // warm 风格曾给正文垫一块 p.bgSoft 浅底大圆角块。卡片本来就浅底、构图居中，
+  // 再垫一块和正文差不多大的浅色方块，观感是"糊了一块"。已撤除，断言防回归。
+  const m = buildCardModel('quote', 'warm', Object.assign({ styleKey: 'warm' }, SAMPLE.quote));
+  const body = m.children.find(c => c.type === 'text' && c.content === SAMPLE.quote.body);
+  const behind = m.children.filter(c => c.type === 'rect' && c !== body &&
+    c.width >= 300 && c.height >= 40);
+  assert.strictEqual(behind.length, 0,
+    'warm 正文区不应有垫块，实际 ' + JSON.stringify(behind.map(c => c.width + 'x' + c.height)));
 });
 
 t('主题字体生效：文本 fontFamily 使用主题 cjkFont', () => {

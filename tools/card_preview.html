@@ -1508,13 +1508,12 @@ const PHOTO_SHADOW = (fontPx) => ({
         : (hero ? 34 : (isQuote ? 30 : (type === 'recommend' ? 26 : 24))));
     const clamp = isQuote ? 6 : 8;
     const bodyLines = countLines(d.body, innerW, fs, measure, clamp);
-    // memo(温暖) v2「奶油便签」：一块浅底大圆角便签托住正文，四周留白均匀、悬浮居中
-    // （参照小红书高赞温柔便签卡：奶白底 + 浅色大圆角便签 + 金句居中粗体）。
-    // 旧版 v1 的「小高亮块 + 胶带 + 柔框」三层叠一起显乱，全部撤掉，只留这一块。
-    if (styleOn && L === 'memo') {
-      rect({ left: PAD - 8, top: y - 12, width: innerW + 16, height: bodyLines * lh + 30,
-        background: p.bgSoft, radius: 14 });
-    } else if (styleOn && L === 'band') {
+    // ⚠️ memo(温暖) 这里曾有 v2「奶油便签」——一块 p.bgSoft 浅橙大圆角块托住正文。
+    //    2026-10-13 用户反馈「中间的色块去一下，一点都不好看」，已撤除。
+    //    实际观感：卡片本身就浅底、构图居中，再垫一块和正文差不多大的浅色方块，
+    //    效果是"糊了一块"而不是"托住了"。现在正文直接坐在卡面上，靠居中 + 上下引号
+    //    保持温柔感。**别再因为"想加点设计感"把它加回来，用户明确否过一次。**
+    if (styleOn && L === 'band') {
       // band(色带)：正文上下各留 14px 呼吸，用一条**整宽**半透明主色带把文字从底图里
       // 托出来，带子的上下边缘各 1px 发丝线定界（否则色带边界在照片上会糊掉）。
       // 参照图 1「磨砂色带引言卡」：图再花，色带也隔出一块安静的阅读区。
@@ -1573,16 +1572,13 @@ const PHOTO_SHADOW = (fontPx) => ({
   // ── 底部信息行：分割线 + 落款（左）与小程序码（右）同行 ──
   // minimal(极简)：**连分隔线都不画**（整套版式不留任何线条，文字直接坐在图上）。
   // headline(大字)：3px 主色厚分隔线，与上方 24px 大标题配成一套「封面感」。
-  y += 4;
-  const noDivider = !!(styleOn && L === 'minimal');
-  if (!noDivider) {
-    const divTh = (styleOn && L === 'headline') ? 3 : 1;
-    children.push({ type: 'line', left: PAD, top: y, width: innerW, thickness: divTh,
-      color: (styleOn && L === 'headline') ? p.primary : p.line });
-    y += 12;
-  } else {
-    y += 2;
-  }
+  // ⚠️ 2026-10-13 用户反馈「文艺/现代/温暖/海报怎么中间有一条横线，这是不对的」——
+  //    卡片版式的这条底部分隔线已整段撤除。它其实一直都在，只是旧版渲染引擎把
+  //    line 元素判成了**竖线**（1px 宽、贯穿卡高、颜色是极淡的 p.line），在浅色卡面上
+  //    几乎不可见；后来修好 line 的水平线语义，它才变成横贯卡面的一条横线被用户看到。
+  //    所以"改回原有的版式"= 去掉这条线，而不是把它改细改淡。
+  //    ⚠️ 别再往卡片版式里加分隔线——正文与落款之间用留白分就够了。
+  y += 12;   // 间距与原「有线时」保持一致，落款位置不变，只是不画线
   const hasQr = !!d.qr;
   const QS = hasQr ? 56 : 0;
   if (hasQr) {
