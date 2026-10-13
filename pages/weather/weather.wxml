@@ -98,19 +98,22 @@
     </view>
     <view class="btn-row">
       <button class="btn ghost pick" bindtap="onChooseImage">{{cover ? '重新选择图片' : '选择一张本地图（可选）'}}</button>
-      <button class="btn ghost pick" bindtap="onShuffle">🔄 换一条</button>
+      <!-- 换文案免费（2026-10-13）：与每日一句口径一致，出图才计费 -->
+      <button class="btn ghost pick" bindtap="onShuffle">🔄 换一句（免费）</button>
     </view>
     <view wx:if="{{cover}}" class="cover-mini">已选本地图片 ✓（不上传服务器）</view>
   </view>
 
   <!-- 主行动按钮：紧跟内容区。
        旧序把「生成卡片」夹在 4 个配置 block 之后，用户改完要往上翻才找得到提交键
-       —— 这是 2026-10-06 用户反馈「排版太有问题」里最实质的一条。 -->
-  <button class="btn primary gen" bindtap="onGen">生成卡片（{{cardCost}} 积分）</button>
+       —— 这是 2026-10-06 用户反馈「排版太有问题」里最实质的一条。
+       2026-10-13 改称「预览成卡」：与每日一句对齐，明确**只有这个按钮扣积分**
+       （「换一句」是免费挑文案，不经过扣费路径）。 -->
+  <button class="btn primary gen" bindtap="onGen">预览成卡（{{cardCost}} 积分）</button>
 
   <view class="canvas-wrap">
     <canvas type="2d" id="weatherCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
-    <view wx:if="{{!rendered}}" class="canvas-ph">点「生成卡片」后，预览显示在这里</view>
+    <view wx:if="{{!rendered}}" class="canvas-ph">点「预览成卡（{{cardCost}} 积分）」后出图 · 换文案免费</view>
     <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
   </view>
 

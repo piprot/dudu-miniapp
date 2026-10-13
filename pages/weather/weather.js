@@ -304,7 +304,8 @@ const __pageCfg = {
     const self = this;
     this.setData({ err: '', autoText: note ? '' : auto });
     // ⚠️ 扣费在前、渲染在后：积分不足时**不产出**（charge 会 reject 并弹引导）。
-    //    「换一条」也会走onGen → 同样扣 8 分（用户拍板「每次成卡扣 8 积分」）。
+    //    这是**唯一**的扣费点——「换一条」只换文案走 repaint，不经过这里
+    //    （2026-10-13：参照每日一句，换文案免费、出图才计费）。
     //    改价只动 utils/config.js 的 POINTS.cost.weatherCard，云函数 GEN_COST 同名同值。
     charge('weatherCard', { onDone: (r) => this.setData({ points: (r && r.points) || 0 }), label: '天气心情卡' }).then(() => {
       renderCard(self, { canvasId: '#weatherCanvas', type, theme: self.data.theme, data })
@@ -314,7 +315,17 @@ const __pageCfg = {
     });
   },
 
-  // 「换一条」：在当前天气×心情组合内轮换下一句，并立即重绘预览。
+  // 「换一条」：在当前天气×心情组合内轮换下一句 —— **不扣积分**（2026-10-13 用户拍板）。
+  //
+  // 参照每日一句（spark.onShuffle）的计费口径：**换文案只是「挑内容」，出图才收费**。
+  // 以前这里直接 `this.onGen()`，而 onGen 第一步就是 charge('weatherCard') ——
+  // 等于「换一句话看看」也要 8 分，跟每日一句对不上，也容易被当成乱扣费。
+  //
+  // 现在的行为：
+  //   · 没出过卡 → 只更新文案展示（页面上部那行 autoText），等用户点「预览成卡」再出图；
+  //   · 已出过卡 → 走 cardStyle.repaint 免费重绘，把换好的这句画到已有卡上。
+  //     （这张卡用户已经付过费，只是调整已出图的内容，不该再收一次；
+  //       不重绘的话卡面文案会和页面上显示的文案不一致，反而更怪。）
   onShuffle() {
     const total = variantCount(this.data.weather, this.data.mood) || 0;
     if (total <= 1) { wx.showToast({ title: '这个组合只有一条文案', icon: 'none' }); return; }
@@ -323,7 +334,21 @@ const __pageCfg = {
       wx.showToast({ title: '你写了自定义文案，清空后才会换', icon: 'none', duration: 2200 });
       return;
     }
-    this.setData({ variantTap: (this.data.variantTap || 0) + 1 }, () => this.onGen());
+    const self = this;
+    this.setData({ variantTap: (this.data.variantTap || 0) + 1 }, () => {
+      const auto = self.currentAutoText();
+      self.setData({ autoText: auto });
+      // ⚠️ 不要在这里调 onGen —— 那条路径会扣积分。
+      if (!self._cardOpts) return;              // 还没出过卡：只换文案，不渲染
+      const nextData = Object.assign({}, self._cardOpts.data, { body: auto });
+      self._cardOpts = Object.assign({}, self._cardOpts, { data: nextData });
+      if (self._lastData) {
+        self._lastData = Object.assign({}, self._lastData, {
+          data: Object.assign({}, self._lastData.data, { body: auto })
+        });
+      }
+      cardStyle.repaint(self);                  // 只重绘，不扣费
+    });
   },
 
   onPickTheme(e) {

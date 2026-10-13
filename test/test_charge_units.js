@@ -12,6 +12,7 @@
 // 从而把「读余额 / 扣费」这两步云函数交互完全可控。
 const assert = require('assert');
 const path = require('path');
+const fs = require('fs');
 
 const ROOT = path.resolve(__dirname, '..');
 
@@ -116,6 +117,32 @@ async function run() {
         assert.ok(/扣除失败/.test(captured.toast.title), 'toast 文案应提示扣除失败');
       }
     );
+  });
+
+  await t('计费时机：天气卡「换一句」不扣费，只有「预览成卡」扣（2026-10-13）', () => {
+    // 用户拍板：点「换一句」不要扣积分，预览成卡才扣，参照每日一句（spark）。
+    // 这类需求最容易在后续改动里悄悄退化（比如又把 onShuffle 接回 onGen），
+    // 单测看不到页面交互，所以读源码断言扣费点的**位置**。
+    const src = fs.readFileSync(path.join(ROOT, 'pages', 'weather', 'weather.js'), 'utf8');
+    // 先剥注释：注释里会提到 onGen / charge 字样，不剥会误判
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    const cut = (name) => {
+      const m = code.match(new RegExp(name + '\\(\\)\\s*\\{[\\s\\S]*?\\n  \\},'));
+      return m ? m[0] : '';
+    };
+    const shuffle = cut('onShuffle');
+    const gen = cut('onGen');
+    assert.ok(shuffle, '未定位到 onShuffle');
+    assert.ok(gen, '未定位到 onGen');
+    assert.ok(!/charge\(/.test(shuffle),
+      'onShuffle 不得扣费——换文案是免费的（2026-10-13 用户拍板）');
+    assert.ok(!/\bonGen\(\)/.test(shuffle),
+      'onShuffle 不得转调 onGen —— 那条路径第一步就是 charge，等于换一句话也扣 8 分');
+    assert.ok(/charge\(/.test(gen), 'onGen 应是唯一的扣费点');
+    assert.strictEqual((code.match(/charge\('weatherCard'/g) || []).length, 1,
+      'weatherCard 的扣费点应只有 1 处（多了就是重复扣费）');
+    // 换文案后若已出过卡，应走 repaint 免费重绘，而不是重新扣费出图
+    assert.ok(/repaint/.test(shuffle), '已出过卡时换文案应 repaint 免费重绘');
   });
 
   console.log('\n──────── 结果：' + pass + ' PASS / ' + fail + ' FAIL ────────');
