@@ -4,6 +4,10 @@
 //这个组件治的是「选项墙」：标签/类目一多，平铺会让用户找不到起点。
 // 测试重点在三件事：① 常用区确实前置且能联动大类 ② 同时只展开一个大类 ③ 回调能驱动页面。
 'use strict';
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 const catPicker = require('../utils/cat_picker_mixin.js');
 

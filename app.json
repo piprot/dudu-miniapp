@@ -3,17 +3,31 @@
   "pages": [
     "pages/index/index",
     "pages/points/points",
-    "pages/order/order",
-    "pages/gen/gen",
-    "pages/card/card",
-    "pages/poster/poster",
-    "pages/comic/comic",
-    "pages/quotes/quotes",
-    "pages/spark/spark",
-    "pages/weather/weather",
-    "pages/solar/solar",
-    "pages/line/line"
+    "pages/order/order"
   ],
+  "subPackages": [
+    {
+      "root": "pkgTools",
+      "name": "tools",
+      "pages": [
+        "pages/gen/gen",
+        "pages/card/card",
+        "pages/poster/poster",
+        "pages/comic/comic",
+        "pages/quotes/quotes",
+        "pages/spark/spark",
+        "pages/weather/weather",
+        "pages/solar/solar",
+        "pages/line/line"
+      ]
+    }
+  ],
+  "preloadRule": {
+    "pages/index/index": {
+      "network": "all",
+      "packages": ["tools"]
+    }
+  },
   "window": {
     "navigationBarBackgroundColor": "#1a1a1a",
     "navigationBarTextStyle": "white",

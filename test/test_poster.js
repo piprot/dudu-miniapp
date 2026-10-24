@@ -2,6 +2,10 @@
 // 海报长图模板单测：6 主题引擎消费不抛错、落款钉底、单一信息源、
 // 提示不折行、照片背景白字、流式高度、合规（无头像/署名占位）。
 'use strict';
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 const { buildPosterModel, W, PAD } = require('../utils/templates/poster');
 const { computeLayout, draw } = require('../utils/core/render_engine');

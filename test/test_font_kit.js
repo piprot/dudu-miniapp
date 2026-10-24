@@ -1,6 +1,10 @@
 // test/test_font_kit.js —— 字体族库 + 排版风格库守卫
 // 核心风险：fontFamily 字符串会被拼进 ctx.font，格式错了整个卡片文字都不渲染；
 //   所以必须守住「合法 CSS font-family 语法」与「风格字段完整性」。
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const path = require('path');
 const assert = require('assert');
 const kit = require(path.join(__dirname, '..', 'utils', 'font_kit.js'));

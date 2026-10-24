@@ -9,6 +9,10 @@
 //     ③ 一致性线：价格必须与 utils/config.js 的 COMMISSION.tiers 一致、
 //        梗概上限必须与 h5_request 的服务端校验一致（改一处忘另一处 = 用户被拒）。
 //   人工盯这些线迟早漏，所以交给测试。零依赖，node test/test_h5_comic.js 直接跑。
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');

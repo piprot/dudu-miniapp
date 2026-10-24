@@ -13,6 +13,10 @@
 //    故判据按「1900–2049 除 1920 外全通过」设定，并把该例外显式写进测试，
 //    避免后人误以为是自己改坏了。
 'use strict';
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 const path = require('path');
 const fs = require('fs');

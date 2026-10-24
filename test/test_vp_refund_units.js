@@ -10,6 +10,10 @@
 //   · 微信侧报错 → 订单状态不被改动（可安全重试）
 //   · vp_deliver 收到 xpay_refund_notify → refunding → refunded 回写
 // 运行：node test/test_vp_refund_units.js
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 const path = require('path');
 const Module = require('module');

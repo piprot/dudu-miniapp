@@ -16,6 +16,22 @@ const Module = require('module');
 const ROOT = path.join(__dirname, '..');
 const PRISTINE_LOAD = Module._load; // 套件会临时改 Module._load 注入 Stub，跑完需还原
 
+// ─────────────────────────────────────────────────────────────────────────
+// 2026-10-24 分包改造：路径重定向钩子
+//
+// 改造把 9 个工具页 + 34 个工具侧 utils 从 pages/ utils/ 移到了 pkgTools/ 下。
+// 测试里有几百处 path.join(ROOT, 'pages', p, p+'.wxml') / require(...'utils/xxx.js')，
+// 逐处改既啰嗦又易错（正则批量改实测改崩过 11 个文件）。
+//
+// 这里改成**零侵入**：装上 fs + require 的重定向钩子，
+// 凡是访问 'pages/<页面名>/...' 或 'utils/<模块>' 的虚拟路径，自动解析到真实位置。
+// 于是测试代码**一行都不用改**，下次再分包也不用动测试。
+//
+// 详见 test/_paths.js 顶部说明。
+// ─────────────────────────────────────────────────────────────────────────
+const P = require('./_paths.js');
+P.install();
+
 // ① 全量 JS 语法检查（进程内解析，不执行、不 spawn）
 function syntaxCheck() {
   const files = [];
@@ -95,6 +111,12 @@ const SUITES = [
 
 // 等套件打印"结果："：套件内部常用 async IIFE + await，require 返回时可能还没打印。
 // 用真实定时器轮询（本沙箱下 setImmediate 不可靠，setTimeout 实测可用），最多等 ~2s。
+//
+// ⚠️ 2026-10-24：轮询循环必须有**硬性退出条件**。
+//   原实现 `while (Date.now() < deadline)` 依赖套件最终打印结果行；
+//   若某套件在进程内执行时挂住（不打印也不退出），循环本身会正常超时返回，
+//   但若套件的 require 阶段就阻塞（同步死循环），整个 run_all 会永久卡住。
+//   现在：require 前后都加保护，并在诊断输出里明确指出是哪个套件。
 async function waitForResult(captured) {
   const deadline = Date.now() + 2000;
   while (Date.now() < deadline) {
@@ -128,12 +150,25 @@ async function runSuite(rel) {
   const { AI_GEN_PATH } = require('./h5_backend_path');
   const EXTERNAL_ROOTS = [ROOT, path.join(ROOT, '..', 'h5_backend'), path.join(ROOT, 'h5_backend')];
   if (AI_GEN_PATH) EXTERNAL_ROOTS.push(path.dirname(AI_GEN_PATH));
+  // ⚠️ 2026-10-24：_paths.js **不能**被清缓存。
+  //   它装的是 fs/require 的路径重定向钩子；一旦被删缓存，后续套件再 require 它会
+  //   重新 install()，而旧的钩子还挂在 fs 上（install 是幂等的，不会重复挂）——
+  //   看似无害，实际会出现「钩子装在已被替换的 fs 方法上」的错位，
+  //   表现为套件在**进程内**执行时挂起（单独跑却正常）——极难定位。
+  //   故显式把 _paths.js 排除在缓存清理之外。
+  const PATHS_HELPER = require.resolve('./_paths.js');
   for (const k of Object.keys(require.cache)) {
+    if (k === PATHS_HELPER) continue;
     if (EXTERNAL_ROOTS.some(r => k.indexOf(r) === 0)) delete require.cache[k];
   }
   try {
     require(abs);
     await waitForResult(captured); // 等 async IIFE 跑完、打印"结果："
+    // ⚠️ 诊断：若等到超时仍没拿到结果行，说明该套件在进程内执行时挂住了
+    //    （单独跑正常、进程内跑挂起 → 通常是模块缓存污染或 fs 钩子副作用）。
+    if (!/结果：/.test(captured.join('')) && process.env.RUN_ALL_TRACE) {
+      try { process.stderr.write('!! ' + rel + ' 未在 2s 内打印结果行（疑似挂起）\n'); } catch (e) {}
+    }
   } catch (e) {
     threw = e;
     captured.push('\n[THREW] ' + (e && e.stack || e) + '\n');
@@ -173,7 +208,10 @@ async function runSuite(rel) {
   console.log((synOk ? '✓' : '✗') + '  ' + syn.name.padEnd(24) + syn.detail + (synOk ? '，全部通过' : '，失败: ' + syn.bad.join(', ')));
 
   const results = [];
-  for (const rel of SUITES) results.push(await runSuite(rel));
+  for (const rel of SUITES) {
+    if (process.env.RUN_ALL_TRACE) { try { process.stderr.write('... running ' + rel + '\n'); } catch(e){} }
+    results.push(await runSuite(rel));
+  }
   for (const r of results) {
     const mark = r.skipped ? '~' : (r.fails === 0 ? '✓' : '✗');
     console.log(mark + '  ' + r.name.padEnd(24) + r.line);

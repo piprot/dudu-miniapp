@@ -10,6 +10,10 @@
 //   ② WXML 里绑的每个 pg* 字段都在 mixin 产出里存在
 //   ③ 旧的一次性平铺结构（.cats/.tags/.grid）确实从页面消失了
 'use strict';
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');

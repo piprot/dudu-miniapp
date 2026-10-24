@@ -16,12 +16,19 @@
 //   ③ 所有吃事件参数的 handler 都兼容 e.detail（不能只读 currentTarget.dataset）
 //   ④ 渐进披露没被回退：配置区默认收起，且折叠头在页面主流程（预览/生成）之后
 'use strict';
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 const path = require('path');
 const fs = require('fs');
 
 const ROOT = path.join(__dirname, '..');
-const PAGES = ['weather', 'quotes', 'solar', 'line'];
+// ⚠️ 2026-10-25 扩到六页：card（日签）与 poster（海报长图）此前不在守卫范围内，
+//    结果 poster 一直没接 card-config 也没人发现——用户反馈「海报只有选择手机图片
+//    这一个选项」就是这个漏网的直接后果。凡接了出图设置的页，都必须进这个数组。
+const PAGES = ['weather', 'quotes', 'solar', 'line', 'card', 'poster'];
 const CC_DIR = path.join(ROOT, 'components', 'card-config');
 
 let pass = 0, fail = 0;
@@ -243,7 +250,8 @@ t('渐进披露：配置区默认收起，且排在主流程（预览/生成）�
     // 主流程锚点：各页按钮文案/handler 不同（onGen / onMakeCard / onMakeTodayCard），
     // 预览容器统一是 canvas-wrap。只认onGen 会让另外三页假红。
     const anchors = ['bindtap="onGen"', 'bindtap="onMakeCard"',
-      'bindtap="onMakeTodayCard"', 'class="canvas-wrap"', 'class="card-preview"'];
+      'bindtap="onMakeTodayCard"', 'bindtap="onGenCard"', 'bindtap="onGenPoster"',
+      'class="canvas-wrap"', 'class="card-preview"'];
     const genAt = Math.max.apply(null, anchors.map(a => wxml.indexOf(a)));
     assert.ok(genAt >= 0, p + '.wxml 找不到生成按钮或预览容器（判据可能漂移）');
     assert.ok(genAt < ccAt,

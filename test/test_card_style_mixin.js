@@ -10,6 +10,10 @@
 //   ⑥ 取消背景回到主题渐变（不残留 bgImg）
 //   ⑦ 旧 storage 里的 bgSource='lib' 能零成本回落到内置图（网络图库已整层移除）
 'use strict';
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');

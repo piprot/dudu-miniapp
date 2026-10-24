@@ -1,6 +1,10 @@
 // test/test_daily_quotes.js
 // 每日文案库单测：储备量、确定性、一整轮不重复、换一句不撞车、文案纯净度。
 'use strict';
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 const daily = require('../utils/templates/daily');
 

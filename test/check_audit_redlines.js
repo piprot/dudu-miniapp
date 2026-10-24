@@ -24,6 +24,10 @@
 //   R10 preloadRule 预下载「合计」体积 ≤ 2MB（逐包合规 ≠ 合计合规，超标时上传被拒 code 20058）
 //
 // 运行：node test/check_audit_redlines.js      期望：全部通过，退出码 0
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const fs = require('fs');
 const path = require('path');
 

@@ -1,0 +1,88 @@
+<view class="page">
+  <view class="hd">
+    <view class="hd-title">🎴 画面感卡片制作 / 日签</view>
+    <view class="hd-sub">选模板，填文字，一键制作日签卡片 · 全程本地完成</view>
+  </view>
+
+  <!-- 模板选择 -->
+  <view class="types">
+    <view wx:for="{{types}}" wx:key="key"
+      class="type {{type === item.key ? 'on' : ''}}"
+      bindtap="onSelectType" data-key="{{item.key}}">
+      <view class="type-name">{{item.name}}</view>
+      <view class="type-hint">{{item.hint}}</view>
+    </view>
+  </view>
+
+  <view class="help-toggle" bindtap="onToggleHelp">{{showHelp ? '收起说明' : '怎么用'}}</view>
+  <view class="help" wx:if="{{showHelp}}">
+    <view class="help-line">① 选上方模板（每日日签 / 金句 / 种草 / 公告 / 清单 / 图文）</view>
+    <view class="help-line">② 在下方填文字；种草 / 图文可点「选择图片」取本地照片；日签自动带日期与小程序码</view>
+    <view class="help-line">③ 点「制作卡片」，再「保存到相册」即可（卡片右下角带小程序码，长按可进入小程序）</view>
+    <view class="help-line">④ 想换气质？页面底部「出图设置」可换排版风格、背景图、衬底强弱与主题配色</view>
+    <view class="help-line">图片只存在你手机本地，不会上传任何服务器。</view>
+  </view>
+
+  <!-- 表单 -->
+  <view class="form">
+    <view class="field">
+      <view class="label">标题</view>
+      <input class="input" value="{{form.title}}" bindinput="onField" data-field="title" placeholder="{{type === 'quote' || type === 'dailysign' ? '如：9月30日 星期三（留空自动填今天）' : '卡片主标题'}}" />
+    </view>
+
+    <view class="field" wx:if="{{type !== 'checklist'}}">
+      <view class="label">{{type === 'quote' || type === 'dailysign' ? '金句内容' : '正文'}}</view>
+      <textarea class="ta" value="{{form.body}}" bindinput="onField" data-field="body"
+        placeholder="{{type === 'quote' || type === 'dailysign' ? '写一句打动人的话' : '写点什么…'}}" maxlength="-1" />
+      <button class="btn ghost" bindtap="onShuffleQuote">🎲 换一套文案（库存 {{poolSize}} 条）</button>
+      <view class="hint">文案库按天自动换一套今日推荐，不满意就点上面自己挑</view>
+    </view>
+
+    <view class="field" wx:if="{{type === 'checklist'}}">
+      <view class="label">清单条目（每行一条）</view>
+      <textarea class="ta" value="{{form.items}}" bindinput="onField" data-field="items"
+        placeholder="每行写一条待办" maxlength="-1" />
+    </view>
+
+    <view class="field" wx:if="{{type === 'recommend'}}">
+      <view class="label">价格 / 卖点标签</view>
+      <input class="input" value="{{form.tag}}" bindinput="onField" data-field="tag" placeholder="如：¥ 39 起 / 限时好物" />
+    </view>
+
+    <view class="field" wx:if="{{type === 'recommend' || type === 'imagetext'}}">
+      <view class="label">配图（取本地照片，不上传）</view>
+      <button class="btn ghost" bindtap="onChooseImage">{{cover ? '重新选择图片' : '选择图片'}}</button>
+      <view wx:if="{{cover}}" class="cover-mini">已选本地图片 ✓</view>
+    </view>
+  </view>
+
+  <button class="btn primary gen" bindtap="onGenCard">制作卡片（{{cardCost}} 积分）</button>
+  <view class="err" wx:if="{{err}}">{{err}}</view>
+
+  <view class="canvas-wrap">
+    <canvas type="2d" id="cardCanvas" class="canvas" style="height:{{canvasH}}px"></canvas>
+    <view wx:if="{{!rendered}}" class="canvas-ph">点「制作卡片」后，卡片会显示在这里</view>
+    <button wx:if="{{rendered}}" class="btn primary save save-btn {{savedKey ? 'saved-' + savedKey : ''}}" bindtap="onSaveImage">{{savedKey ? '✓ 已存相册' : '保存到相册'}}</button>
+  </view>
+
+  <!-- 出图设置：2026-10-24 新增，与天气/节气/金句/每日一句共用 components/card-config。
+       一次补齐：排版风格（9 种）/ 内置压缩图库（60 张）/ 相册背景 / 衬底强弱 / 主题配色。
+       旧版本页只有「主题 chip + 选择背景图」两个参数，且背景图只能从相册选。
+       2026-10-25：位置从「生成按钮之前」移到「预览画布之后」——与其余五页一致。
+       放前面会挡住主流程；系统会在改设置时自动重绘，用户不需要再往上翻。 -->
+  <card-config
+    style-list="{{styleList}}" style-groups="{{styleGroups}}" style-key="{{styleKey}}" style-desc="{{styleDesc}}"
+    style-hint="风格决定字体族、字号、字距、对齐与装饰符号。全部用系统字体，不下载、不闪烁。"
+    builtin-photos="{{builtinPhotos}}" bg-source="{{bgSource}}" bg-photo-id="{{bgPhotoId}}"
+    local-bg="{{localBg}}" photo-mode-label="{{photoModeLabel}}" bg-author="{{bgAuthor}}"
+    bg-hint="内置 60 张随包压缩，不走网络、不需服务器域名白名单，永远可用。"
+    themes="{{themes}}" theme="{{theme}}"
+    bind:style="onPickStyle" bind:builtin="onPickBuiltinBg" bind:album="onPickAlbumBg"
+    bind:clearphoto="onClearPhoto" bind:shufflephoto="onShufflePhoto"
+    bind:cyclemode="onCyclePhotoMode" bind:theme="onPickTheme" />
+
+  <view class="tip">卡片保存在你手机本地相册，不上传任何服务器。</view>
+</view>
+
+  <!-- 隐私授权面板：同意按钮必须是 open-type="agreePrivacyAuthorization"，见组件注释 -->
+  <privacy-panel privacy-show="{{privacyShow}}" />

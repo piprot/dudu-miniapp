@@ -9,6 +9,10 @@
 // 另含一个「页面接线守卫」：确保 weather.js 的 WEATHER/MOODS key 与
 //   content_weather.js 矩阵的 key 完全对齐（错一个字符就静默退兜底句，属线上事故）。
 'use strict';
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 const path = require('path');
 const fs = require('fs');
@@ -58,8 +62,15 @@ function usesCardConfig(wxml) {
   return /<card-config\b/.test(wxml);
 }
 
-const WEATHER_KEYS = ['sunny', 'cloudy', 'rain', 'snow', 'wind', 'fog', 'thunder', 'night'];
-const MOOD_KEYS = ['happy', 'calm', 'tired', 'sad', 'excited', 'anxious', 'grateful', 'lonely'];
+// ⚠️ 2026-10-25 扩容：天气 8→12（+阴/霾/酷暑/严寒）、心情 8→10（+想念/放松）。
+//   这里必须与 pages/weather/weather.js 的 WEATHER/MOODS 同步，
+//   且必须与 content_weather.js 的 MATRIX key 完全一致。
+const WEATHER_KEYS = ['sunny', 'cloudy', 'overcast', 'rain', 'snow', 'wind',
+  'fog', 'haze', 'thunder', 'heat', 'cold', 'night'];
+const MOOD_KEYS = ['happy', 'calm', 'tired', 'sad', 'excited', 'anxious',
+  'grateful', 'lonely', 'missing', 'relaxed'];
+// 每组合的目标条数（扩容后 40 条/组合 × 120 组合 = 4800 条）
+const PER_COMBO_TARGET = 40;
 
 // ─────────────────── ① 轮换引擎 ───────────────────
 
@@ -139,17 +150,19 @@ t('seasonOf / timeSlotOf：四季与时段判定正确', () => {
 
 // ─────────────────── ② 库储备量 ───────────────────
 
-t('天气矩阵：8×8 = 64 组合齐全，每组合 ≥8 条（共 ≥500 条）', () => {
-  // 基线 2026-10-13 上调：原来每组合只有 4 条，选定「晴+开心」后跨天 4 天就转回
-  // 同一句、点「换一条」也只有 4 个可选，用户体感「储备太少」。现在每组合 8 条
-  // （共 512 条），循环周期 4 天 → 8 天。用 ≥500 而不是 ===512：允许微调文案，
-  // 但**悄悄删掉一批**必须报警。
+t('天气矩阵：12×10 = 120 组合齐全，每组合 ≥40 条（共 ≥4800 条）', () => {
+  // 基线 2026-10-25 上调（用户拍板「维度优先·文案 3 倍」）：
+  //   天气 8→12 种、心情 8→10 种 → 120 组合；每组合 24→40 条 → 4800 条。
+  //   原来选定「晴+开心」后跨天 24 天才转回同一句，扩到 40 条后约 40 天一轮，
+  //   再叠加天气/心情维度变多，实际「撞句」概率大幅下降。
+  //   用 ≥4800 而不是 ===4800：允许微调文案，但**悄悄删掉一批**必须报警。
   const st = cw.stats();
-  assert.strictEqual(st.combos, 64, '组合数应 64，实际 ' + st.combos);
-  assert.ok(st.total >= 500, '文案总数应 ≥500，实际 ' + st.total);
+  assert.strictEqual(st.combos, 120, '组合数应 120，实际 ' + st.combos);
+  assert.ok(st.total >= 4800, '文案总数应 ≥4800，实际 ' + st.total);
   WEATHER_KEYS.forEach(w => MOOD_KEYS.forEach(m => {
     const n = cw.variantCount(w, m);
-    assert.ok(n >= 8, w + '|' + m + ' 仅 ' + n + ' 条（扩容后应 ≥8）');
+    assert.ok(n >= PER_COMBO_TARGET,
+      w + '|' + m + ' 仅 ' + n + ' 条（扩容后应 ≥' + PER_COMBO_TARGET + '）');
   }));
 });
 
@@ -178,13 +191,27 @@ t('天气矩阵：每组合的 8 个变体轮换出来互不重复', () => {
   }));
 });
 
-t('日常库：通用 ≥60、每季 ≥15、每时段 ≥12（够撑一年不重样）', () => {
-  assert.ok(cd.DAILY_LINES.length >= 60, '通用仅 ' + cd.DAILY_LINES.length);
+t('日常库：通用 ≥130、每季 ≥30、每时段 ≥24（2026-10-25 翻倍后）', () => {
+  // 基线 2026-10-25 上调（用户诉求：日签 + 海报文案库翻倍）：
+  //   通用 67→134、季节 66→132、时段 48→96，合计 181→362。
+  //   阈值卡在翻倍后数值的 97%，允许微调个别句子，但批量删减必须报警。
+  assert.ok(cd.DAILY_LINES.length >= 130, '通用仅 ' + cd.DAILY_LINES.length + '（翻倍后应 ≥130）');
   ['春', '夏', '秋', '冬'].forEach(s => {
-    assert.ok(cd.SEASON_LINES[s].length >= 15, s + ' 仅 ' + cd.SEASON_LINES[s].length);
+    assert.ok(cd.SEASON_LINES[s].length >= 30, s + ' 仅 ' + cd.SEASON_LINES[s].length + '（翻倍后应 ≥30）');
   });
   ['早', '午', '晚', '深夜'].forEach(s => {
-    assert.ok(cd.TIME_LINES[s].length >= 12, s + ' 仅 ' + cd.TIME_LINES[s].length);
+    assert.ok(cd.TIME_LINES[s].length >= 24, s + ' 仅 ' + cd.TIME_LINES[s].length + '（翻倍后应 ≥24）');
+  });
+});
+
+t('日常库：全库无重复文案（扩容最容易撞车，撞了用户会看到同一句）', () => {
+  const all = cd.DAILY_LINES.slice();
+  ['春', '夏', '秋', '冬'].forEach(s => all.push(...cd.SEASON_LINES[s]));
+  ['早', '午', '晚', '深夜'].forEach(s => all.push(...cd.TIME_LINES[s]));
+  const seen = new Set();
+  all.forEach(x => {
+    assert.ok(!seen.has(x), '日常库文案重复：「' + x + '」');
+    seen.add(x);
   });
 });
 

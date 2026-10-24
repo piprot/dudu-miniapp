@@ -10,6 +10,10 @@
 //
 // 用 require.cache 注入假的 points 模块，让 charge.js 的 require('./points') 命中假模块，
 // 从而把「读余额 / 扣费」这两步云函数交互完全可控。
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 const path = require('path');
 const fs = require('fs');

@@ -6,6 +6,10 @@
 // 一旦静默失败，客户付了钱、画师却永远不知道 —— 这种故障没有报错、只有沉默，必须靠测试兜住。
 //
 // 运行：node test/test_custom_request.js    期望：全部 PASS，退出码 0。
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 const path = require('path');
 const Module = require('module');

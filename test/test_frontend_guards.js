@@ -19,6 +19,10 @@
 //   F9 pages/h5 桥接页必须保持已删除（端内零 H5 依赖，个人主体纯本地工具）
 //
 // 运行：node test/test_frontend_guards.js      期望：全部通过，退出码 0
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const fs = require('fs');
 const path = require('path');
 

@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "画面感卡片制作 / 日签生成器",
+  "usingComponents": {
+    "privacy-panel": "../../../components/privacy-panel/index",
+    "card-config": "../../../components/card-config/index"
+  }
+}

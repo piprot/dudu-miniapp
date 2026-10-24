@@ -1,6 +1,0 @@
-{
-  "navigationBarTitleText": "画面感分镜编辑器",
-  "usingComponents": {
-    "privacy-panel": "../../components/privacy-panel/index"
-  }
-}

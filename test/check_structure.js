@@ -1,4 +1,8 @@
 // 提审前全盘体检：页面四件套 / 跳转路径 / 图片引用 / require 图完整性（零依赖，只读）
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '..');

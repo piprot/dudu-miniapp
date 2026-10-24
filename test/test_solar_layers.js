@@ -13,6 +13,10 @@
 //   - calendar_mix 必须导出 lunarMonthName/lunarDayName（否则 solar.js 调用抛错 → 整页 0 条）
 //   - 农历/西方节日表已扩充到可支撑 100+ 条的规模
 'use strict';
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 const path = require('path');
 const fs = require('fs');
@@ -60,7 +64,7 @@ t('节气页数据里三组齐全（节气 / 农历节日 / 西方节日），�
   });
 });
 
-t('buildGroups 委托 solar_browse，每组 ≥100 条文案（纯中文、uid 唯一）', () => {
+t('buildGroups 委托 solar_browse：条目级（节气/节日）全量渲染，文案挂在条目下', () => {
   const js = rd(ROOT, 'pages', 'solar', 'solar.js');
   // solar.js 必须委托给纯函数模块，避免守卫测试重复实现扁平化逻辑
   assert.ok(/utils\/solar_browse'/.test(js), 'buildGroups 未委托 utils/solar_browse（扁平化逻辑应抽到纯函数）');
@@ -70,39 +74,63 @@ t('buildGroups 委托 solar_browse，每组 ≥100 条文案（纯中文、uid �
   const { buildGroups } = require(path.join(ROOT, 'utils', 'solar_browse.js'));
   const groups = buildGroups();
   assert.strictEqual(groups.length, 3, '应恰好 3 个分组');
-  const need = { term: 100, lunar: 100, western: 100 };
+  // 2026-10-24 重构：结构从「文案级平铺」改为「条目级手风琴」。
+  //   旧结构把 24 节气 × 5 条 = 120 条**平铺**成一行一文案，再靠 WXML 的
+  //   `idx < item.limit`（48）硬截断渲染 → 霜降（第 85 条起）永远进不了 DOM，
+  //   用户点「查看全部」也无效（真实反馈：「24 节气显示不全，比如霜降就没有」）。
+  //   新结构：items 是**条目**（24 个节气全部渲染、不截断），文案在 it.texts 里。
+  //   故此处断言条目数与文案总数，不再断言「items 是文案级」。
+  const needItems = { term: 24, lunar: 21, western: 26 };
   const seenUid = new Set();
   for (const g of groups) {
-    assert.ok(g.items.length >= need[g.key],
-      `分组 ${g.key} 仅 ${g.items.length} 条，未达 100+（需求：每个内置至少 100 条）`);
+    assert.ok(g.items.length >= needItems[g.key],
+      `分组 ${g.key} 仅 ${g.items.length} 个条目，未达 ${needItems[g.key]}+`);
     for (const it of g.items) {
-      assert.ok(it.uid && it.name && it.text && it.preview && it.tag && it.kind,
+      assert.ok(it.uid && it.name && it.date && it.kind,
         '条目缺字段: ' + JSON.stringify(it));
+      assert.ok(Array.isArray(it.texts) && it.texts.length > 0,
+        '条目未挂文案数组: ' + JSON.stringify(it));
       assert.ok(!seenUid.has(it.uid), 'uid 重复: ' + it.uid);
       seenUid.add(it.uid);
-      assert.ok(it.text.length >= 18 && it.text.length <= 48, `文案长度越界(${it.text.length}): ${it.text}`);
-      assert.ok(/[一-鿿]/.test(it.text), '文案非中文: ' + it.text);
-      assert.ok(!/[A-Za-z0-9]/.test(it.text), '文案含英文/数字: ' + it.text);
+      for (const tx of it.texts) {
+        assert.ok(tx.text && tx.tag, '文案缺字段: ' + JSON.stringify(tx));
+        assert.ok(tx.text.length >= 18 && tx.text.length <= 48, `文案长度越界(${tx.text.length}): ${tx.text}`);
+        assert.ok(/[一-鿿]/.test(tx.text), '文案非中文: ' + tx.text);
+        assert.ok(!/[A-Za-z0-9]/.test(tx.text), '文案含英文/数字: ' + tx.text);
+      }
     }
+  }
+  // ⭐ 核心回归：24 个节气一个不少，且霜降必须在其中（用户反馈的具体症状）
+  const term = groups.find(g => g.key === 'term');
+  const NAMES = ['立春','雨水','惊蛰','春分','清明','谷雨','立夏','小满','芒种','夏至','小暑','大暑',
+    '立秋','处暑','白露','秋分','寒露','霜降','立冬','小雪','大雪','冬至','小寒','大寒'];
+  for (const n of NAMES) {
+    assert.ok(term.items.some(it => it.name === n), '缺失节气：' + n);
   }
 });
 
-t('每组默认只渲染 48 条（库里仍是 100+ 条），并带「展开更多」看全部', () => {
-  const { buildGroups, DEFAULT_LIMIT } = require(path.join(ROOT, 'utils', 'solar_browse.js'));
-  assert.strictEqual(DEFAULT_LIMIT, 48, 'DEFAULT_LIMIT 应为 48（用户要求每组显示 48 条）');
+t('条目全量渲染、无硬截断判据（「霜降不显示」的根因守卫）', () => {
+  const { buildGroups } = require(path.join(ROOT, 'utils', 'solar_browse.js'));
   const groups = buildGroups();
-  for (const g of groups) {
-    assert.strictEqual(g.limit, 48, `分组 ${g.key} 默认 limit 应为 48，实际 ${g.limit}`);
-    assert.ok(g.items.length > g.limit,
-      `分组 ${g.key} 数据仅 ${g.items.length} 条，未超过 48，「展开更多」就没有意义`);
+  const term = groups.find(g => g.key === 'term');
+  // 每个节气的文案数（2026-10-24 扩容后每节气 15 条）
+  for (const it of term.items) {
+    assert.ok(it.texts.length >= 15, `${it.name} 仅 ${it.texts.length} 条文案（期望 ≥15）`);
   }
   const js = rd(ROOT, 'pages', 'solar', 'solar.js');
-  assert.ok(/onShowMore/.test(js), '缺少 onShowMore（点「展开更多」应放开渲染上限）');
   const wxml = rd(ROOT, 'pages', 'solar', 'solar.wxml');
-  assert.ok(/wx:for-index="idx"/.test(wxml), '条目循环未用 wx:for-index="idx"（无法按 limit 截断）');
-  assert.ok(/wx:if="\{\{idx < item\.limit\}\}"/.test(wxml),
-    '条目未按 limit 截断渲染（会一次性铺开 100+ 条，滚动成本过高）');
-  assert.ok(/onShowMore/.test(wxml), 'wxml 缺「展开更多」入口');
+  // ⚠️ 关键守卫：WXML 里不能再有 `idx < item.limit` 这类硬截断，
+  //    否则条目数一多，靠后的节气（霜降/立冬/大寒…）永远渲染不出来。
+  const wxmlCode = wxml.replace(/<!--[\s\S]*?-->/g, '');   // 剥注释再判定
+  assert.ok(!/idx\s*<\s*item\.limit/.test(wxmlCode),
+    'WXML 仍有 `idx < item.limit` 硬截断（霜降会重现消失）');
+  assert.ok(!/wx:for-index="idx"/.test(wxmlCode),
+    'WXML 仍用 wx:for-index="idx"（新结构已无下标截断）');
+  assert.ok(/wx:for="\{\{item\.items\}\}"/.test(wxmlCode), 'WXML 条目循环未改用 item.items');
+  assert.ok(/wx:for="\{\{it\.texts\}\}"/.test(wxmlCode), 'WXML 未渲染条目下的文案列表');
+  // 「展开更多」机制已随新结构移除（旧结构才有 8→48→全部的档位）
+  assert.ok(!/onShowMore/.test(js), 'solar.js 仍残留 onShowMore（新结构已无「展开更多」）');
+  assert.ok(!/onShowMore/.test(wxml), 'solar.wxml 仍残留 onShowMore 绑定');
 });
 
 t('今日概览接上真实历法：公历 + 农历 + 干支生肖 + 今日节日', () => {
@@ -146,7 +174,7 @@ t('节气页 WXML：条目文案与「成卡」按钮都在折叠体内（默认
   assert.ok(has(detail[1], 'item-text'), '折叠体内缺文案');
   assert.ok(has(detail[1], 'onPickItem'), '折叠体内缺成卡按钮');
   // 折叠态应展示 preview（前 18 字）+ tag，避免一屏塞满全文
-  assert.ok(/\{\{it\.preview\}\}/.test(wxml), '条目折叠态未展示 preview（应预览前 18 字）');
+  assert.ok(/\{\{it\.texts\[0\]\.preview\}\}/.test(wxml), '条目折叠态未展示 preview（应预览首条文案前 18 字）');
   assert.ok(/wx:key="uid"/.test(wxml), '条目循环 wx:key 未改为 uid（name 重复会导致 wx:key 冲突告警）');
   // 分组体也必须受 open 控制
   assert.ok(/<view class="group-body" wx:if="\{\{item\.open\}\}">/.test(wxml),
@@ -184,14 +212,14 @@ t('农历/西方节日表已扩充到可支撑 100+ 条的规模', () => {
     'LUNAR_FESTIVALS 仅 ' + L.LUNAR_FESTIVALS.length + ' 条（需 ≥20 才能 ×5 ≥100）');
   assert.ok(L.WESTERN_FESTIVALS.length >= 26,
     'WESTERN_FESTIVALS 仅 ' + L.WESTERN_FESTIVALS.length + ' 条（需 ≥26 才能 ×5 ≥130）');
-  // 每个节日都要能取到 5 条纯中文文案
+  // 每个节日都要能取到 ≥15 条纯中文文案（2026-10-24 扩容：每条目 5 → 15 条）
   const LINES_LUNAR = require(path.join(ROOT, 'utils', 'lines_lunar.js'));
   const LINES_WESTERN = require(path.join(ROOT, 'utils', 'lines_western.js'));
   for (const f of L.LUNAR_FESTIVALS) {
-    assert.ok(LINES_LUNAR[f.name] && LINES_LUNAR[f.name].length === 5, '农历节日缺 5 条文案：' + f.name);
+    assert.ok(LINES_LUNAR[f.name] && LINES_LUNAR[f.name].length >= 15, '农历节日文案不足 15 条：' + f.name);
   }
   for (const f of L.WESTERN_FESTIVALS) {
-    assert.ok(LINES_WESTERN[f.name] && LINES_WESTERN[f.name].length === 5, '西方节日缺 5 条文案：' + f.name);
+    assert.ok(LINES_WESTERN[f.name] && LINES_WESTERN[f.name].length >= 15, '西方节日文案不足 15 条：' + f.name);
   }
 });
 

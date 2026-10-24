@@ -11,6 +11,10 @@
 //   ④ 每日一句/节气页存馆时带正确 kind（否则统一库里筛不出来）
 //   ⑤ 首页不再摆两张做同一件事的卡
 'use strict';
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 const path = require('path');
 const fs = require('fs');
@@ -222,7 +226,13 @@ t('首页不再摆两张做同一件事的卡', () => {
   const qDesc = (block.match(/key: 'quotes'[\s\S]{0,160}/) || [''])[0];
   assert.ok(/台词/.test(qDesc), '金句馆描述未提及台词/书摘');
   // 路由表可保留 line（分享链接不失效），但不能是首页入口
-  assert.ok(/line: '\/pages\/line\/line'/.test(js), 'line 路由被删了，分享链接会失效');
+  // ⚠️ 2026-10-24 分包改造：line 页已移入 pkgTools，路由前缀变为 /pkgTools/pages/line/line。
+  //   故这里放宽为「指向 line 页的路由存在即可」，不再写死完整路径——
+  //   否则下次再分包/再改目录，这个断言又得跟着改（它本意是守「line 路由别删」，
+  //   不是守具体路径）。
+  assert.ok(/line:/.test(js) && /line/.test(js), 'line 路由被删了，分享链接会失效');
+  assert.ok(/'\/pkgTools\/pages\/line\/line'|'\/pages\/line\/line'/.test(js),
+    'line 路由未指向台词页（应为 /pkgTools/pages/line/line 或 /pages/line/line）');
 });
 
 t('合并后五处仍各自只扣一次费、且 action 不变', () => {

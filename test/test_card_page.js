@@ -5,6 +5,10 @@
 //   → 主题切换 → collectData（清单换行转数组 / 日签自动补日期正文）
 //   → buildModel × 引擎消费（6 类 × 6 主题不抛错）→ 文案池异常兜底。
 'use strict';
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 
 let pass = 0, fail = 0;

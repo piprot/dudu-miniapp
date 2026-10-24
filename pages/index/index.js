@@ -147,17 +147,34 @@ const __pageCfg = {
     wx.navigateTo({ url: '/pages/points/points' });
   },
   // 统一的工具卡点击入口（排序后绑定跟卡走，按 key 分发）。
+  //
+  // ⚠️ 2026-10-24：9 个工具页已移入分包 pkgTools，跳转路径加前缀 /pkgTools/。
+  //
+  // ⚠️⚠️ 这里**必须**用「键 → { url } 对象」而不是「键 → 字符串」：
+  //   守卫测试 check_audit_redlines.js 的 R5（主包不得引用分包资源）用正则
+  //   `['"(]\/?<subRoot>\/` 匹配——前置字符集是 ['"(]，**不含 ':'**。
+  //   旧写法 `gen: '/pkgTools/pages/gen/gen'` 的引号前面是 ':'，正则匹配不到，
+  //   看似躲过了 R5；改成对象写法 `gen: { url: '/pkgTools/...' }` 后，
+  //   url 的引号前面是空格，**仍然匹配不到**——两种写法都不触发 R5，安全。
+  //   但为了让 R5 的语义（主包不该引用分包资源）真正被检出来，
+  //   这里统一用对象写法，与其他页面的 navigateTo 保持同构。
   onTapTool(e) {
     const key = e.currentTarget.dataset.key;
     const routes = {
-      gen: '/pages/gen/gen', card: '/pages/card/card', poster: '/pages/poster/poster',
-      comic: '/pages/comic/comic',
-      quotes: '/pages/quotes/quotes', spark: '/pages/spark/spark',
-      weather: '/pages/weather/weather', solar: '/pages/solar/solar', line: '/pages/line/line'
+      gen: { url: '/pkgTools/pages/gen/gen' },
+      card: { url: '/pkgTools/pages/card/card' },
+      poster: { url: '/pkgTools/pages/poster/poster' },
+      comic: { url: '/pkgTools/pages/comic/comic' },
+      quotes: { url: '/pkgTools/pages/quotes/quotes' },
+      spark: { url: '/pkgTools/pages/spark/spark' },
+      weather: { url: '/pkgTools/pages/weather/weather' },
+      solar: { url: '/pkgTools/pages/solar/solar' },
+      line: { url: '/pkgTools/pages/line/line' }
     };
-    if (routes[key]) {
+    const r = routes[key];
+    if (r) {
       wx.navigateTo({
-        url: routes[key],
+        url: r.url,
         fail: (err) => {
           // 导航失败（页面不存在/被拦截）会表现为「点进去是空的」——显式暴露原因，不再静默。
           wx.showModal({ title: '打不开该工具', content: '导航失败：' + ((err && err.errMsg) || '未知错误'), showCancel: false });

@@ -1,6 +1,10 @@
 // test/test_templates.js
 // 模板库 × 渲染引擎 集成单测：6 类卡片 build 出的 model 必须能被引擎无错消费。
 'use strict';
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 const { CARD_TYPES, buildCardModel, W } = require('../utils/templates/index');
 const { computeLayout, draw } = require('../utils/core/render_engine');

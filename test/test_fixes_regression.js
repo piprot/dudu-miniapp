@@ -2,6 +2,10 @@
 // 针对本次修复的纯逻辑单测（node 直接跑，无需 wx 环境）。
 // 覆盖：① 排版优化三按钮不再因 \p 正则崩；② 分镜高度不再溢出；③ 卡片标题/落款行距加宽。
 'use strict';
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 
 const TOOLS = require('../utils/text_tools');

@@ -11,6 +11,10 @@
 //      断言旧逻辑产生乱码、新逻辑完整还原。
 //   ② 真实 socket 复现：本地起 HTTP 服务，1 字节 1 段发送（两端 setNoDelay），端到端验证。
 
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const http = require('http');
 
 // 一段典型的中文文案（含 emoji、全角标点、多字节汉字），会被拆成多段

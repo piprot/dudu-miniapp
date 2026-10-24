@@ -22,6 +22,10 @@
 //   ⑭ 兜底查单（vp_query）   → 已支付订单按 productId 补发货，买积分包不会误解锁整本
 //
 // 运行：node test/test_e2e_flow.js     期望：全部 PASS，退出码 0
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 const path = require('path');
 const Module = require('module');

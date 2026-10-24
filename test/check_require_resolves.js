@@ -5,6 +5,10 @@
 // 本守卫在上传前把这类错误拦在本地。
 //
 // 运行：node test/check_require_resolves.js   期望：全部解析成功，退出码 0
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const fs = require('fs');
 const path = require('path');
 

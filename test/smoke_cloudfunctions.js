@@ -3,6 +3,10 @@
 // 在 require 阶段都不抛错（即顶层 require('wx-server-sdk'/'https'/'http') 与模块初始化逻辑无错）。
 // 目标函数自动发现（见下方 targets），不维护手写清单。
 // 仅验证"能加载"，深入逻辑见 test_ai_gen_units.js。运行：node test/smoke_cloudfunctions.js
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const Module = require('module');
 const origLoad = Module._load;
 

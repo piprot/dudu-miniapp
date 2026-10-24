@@ -9,6 +9,10 @@
 // 修复：onFilterKind 切来源时把 activeCat/activeTag/pgItem/pgGroupOpen 一并归位。
 // 本测试用 mock Page() 真实加载 pages/quotes/quotes.js，锁住这条行为链。
 'use strict';
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 
 let pass = 0, fail = 0;
@@ -52,6 +56,14 @@ t('页面初始化：种子就绪（420 条）、今日推荐非空、默认分�
   assert.ok(page.data.list.length > 0, '默认列表非空');
 });
 
+// ── 动态条数：种子库扩容后条数会变，写死数字会每次扩容都要改测试 ──────
+// 2026-10-24：节气/节日各 180 条（原 60）。这里按 kind 从种子库现算，
+// 断言「该来源的全部条目都可见」，而不是某个具体数字。
+function seedCountByKind(kind) {
+  const { SEED_QUOTES } = require('../utils/content_quotes');
+  return SEED_QUOTES.filter(q => String(q.id || '').split('_')[3] === kind).length;
+}
+
 t('【回归核心】切「节气」sheet：分类归位、60 条全量可见（修复前为 0 条空版）', () => {
   const page = makePage();
   page.onLoad();
@@ -60,7 +72,7 @@ t('【回归核心】切「节气」sheet：分类归位、60 条全量可见（
   assert.strictEqual(page.data.activeCat, '', '切来源后主题大类必须归位（残留 growth 会清空节气 sheet）');
   assert.strictEqual(page.data.activeTag, '', '切来源后标签也应归位');
   assert.strictEqual(page.data.pgGroupOpen, false, '小类区应收起，避免高亮与列表不一致的错觉');
-  assert.strictEqual(page.data.list.length, 60, '节气 sheet 应见全部 60 条，实际 ' + page.data.list.length);
+  assert.strictEqual(page.data.list.length, seedCountByKind('solar'), '节气 sheet 应见该来源全部条目，实际 ' + page.data.list.length);
   assert.ok(page.data.list.every(q => q.kindName === '节气'), '列表应全部是节气条目');
   // 今日推荐也切到节气池
   assert.ok(page.data.todayPick && page.data.todayPick.text, '节气 sheet 今日推荐应非空');
@@ -71,7 +83,7 @@ t('【回归核心】切「节日」sheet：同理 60 条全量可见', () => {
   page.onLoad();
   page.onFilterKind({ currentTarget: { dataset: { key: 'festival' } } });
   assert.strictEqual(page.data.activeCat, '');
-  assert.strictEqual(page.data.list.length, 60, '节日 sheet 应见全部 60 条，实际 ' + page.data.list.length);
+  assert.strictEqual(page.data.list.length, seedCountByKind('festival'), '节日 sheet 应见该来源全部条目，实际 ' + page.data.list.length);
   assert.ok(page.data.list.every(q => q.kindName === '节日'), '列表应全部是节日条目');
 });
 
@@ -96,10 +108,10 @@ t('真实动线：选了大类再看别的来源，来源切换依然把分类�
   // 再切到「节日」→ 分类必须归位，不能被 work 残留卡死
   page.onFilterKind({ currentTarget: { dataset: { key: 'festival' } } });
   assert.strictEqual(page.data.activeCat, '');
-  assert.strictEqual(page.data.list.length, 60, '切来源后应摆脱残留分类，见全部节日');
+  assert.strictEqual(page.data.list.length, seedCountByKind('festival'), '切来源后应摆脱残留分类，见全部节日条目');
   // 大类选「时间」→ 节日∩时间=60（节日种子全在时间分类）
   page.onPickGroup({ currentTarget: { dataset: { group: 'time' } } });
-  assert.strictEqual(page.data.list.length, 60, '时间分类下节日应全量可见');
+  assert.strictEqual(page.data.list.length, seedCountByKind('festival'), '时间分类下节日应全量可见');
 });
 
 t('切回「全部」来源：分类保持归位，列表恢复非空', () => {

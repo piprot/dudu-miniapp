@@ -1,5 +1,9 @@
 // test/test_region_data.js —— 省市静态数据 + 城市记忆守卫
 // 纯数据模块无 wx 依赖，可直接 require；region_store 需要注入 wx storage stub。
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const path = require('path');
 const assert = require('assert');
 

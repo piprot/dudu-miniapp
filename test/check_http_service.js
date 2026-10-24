@@ -12,6 +12,10 @@
 // 用法：node test/check_http_service.js
 // 修复（映射缺失时，⚠️ 必须用 PowerShell 跑，Git Bash 会把 /h5req 转成 Windows 垃圾路径）：
 //   PowerShell: tcb service create -p /h5req -f h5_request
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const REQ_URL = 'https://cloudbase-d8ge1hu2324c8fcdf.service.tcloudbase.com/h5req';
 
 (async () => {

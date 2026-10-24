@@ -9,6 +9,10 @@
 //   · 【云函数模式】拿未支付订单号直调 → 查单验真拦住（云函数模式没有签名，这是唯一防线）
 //   · 【云函数模式】推送里的 OpenId/ProductId 一律不采信，以 vp_orders 落库值为准
 // 运行：node test/test_vp_units.js
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 const path = require('path');
 const Module = require('module');

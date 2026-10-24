@@ -4,6 +4,10 @@
 //   ② 保存按钮翻转反馈（A 档 #27）：三页 flipSaved + 双 keyframes 奇偶交替 + 内联替代 toast
 //   ③ 设计令牌：app.wxss page{} 变量 + 页面 wxss var() 消费 + 规范文档存在
 'use strict';
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');

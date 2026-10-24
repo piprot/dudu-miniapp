@@ -11,6 +11,10 @@
 //              utils/config.js → POINTS.earn  ↔ ../h5_backend/ai_gen/index.js（2026-09-30 移出仓库）  → POINTS_EARN
 //                （第 15 条：earn 的每一项都必须真有云函数发放，防"空头赚分承诺"）
 // 改价格/加档位后**必须跑**：node test/test_constants_sync.js
+
+// 2026-10-24 分包改造：安装路径重定向钩子（pages/ 与 utils/ 的虚拟路径 → 真实位置）。
+//   详见 test/_paths.js。不装的话本文件里的 path.join(ROOT,'pages',...) 会 ENOENT。
+require('./_paths.js');
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
