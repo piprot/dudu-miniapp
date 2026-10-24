@@ -1,4 +1,5 @@
 const { BACKEND, VIRTUAL_PAY } = require('./utils/config.js');
+const ads = require('./utils/ads.js');   // 流量主广告统一管理（激励视频/插屏，见该文件铁律）
 
 App({
   globalData: {
@@ -7,6 +8,9 @@ App({
   onLaunch() {
     this.setupPrivacyGuard();
     this.setupUpdateGuard();
+    // 预创建插屏广告实例（创建即触发预加载）：开屏 + 积分页两个场景共用同一个实例，
+    // 等首页 onReady 时广告通常已就绪，不必现场等 load。
+    ads.preload();
     // 虚拟支付或个体户路径任一启用云开发，都在此初始化
     const env = (VIRTUAL_PAY.enabled && VIRTUAL_PAY.useCloud && VIRTUAL_PAY.cloudEnv)
       || (BACKEND.useCloud && BACKEND.env)

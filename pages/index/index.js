@@ -1,6 +1,7 @@
 const { POINTS } = require('../../utils/config.js');
 const login = require('../../utils/login.js');
 const points = require('../../utils/points.js');
+const ads = require('../../utils/ads.js');   // 流量主广告（插屏开屏场景 + 视频贴片事件）
 const { getFreshError } = require('../../utils/diag.js');
 const privacyPanel = require('../../utils/privacy_panel.js'); // 隐私授权面板：同意按钮须用 open-type=agreePrivacyAuthorization
 const fav = require('../../utils/fav.js');                    // 「已收藏」判定：scene + storage 单一真相源
@@ -31,6 +32,7 @@ const __pageCfg = {
     dailyOn: true,         // 是否开启每日登录奖励
     identityText: '',
     lastError: '',         // 上次真机崩溃信息（从 storage 读取，首页横幅显示）
+    videoAdUnitId: '',     // 视频贴片广告位（空 = 不渲染，见 wxml）
     // ── 创作工具卡（长按拖拽排序，流体交互库 #6 · B 档）──
     tools: TOOL_DEFS.slice(),
     dragIdx: -1,           // 正在被拖拽的卡下标（-1 = 无拖拽）
@@ -40,6 +42,9 @@ const __pageCfg = {
   onLoad() {
     wx.setNavigationBarTitle({ title: 'dudu 画面感' });   // 样例《美汐的故事》降为次级入口，导航栏用品牌名
     this.setData({ dailyOn: !(POINTS && POINTS.daily && POINTS.daily.enabled === false) });
+    // 视频贴片广告位（首页底部通栏）：从 config 读，空则不渲染
+    const vp = (POINTS && POINTS.ads && POINTS.ads.videoPatch) || {};
+    this.setData({ videoAdUnitId: vp.adUnitId || '' });
     // 从「收藏 / 我的小程序」入口冷启动 → 落收藏标记，入口按钮转「已添加 ✓」
     fav.syncFromLaunch();
     // 恢复用户自定义的工具卡顺序（未知 key 过滤、缺失的按默认顺序补尾）
@@ -255,7 +260,28 @@ const __pageCfg = {
     if (typeof wx.showShareMenu === 'function') {
       wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] });
     }
-  }
+    // 插屏广告（冷启动开屏场景）：onLaunch 已预创建实例，这里延迟 1.5s 展示——
+    // ① onLaunch 瞬间广告通常还没加载完，马上 show 大概率走 catch 重试链路；
+    // ② 先让用户看到页面和签到提示，不硬抢开场（频繁打扰是微信广告规范红线）。
+    // 冷却 60s：紧接着进积分页也不会二次弹（见 ads.maybeShowInterstitial）。
+    const it = (POINTS && POINTS.ads && POINTS.ads.interstitial) || {};
+    if (it.adUnitId) {
+      this._adTimer = setTimeout(() => {
+        this._adTimer = 0;
+        ads.maybeShowInterstitial(it.adUnitId, it.cooldownMs);
+      }, 1500);
+    }
+  },
+  // ⚠️ 定时器必须清理（E-09）：用户秒开秒退时回调晚到会打一颗空枪。
+  onUnload() {
+    if (this._adTimer) { clearTimeout(this._adTimer); this._adTimer = 0; }
+  },
+
+  // ── 视频贴片广告（首页底部通栏）事件：只做日志，加载失败静默留白，不挡内容 ──
+  onAdplay() { console.log('[ads] 视频贴片广告 播放开始'); },
+  onAdload() { console.log('[ads] 视频贴片广告 加载成功'); },
+  onAdclose() { console.log('[ads] 视频贴片广告 关闭'); },
+  onAdError(err) { console.error('[ads] 视频贴片广告 加载失败', err); }
 };
 Object.assign(__pageCfg, privacyPanel.privacyPanelMethods);
 Page(__pageCfg);

@@ -44,6 +44,18 @@
     <button class="daily-btn" bindtap="onClaimDaily" loading="{{claiming}}" disabled="{{claiming || dailyChecked}}">{{dailyChecked ? '已签到' : '签到'}}</button>
   </view>
 
+  <!-- 看视频赚积分（激励视频广告，2026-10-25）：完整观看才发，每日上限服务端权威，防刷 -->
+  <block wx:for="{{adTasks}}" wx:key="slot">
+    <view class="ad-card">
+      <view class="ad-left">
+        <view class="ad-title">📺 {{item.title}}</view>
+        <view class="ad-sub">完整观看视频 +{{item.reward}} 积分 · 今日还剩 {{item.left}} 次</view>
+      </view>
+      <button class="ad-btn" data-slot="{{item.slot}}" bindtap="onWatchAd"
+        loading="{{watching === item.slot}}" disabled="{{watching || item.left <= 0}}">{{item.left > 0 ? '看视频 +' + item.reward : '今日已看完'}}</button>
+    </view>
+  </block>
+
   <view class="section" wx:if="{{redeem.length}}">
     <view class="section-title">积分兑换</view>
     <view class="item" wx:for="{{redeem}}" wx:key="id">

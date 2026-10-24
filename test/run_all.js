@@ -102,6 +102,8 @@ const SUITES = [
   'test/test_h5_comic.js',
   'test/test_ai_gen_units.js',
   'test/test_points_daily.js',
+  'test/test_points_adreward.js',
+  'test/test_ads.js',
   'test/test_vp_units.js',
   'test/test_vp_profile_mirror.js',
   'test/test_vp_refund_units.js',

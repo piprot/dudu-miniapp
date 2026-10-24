@@ -44,6 +44,14 @@
        ⚠️ 微信小程序没有「一键添加」的 API（wx.addToFavorites 是小游戏 API，不适用），
            只能引导用户点右上角 ··· → 收藏。详见 components/add-mine/index.js 注释。 -->
   <add-mine id="cmpAddMine" show="{{addMineShow}}" text="收藏后可在「我的小程序」快速打开，下次不用再找" />
+
+  <!-- 视频贴片广告（流量主，2026-10-25）：首页底部通栏。
+       adUnitId 为空（未配置）时不渲染；加载失败/低版本静默留白，不挡内容。
+       事件只做日志（onAdplay/onAdload/onAdclose/onAdError，见 index.js）。 -->
+  <view class="video-ad" wx:if="{{videoAdUnitId}}">
+    <video class="video-ad-video" ad-unit-id="{{videoAdUnitId}}"
+      bindadplay="onAdplay" bindadload="onAdload" bindadclose="onAdclose" bindaderror="onAdError"></video>
+  </view>
 </view>
 
   <!-- 隐私授权面板：同意按钮必须是 open-type="agreePrivacyAuthorization"，见组件注释 -->

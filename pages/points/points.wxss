@@ -8,6 +8,13 @@
 .daily-rule { font-size: 22rpx; color: #9a9286; line-height: 1.6; margin-top: 8rpx; }
 .daily-btn { flex: none; background: var(--primary); color: #fff; border-radius: 999rpx; font-size: 26rpx; padding: 0 32rpx; margin: 0; }
 .daily-btn[disabled] { background: #cfc7ba; color: #fff; }
+/* 看视频赚积分任务卡（激励视频广告）：沿用签到卡骨架，深一档主色区分「广告位」 */
+.ad-card { display: flex; align-items: center; justify-content: space-between; background: #fff; border-radius: 20rpx; padding: 24rpx; margin-bottom: 24rpx; box-shadow: 0 4rpx 16rpx rgba(150, 110, 50, 0.08), inset 0 2rpx 0 rgba(255, 255, 255, 0.7); }
+.ad-left { flex: 1; padding-right: 16rpx; }
+.ad-title { font-size: 30rpx; font-weight: 600; color: var(--ink); }
+.ad-sub { font-size: 24rpx; color: #9a9286; margin-top: 8rpx; }
+.ad-btn { flex: none; background: var(--primary-deep); color: #fff; border-radius: 999rpx; font-size: 26rpx; padding: 0 32rpx; margin: 0; }
+.ad-btn[disabled] { background: #cfc7ba; color: #fff; }
 .section { background: #fff; border-radius: 20rpx; padding: 24rpx; margin-bottom: 24rpx; box-shadow: 0 4rpx 16rpx rgba(150, 110, 50, 0.08), inset 0 2rpx 0 rgba(255, 255, 255, 0.7); }
 .section-title { font-size: 28rpx; font-weight: 600; color: var(--ink); margin-bottom: 16rpx; }
 .item { display: flex; align-items: center; justify-content: space-between; padding: 16rpx 0; border-bottom: 1rpx solid var(--bg-surface-1); }

@@ -5,6 +5,7 @@
 // 存储：云数据库集合 vp_users（文档 _id = openid），字段：
 //   points(Number) / coupons(Array) / lastDailyDate(String 'YYYY-MM-DD') / dailyStreak(Number)
 //   signupBonusAt(Number) —— 新人礼领取时间戳，**0 = 未领**（见下方 SIGNUP）
+//   ad_<slot>_date(String) / ad_<slot>_count(Number) —— 激励视频当日已看次数（见 AD_SLOTS）
 //   nickname(String) / avatar(String cloud fileID) —— 用户**自愿**填写的微信昵称/头像，
 //     由 vp_get_profile 的 updateProfile 镜像写入（见该云函数 syncVpProfile），仅供运营在控制台可读，
 //     非静默采集、不影响积分逻辑。
@@ -12,12 +13,16 @@
 // 余额与花费用 db.command.inc 原子增减，避免并发丢更新。
 //
 // 调用：
-//   { action: 'balance' }                              → { ok, points, coupons }
+//   { action: 'balance' }                              → { ok, points, coupons, adLeft }
 //   { action: 'spend', reason, delta, grant }          → { ok, points, delta:-N }（余额不足返回 ok:false）
 //     reason: 兑换项 id（如 'comic_discount'）；delta: 花费积分数(正)；grant: 要写入 coupons 的权益对象
 //   { action: 'daily' }                                → { ok, awarded, signupBonus, points, streak, already? }
 //     每日登录奖励：客户端可重复调用，服务端按「北京时间自然日」只发一次（幂等 + CAS 防并发）。
 //     新人礼也走这个 action（详见 claimSignup 注释）：**每人一次性**，与「每日奖励是否开启」无关。
+//   { action: 'adReward', slot }                       → { ok, awarded, capped?, left, points }
+//     看激励视频赚积分（2026-10-25 接入）：slot 必须登记在 AD_SLOTS（白名单，防伪造），
+//     完整观看一次 +reward，每 slot 每日 dailyCap 次（北京时间自然日，CAS 防并发/连点重复发）。
+//     capped=true 表示今日已看完（awarded=0，不扣分）。
 const cloud = require('wx-server-sdk');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
@@ -78,6 +83,44 @@ const GEN_COST = {
 const DAY_MS = 86400000;
 const CN_OFFSET_MS = 8 * 3600 * 1000;   // 北京时间 UTC+8
 
+// ── 激励视频广告奖励（2026-10-25 接入流量主）──
+// ⚠️ 与 utils/config.js POINTS.ads 保持同值（云函数跨包 require 前端 config 不可靠，故独立一份，
+//    改数值时两处必须同改）；test_constants_sync.js 会校验两端一致。
+// 上限存在的意义：广告赚分不得明显超过签到（30~40/天），否则充值价值被稀释、积分通胀。
+// 用户拍板（2026-10-25）：每 slot 每日 3 次（两 slot 合计 60 分/天）。
+const AD_SLOTS = {
+  points_main: { reward: 10, dailyCap: 3 },    // 积分页任务卡 1
+  points_second: { reward: 10, dailyCap: 3 }   // 积分页任务卡 2
+};
+
+// 每 slot 两个扁平字段（与 lastDailyDate/dailyStreak 同风格，CAS 条件可直接用）：
+//   ad_<slot>_date(String 'YYYY-MM-DD') / ad_<slot>_count(Number 当日已看次数)
+function adFields(slot) { return { date: 'ad_' + slot + '_date', count: 'ad_' + slot + '_count' }; }
+
+// 新建用户文档时的 ad 字段默认值
+function adDefaults() {
+  const o = {};
+  Object.keys(AD_SLOTS).forEach(slot => { const f = adFields(slot); o[f.date] = ''; o[f.count] = 0; });
+  return o;
+}
+
+// 当日（北京时间）该 slot 已看次数；跨天按 0
+function adCountToday(doc, slot) {
+  if (!doc) return 0;
+  const f = adFields(slot);
+  if (doc[f.date] !== dayKeyCN(Date.now())) return 0;
+  return typeof doc[f.count] === 'number' ? doc[f.count] : 0;
+}
+
+// 今日各 slot 剩余次数（balance 返回给前端画按钮）
+function adLeftMap(doc) {
+  const out = {};
+  Object.keys(AD_SLOTS).forEach(slot => {
+    out[slot] = Math.max(AD_SLOTS[slot].dailyCap - adCountToday(doc, slot), 0);
+  });
+  return out;
+}
+
 // 时间戳 → 北京时间的自然日键（'YYYY-MM-DD'）
 function dayKeyCN(ts) {
   return new Date(ts + CN_OFFSET_MS).toISOString().slice(0, 10);
@@ -128,7 +171,7 @@ async function ensureUser(db, openid) {
   const ref = db.collection('vp_users').doc(openid);
   let doc = await getDoc(db, openid);
   if (!doc) {
-    doc = { openid, points: 0, unlockedAll: false, coupons: [], lastDailyDate: '', dailyStreak: 0, signupBonusAt: 0, createTime: db.serverDate() };
+    doc = Object.assign({ openid, points: 0, unlockedAll: false, coupons: [], lastDailyDate: '', dailyStreak: 0, signupBonusAt: 0, createTime: db.serverDate() }, adDefaults());
     await ref.set({ data: doc });
     return doc;
   }
@@ -136,6 +179,12 @@ async function ensureUser(db, openid) {
   if (typeof doc.lastDailyDate !== 'string') patch.lastDailyDate = '';
   if (typeof doc.dailyStreak !== 'number') patch.dailyStreak = 0;
   if (typeof doc.signupBonusAt !== 'number') patch.signupBonusAt = 0;
+  // ad 字段（2026-10-25 新增）：老文档自动补齐，与每日字段同一套路
+  Object.keys(AD_SLOTS).forEach(slot => {
+    const f = adFields(slot);
+    if (typeof doc[f.date] !== 'string') patch[f.date] = '';
+    if (typeof doc[f.count] !== 'number') patch[f.count] = 0;
+  });
   if (Object.keys(patch).length) {
     await ref.update({ data: patch });
     doc = Object.assign({}, doc, patch);
@@ -225,6 +274,43 @@ async function doDaily(db, openid) {
   return { ok: true, awarded, signupBonus, points: curPoints + awarded, streak, today, milestone };
 }
 
+// ── 看激励视频赚积分（2026-10-25）──
+// 客户端只负责在「完整看完」后带 slot 来报数；发不发、发多少、今日还能发几次，全在这里裁决。
+// 返回 { ok, awarded, slot, left, points, capped? }：
+//   awarded>0 本次真发了；capped=true 今日该 slot 已看完（不扣分、不再发）。
+async function doAdReward(db, openid, slot) {
+  const cfg = AD_SLOTS[slot];
+  if (!cfg) return { ok: false, err: '未知广告位: ' + slot };
+  const _ = db.command;
+  const today = dayKeyCN(Date.now());
+  const f = adFields(slot);
+  const doc = await ensureUser(db, openid);   // 保证 ad 字段存在（老文档自动补齐）
+  // 跨天（或字段刚补齐）→ 先无条件重置当日计数，再走 CAS 发放。
+  // 重置不带 CAS：今天还没发过这个 slot 的奖，无条件写 0 是安全的；真正的防重发靠下面的 count CAS。
+  if (doc[f.date] !== today) {
+    await db.collection('vp_users').doc(openid).update({
+      data: { [f.date]: today, [f.count]: 0, updateTime: db.serverDate() }
+    });
+  }
+  const cur = await getDoc(db, openid);
+  const count = adCountToday(cur, slot);
+  if (count >= cfg.dailyCap) {
+    return { ok: true, awarded: 0, capped: true, slot, left: 0, points: (cur && cur.points) || 0 };
+  }
+  // CAS：仅当 count 仍是读到的值才写入 → 并发/连点只发一次（与 daily/signupBonus 同套路）。
+  const res = await db.collection('vp_users')
+    .where({ _id: openid, [f.count]: count })
+    .update({ data: { points: _.inc(cfg.reward), [f.count]: _.inc(1), updateTime: db.serverDate() } })
+    .catch(e => { console.error('[points] adReward CAS 失败:', e && e.message); return { stats: { updated: 0 } }; });
+  if (!(res && res.stats && res.stats.updated === 1)) {
+    // 被并发请求抢走 → 不发放（按已领处理，余额以重读为准）
+    const after = await getDoc(db, openid);
+    return { ok: true, awarded: 0, capped: true, slot, left: 0, points: (after && after.points) || 0 };
+  }
+  const after = await getDoc(db, openid);
+  return { ok: true, awarded: cfg.reward, slot, left: cfg.dailyCap - count - 1, points: (after && after.points) || 0 };
+}
+
 exports.main = async (event) => {
   const openid = openidOf();
   if (!openid) return { ok: false, err: '未获取到用户身份（openid）' };
@@ -236,8 +322,14 @@ exports.main = async (event) => {
     return {
       ok: true,
       points: doc && typeof doc.points === 'number' ? doc.points : 0,
-      coupons: Array.isArray(doc && doc.coupons) ? doc.coupons : []
+      coupons: Array.isArray(doc && doc.coupons) ? doc.coupons : [],
+      // 今日各广告位剩余次数（前端任务卡按钮态；旧版云函数没这个字段时前端按满额兜底）
+      adLeft: adLeftMap(doc)
     };
+  }
+
+  if (action === 'adReward') {
+    return await doAdReward(db, openid, (event && event.slot) || '');
   }
 
   if (action === 'daily') {

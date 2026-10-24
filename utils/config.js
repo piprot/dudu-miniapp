@@ -192,7 +192,28 @@ const POINTS = {
     { productId: 'points_200',  priceFen: 600,  amount: 200,  name: '200 积分',  priceText: '¥6' },
     { productId: 'points_800',  priceFen: 1800, amount: 800,  name: '800 积分',  priceText: '¥18' },
     { productId: 'points_2500', priceFen: 5000, amount: 2500, name: '2500 积分', priceText: '¥50', tag: '最超值' }
-  ]
+  ],
+  // ── 广告（流量主）与「看视频赚积分」（2026-10-25 用户拍板接入）──
+  // ① 激励视频 ×2：积分页任务卡，完整观看一次 +reward 积分；每 slot 每日 dailyCapPerSlot 次，
+  //    上限与发放全在服务端裁决（cloudfunctions/points 的 AD_SLOTS），前端只上报「看完了」。
+  //    用户拍板：3+3=60 分/天上限——广告赚分不得明显超过签到（30~40/天），否则稀释充值价值。
+  // ② 插屏 ×1：单实例两场景复用——冷启动（首页就绪后延迟 1.5s）+ 进入积分页；
+  //    cooldownMs 冷却是防频繁骚扰的底线（微信广告运营规范，以官方最新规则为准）。
+  // ③ 视频贴片 ×1：首页底部通栏（<video ad-unit-id> 组件）。
+  // ⚠️ slots 的 key 与 reward/dailyCap 必须和云函数 AD_SLOTS 同值（两端各存一份，
+  //    test/test_constants_sync.js 校验；改一处必须两处同改）。
+  // ⚠️ 广告 API（wx.createRewardedVideoAd / wx.createInterstitialAd / video 组件 ad-unit-id）的
+  //    基础库版本要求以微信官方文档为准；低版本不建实例，功能静默降级（见 utils/ads.js）。
+  ads: {
+    reward: 10,
+    dailyCapPerSlot: 3,
+    slots: {
+      points_main: 'adunit-2248887e290bcbce',    // 积分页任务卡 1「看视频赚积分」
+      points_second: 'adunit-12c5567d226e03ff'   // 积分页任务卡 2「再看一个」
+    },
+    interstitial: { adUnitId: 'adunit-e705e2bf34033c2f', cooldownMs: 60000 },
+    videoPatch: { adUnitId: 'adunit-52ca48757a7022ab' }
+  }
 };
 
 module.exports = { PRODUCT, VIRTUAL_PAY, PAY_CONFIG, BACKEND, COMMISSION, POINTS };

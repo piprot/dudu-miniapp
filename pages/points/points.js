@@ -1,6 +1,7 @@
 const { POINTS } = require('../../utils/config.js');
 const points = require('../../utils/points.js');
 const pay = require('../../utils/pay.js');
+const ads = require('../../utils/ads.js');   // 激励视频（看视频赚积分任务卡）
 
 Page({
   data: {
@@ -24,11 +25,18 @@ Page({
     today: '',
     dailyRule: '',
     earnTip: '',       // 积分增减说明（按 config 计算，别在 wxml 写死数字，否则改价后文案与现实不符）
-    claiming: false
+    claiming: false,
+    // ── 看视频赚积分（激励视频广告，2026-10-25）──
+    adTasks: [],       // 任务卡数组（由 config.POINTS.ads 生成；left 以服务端返回为准）
+    watching: ''       // 正在观看的 slot（'' = 无；连点第二张卡直接忽略）
   },
   onLoad() {
     const d = POINTS.daily || {};
     const g = POINTS.signupBonus || {};
+    const adsCfg = POINTS.ads || {};
+    const adSlots = adsCfg.slots || {};
+    const adReward = adsCfg.reward || 10;
+    const adCap = adsCfg.dailyCapPerSlot || 0;
     const maxPerDay = (d.base || 20) + (d.streakCap || 0);
     // 新人礼：一次性发放，只有开启时才写进说明（关掉就别承诺）。
     const giftNote = (g.enabled !== false && g.amount > 0) ? '新人礼 +' + g.amount + '（首次进入一次性）· ' : '';
@@ -57,14 +65,27 @@ Page({
       //    花费 = 3 个产出型工具（文案 / 排版 / 卡片）。改价 / 下线功能时务必同步这行。
       earnTip: '积分增减：' + giftNote
         + '每日签到 +' + (d.base || 20) + ' 起，连签每日 +1（最多 +' + ((d.base || 20) + (d.streakCap || 10)) + ' / 天）'
+        + ' · 看激励视频 +' + adReward + ' / 次（每任务每日 ' + adCap + ' 次）'
         + ' · 花费出口：' + spendOutlets.join(' · ')
-        + '（积分不足可先充值或每日签到赚取）'
+        + '（积分不足可先充值、每日签到或看视频赚取）',
+      // 看视频赚积分任务卡：slot 顺序即配置顺序；left 先按满额画，
+      // refresh() 拿到服务端 adLeft 后覆盖（旧版云函数不返回 adLeft 时保持满额兜底）。
+      adTasks: Object.keys(adSlots).map(slot => ({
+        slot: slot,
+        title: slot === 'points_main' ? '看视频赚积分' : '再看一个，再赚一笔',
+        reward: adReward,
+        left: adCap
+      }))
     });
   },
   onShow() {
     this.refresh();
     this.checkDaily();
     this.checkPrivacy();
+    // 插屏广告（进入积分页场景）：app.js onLaunch 已预创建实例；
+    // 60s 冷却保证开屏弹过之后不会紧接着再弹（以官方广告规范为准，勿调短）。
+    const it = (POINTS.ads && POINTS.ads.interstitial) || {};
+    if (it.adUnitId) ads.maybeShowInterstitial(it.adUnitId, it.cooldownMs);
   },
   // ── 隐私授权兜底 ──
   // 真机反馈（2026-09-21）：「点加号没有反应」。加号是 open-type="chooseAvatar" 按钮，
@@ -100,6 +121,7 @@ Page({
       .then(r => {
         const raw = r.coupons || [];
         const types = raw.map(c => c && c.type);
+        const cap = (POINTS.ads && POINTS.ads.dailyCapPerSlot) || 0;
         this.setData({
           points: r.points || 0,
           // 服务端只存 { type, value, grantedAt }，直接渲染会显示成 "comic_discount（0.9）"，
@@ -108,6 +130,11 @@ Page({
           // 已拥有的兑换项：按钮置灰 + 文案改「已拥有」，避免重复花积分买同一张券
           redeem: (POINTS.redeem || []).map(it => Object.assign({}, it, {
             owned: !!(it.grant && types.indexOf(it.grant.type) >= 0)
+          })),
+          // 今日各视频任务剩余次数：服务端权威。⚠️ 旧版云函数不返回 adLeft（还没部署新版本）时
+          //    按满额兜底——按钮可点，真发了多少仍由服务端把关，不会超发。
+          adTasks: (this.data.adTasks || []).map(t => Object.assign({}, t, {
+            left: (r.adLeft && typeof r.adLeft[t.slot] === 'number') ? r.adLeft[t.slot] : cap
           }))
         });
       })
@@ -269,6 +296,31 @@ Page({
       wx.showToast({ title, icon: 'none', duration: 2600 });
       // 余额变了要重取（onShow 里的 refresh 发生在本次发放之前，显示的是旧余额）
       this.refresh();
+    }
+  },
+  // ── 看视频赚积分（激励视频广告，2026-10-25）──
+  // 流程：用户点卡 → showRewarded（看完才 resolve isEnded）→ 服务端 adReward 裁决发放。
+  // ⚠️ 只看 isEnded：中途关闭不发放（防跳过刷分）；每日上限服务端管，前端按钮态只是体验。
+  async onWatchAd(e) {
+    const slot = e.currentTarget.dataset.slot;
+    if (!slot || this.data.watching) return;   // 连点第二张卡直接忽略（ads.js 内部还有一道）
+    const adUnitId = ((POINTS.ads || {}).slots || {})[slot];
+    if (!adUnitId) return;
+    this.setData({ watching: slot });
+    try {
+      const r = await ads.showRewarded(adUnitId);
+      if (r && r.isEnded) {
+        const res = await points.adReward(slot);
+        wx.showToast({ title: '观看完成 +' + (res.awarded || 0) + ' 积分', icon: 'none', duration: 2600 });
+        this.refresh();   // 余额与剩余次数都变了，重取
+      } else {
+        wx.showToast({ title: '视频没看完，这次不计分', icon: 'none' });
+      }
+    } catch (err) {
+      // 广告没加载出来 / 云函数未部署新版本：都不阻断用户，一句人话带过
+      wx.showToast({ title: '广告没加载出来，稍后再试', icon: 'none' });
+    } finally {
+      this.setData({ watching: '' });
     }
   },
   // 积分兑换：花 cost 积分换 grant 权益（服务端校验余额后扣减）

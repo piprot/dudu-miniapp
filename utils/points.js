@@ -14,8 +14,13 @@ function callPoints(action, extra) {
 }
 
 // 读取当前用户积分余额 + 已得优惠券
+// adLeft：今日各激励视频广告位剩余次数（服务端权威；旧版云函数不返回时前端按满额兜底）
 function getBalance() {
-  return callPoints('balance').then(res => ({ points: res.points || 0, coupons: res.coupons || [] }));
+  return callPoints('balance').then(res => ({
+    points: res.points || 0,
+    coupons: res.coupons || [],
+    adLeft: res.adLeft || null
+  }));
 }
 
 // 花费积分兑换权益（delta 为正数；grant 为要写入的权益对象）
@@ -57,4 +62,12 @@ function maybeDailyCheckin() {
   });
 }
 
-module.exports = { getBalance, spend, dailyCheckin, maybeDailyCheckin, todayKeyCN };
+// ── 看激励视频赚积分（2026-10-25）──
+// 客户端只上报「完整看完了哪个 slot」；发放与否、金额、今日上限全由服务端裁决
+// （白名单 slot + 每日 dailyCap + CAS 原子发放，防连点/并发重复领）。
+// 返回 { awarded, capped?, left, points }：capped=true 表示今日该 slot 已看完。
+function adReward(slot) {
+  return callPoints('adReward', { slot });
+}
+
+module.exports = { getBalance, spend, dailyCheckin, maybeDailyCheckin, todayKeyCN, adReward };

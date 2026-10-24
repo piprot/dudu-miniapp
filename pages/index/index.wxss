@@ -137,3 +137,8 @@
 }
 .tool-title { font-size: 32rpx; font-weight: 700; color: var(--text-title); }
 .tool-desc { font-size: 24rpx; color: #9a8b74; margin-top: 8rpx; line-height: 1.6; }
+
+/* ── 视频贴片广告（2026-10-25，首页底部通栏）──
+   高度按官方 demo 量级给定，真机预览后如需微调只改这一个值 */
+.video-ad { margin: 24rpx 0 8rpx; }
+.video-ad-video { width: 100%; height: 400rpx; border-radius: 16rpx; overflow: hidden; }

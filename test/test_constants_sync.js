@@ -166,6 +166,31 @@ t('config.POINTS.daily 与 points 云函数 DAILY 一致', () => {
   });
 });
 
+// 6b) 广告奖励：config.POINTS.ads ↔ points 云函数 AD_SLOTS（2026-10-25 接入流量主）
+//     漏改的后果：积分页按钮写「+10 / 每日 3 次」，服务端实际发 5 / 每日 10 次——
+//     UI 承诺与账本对不上，用户投诉「说好的次数不算」。
+t('config.POINTS.ads 与 points 云函数 AD_SLOTS 一致', () => {
+  const fnSlots = extractObject('cloudfunctions/points/index.js', 'AD_SLOTS');
+  const cfg = config.POINTS.ads || {};
+  const cfgSlots = cfg.slots || {};
+  // ① slot 白名单两端一致（key 集合，防一端加位另一端不认）
+  assert.deepStrictEqual(Object.keys(fnSlots).sort(), Object.keys(cfgSlots).sort(),
+    '广告位不一致：云函数 [' + Object.keys(fnSlots) + '] vs config [' + Object.keys(cfgSlots) + ']');
+  // ② 每 slot 的奖励数与每日上限同值
+  Object.keys(fnSlots).forEach(slot => {
+    assert.strictEqual(fnSlots[slot].reward, cfg.reward,
+      slot + ' 奖励不一致: 云函数 ' + fnSlots[slot].reward + ' vs config.ads.reward ' + cfg.reward);
+    assert.strictEqual(fnSlots[slot].dailyCap, cfg.dailyCapPerSlot,
+      slot + ' 每日上限不一致: 云函数 ' + fnSlots[slot].dailyCap + ' vs config.ads.dailyCapPerSlot ' + cfg.dailyCapPerSlot);
+  });
+  // ③ adUnitId 必须真的配了（空串 = 用户点了静默失败）
+  Object.keys(cfgSlots).forEach(slot => {
+    assert.ok(/^adunit-/.test(cfgSlots[slot] || ''), slot + ' 的 adUnitId 未配置: ' + cfgSlots[slot]);
+  });
+  assert.ok(/^adunit-/.test(((cfg.interstitial || {}).adUnitId) || ''), '插屏 adUnitId 未配置');
+  assert.ok(/^adunit-/.test(((cfg.videoPatch || {}).adUnitId) || ''), '视频贴片 adUnitId 未配置');
+});
+
 // 7) 积分单价：config.POINTS.cost ↔ ai_gen 云函数 POINTS_COST / POINTS_EARN
 //    漏改的后果：前端显示"消耗 20"但服务端只扣 15（或反之），用户直接看到余额对不上。
 t('config.POINTS.cost / earn 与 ai_gen 云函数 POINTS_COST / POINTS_EARN 一致', () => {
