@@ -215,8 +215,10 @@ t('日常库：全库无重复文案（扩容最容易撞车，撞了用户会�
   });
 });
 
-t('种子金句：≥48 条、id 唯一、6 分类齐全', () => {
-  assert.ok(cq.SEED_QUOTES.length >= 48, '仅 ' + cq.SEED_QUOTES.length + ' 条');
+// 2026-10-25 扩容：1260 → 2520（用户要求静态文案库翻倍）。
+// 阈值必须随之上调，否则守卫形同虚设——扩容缩水也不会报警。
+t('种子金句：≥2520 条、id 唯一、6 分类齐全', () => {
+  assert.ok(cq.SEED_QUOTES.length >= 2520, '仅 ' + cq.SEED_QUOTES.length + ' 条（翻倍后应 ≥2520）');
   const ids = new Set(cq.SEED_QUOTES.map(q => q.id));
   assert.strictEqual(ids.size, cq.SEED_QUOTES.length, 'seed id 必须唯一');
   // 紧凑格式下 category 不冗余存储，从 id 反解：q_seed_<category>_<kind>_<NN>
@@ -227,7 +229,7 @@ t('种子金句：≥48 条、id 唯一、6 分类齐全', () => {
   });
 });
 
-t('种子金句：每来源类型 ≥60 条（用户要求「切来源类型句子要变」的库存底线）', () => {
+t('种子金句：每来源类型 ≥360 条（用户要求「切来源类型句子要变」的库存底线）', () => {
   // kind 由 id 反解：q_seed_<category>_<kind>_<NN> → split('_')[3]
   const byKind = {};
   cq.SEED_QUOTES.forEach(q => {
@@ -236,8 +238,8 @@ t('种子金句：每来源类型 ≥60 条（用户要求「切来源类型句�
   });
   // 7 种来源： quote/line/book/famous/daily/solar/festival
   ['quote', 'line', 'book', 'famous', 'daily', 'solar', 'festival'].forEach(kind => {
-    assert.ok(byKind[kind] && byKind[kind].length >= 60,
-      '来源类型 ' + kind + ' 仅 ' + (byKind[kind] ? byKind[kind].length : 0) + ' 条（应 ≥60）');
+    assert.ok(byKind[kind] && byKind[kind].length >= 360,
+      '来源类型 ' + kind + ' 仅 ' + (byKind[kind] ? byKind[kind].length : 0) + ' 条（翻倍后应 ≥360）');
   });
   // 每来源类型内部文本唯一（否则「换一条」换不出新句）
   Object.keys(byKind).forEach(kind => {
@@ -876,7 +878,14 @@ t('接线：seedIfEmpty 幂等（版本闸 + text 去重，用户数据不丢）
   assert.strictEqual(r1.count, cq.SEED_QUOTES.length, '应灌入 ' + cq.SEED_QUOTES.length + ' 条');
   assert.strictEqual(store.listQuotes().length, cq.SEED_QUOTES.length, '库内条数应等于种子数');
   // 版本闸应已写入（下次进入走幂等分支）
-  assert.strictEqual(mem['dudu_quotes_seed_ver'], 3, '版本闸未写入');
+  // ⚠️ 硬编码版本号会让「扩容后忘了 +1」悄悄溜过：改为从源码读当前值，只断言「确已写入且是数字」
+  const svSrc = fs.readFileSync(path.join(__dirname, '..', 'pkgTools', 'utils', 'quotes_store.js'), 'utf8');
+  const sv = parseInt((svSrc.match(/const SEED_VERSION = (\d+)/) || [])[1], 10);
+  // ⚠️ 库扩容而版本闸没 +1 → 老用户永远看不到新文案，且此处的旧断言（写死 3）会假绿。
+  //    故把「库大小 → 最低版本」绑成断言，扩容忘 bump 会当场红。
+  const minVer = cq.SEED_QUOTES.length > 1260 ? 4 : 3;
+  assert.ok(sv >= minVer, '金句库已扩至 ' + cq.SEED_QUOTES.length + ' 条，SEED_VERSION 应 ≥' + minVer + '，当前 ' + sv);
+  assert.strictEqual(mem['dudu_quotes_seed_ver'], sv, '版本闸未写入/未同步');
 
   // ② 二次进入：版本闸已置，addQuote 按 text 去重 → 库内条数不增长（幂等）
   //   注意：count 是「addQuote 返回非空的条数」（已存在也返回 exist），
@@ -928,6 +937,32 @@ t('接线：pickAnotherNormal 换一条必换（同一天 tap 递增）', () => 
   assert.ok(a && b);
   assert.notStrictEqual(a, b, 'tap 不同应换出不同文案');
   assert.strictEqual(solar.pickAnotherNormal(base, 1), a, '同 tap 应稳定');
+});
+
+// ── 三套文案池必须互相独立 ─────────────────────────────────────────
+// 用户原始诉求：日签卡与海报长图「文案库一模一样」。2026-10-24 已拆成
+//   日签 dailySignQuote（早安/晚安/通用）／海报 posterQuote（宣言体）／通用金句 todayQuote。
+//   这里把「三库不重叠」钉成守卫：将来有人图省事把日签指回 todayQuote，立刻红。
+t('三套文案池互相独立：日签 ≠ 海报 ≠ 通用金句', () => {
+  const daily = require('../utils/templates/daily');
+  const collect = (fn, n) => {
+    const set = new Set();
+    for (let k = 0; k < n; k++) { const o = fn(k); if (o && (o.t || o.text)) set.add(o.t || o.text); }
+    return set;
+  };
+  const N = 60;
+  const sign = collect(daily.dailySignQuote, N);
+  const poster = collect(daily.posterQuote, N);
+  const quote = collect(daily.todayQuote, N);
+  const overlap = (a, b) => [...a].filter(x => b.has(x));
+
+  assert.ok(sign.size >= 3 && poster.size >= 3 && quote.size >= 3,
+    '三池取到的样本过少（' + sign.size + '/' + poster.size + '/' + quote.size + '），轮换步长可能失效');
+
+  const sp = overlap(sign, poster), sq = overlap(sign, quote), pq = overlap(poster, quote);
+  assert.strictEqual(sp.length, 0, '日签与海报文案库重叠（违背「两个模块不同文案库」）：' + sp.slice(0, 3).join(' / '));
+  assert.strictEqual(sq.length, 0, '日签与通用金句库重叠：' + sq.slice(0, 3).join(' / '));
+  assert.strictEqual(pq.length, 0, '海报与通用金句库重叠：' + pq.slice(0, 3).join(' / '));
 });
 
 console.log(`\n结果：${pass} 通过 / ${fail} 失败`);

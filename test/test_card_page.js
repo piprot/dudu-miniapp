@@ -85,8 +85,13 @@ t('换一套：全类型连续换 5 套均变化且与文案库一致', () => {
     for (let k = 1; k <= 5; k++) {
       page.onShuffleQuote();
       const f = page.data.form;
-      if (tp === 'dailysign' || tp === 'quote') {
-        assert.strictEqual(f.body, daily.todayQuote(k).t, tp + ' 第 ' + k + ' 套应等于库内 offset=' + k);
+      // ⚠️ 2026-10-25：日签已改用**独立**的 dailySignQuote（早安/晚安/通用池，
+      //   与海报 posterQuote、通用金句 todayQuote 三库彻底分开），
+      //   原断言仍按 todayQuote 比对 → 必然不等，属测试过期而非功能回退。
+      if (tp === 'dailysign') {
+        assert.strictEqual(f.body, daily.dailySignQuote(k).t, 'dailysign 第 ' + k + ' 套应等于日签库 offset=' + k);
+      } else if (tp === 'quote') {
+        assert.strictEqual(f.body, daily.todayQuote(k).t, 'quote 第 ' + k + ' 套应等于库内 offset=' + k);
       } else {
         const s = daily.seedForType(tp, null, k);
         assert.strictEqual(f.title, s.title, tp + ' 第 ' + k + ' 套标题应一致');

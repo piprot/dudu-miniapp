@@ -65,7 +65,20 @@ function extractObject(file, constName) {
 }
 
 // ai_gen 侧常量读取统一入口（内部自动用解析到的绝对路径）
-function aiObj(constName) { return extractObject(AI_GEN_PATH || '../h5_backend/ai_gen/index.js', constName); }
+// ⚠️ 2026-10-25：以前 AI_GEN_PATH 为空时直接拿相对路径去 readFileSync，
+//   报的是裸 ENOENT（看不出「环境缺依赖」，还被 run_all 计成真失败）。
+//   现在统一抛带 code 的错误，交给 t() 判为 SKIP。
+function aiObj(constName) {
+  if (!AI_GEN_PATH) {
+    const e = new Error(
+      '找不到 h5_backend/ai_gen/index.js，无法校验「前端 config ↔ ai_gen 云函数」常量同步。\n'
+      + '  解决办法：设环境变量 H5_BACKEND_DIR，或把 h5_backend 放到本仓兄弟目录。'
+    );
+    e.code = 'H5_BACKEND_NOT_FOUND';
+    throw e;
+  }
+  return extractObject(AI_GEN_PATH, constName);
+}
 
 const FILES = {
   create_order: extractObject('cloudfunctions/vp_create_order/index.js', 'PRODUCTS'),
@@ -73,10 +86,21 @@ const FILES = {
   query: extractObject('cloudfunctions/vp_query/index.js', 'PRODUCTS')
 };
 
-let pass = 0, fail = 0;
+let pass = 0, fail = 0, skipped = 0;
+// ⚠️ 2026-10-25：h5_backend（ai_gen 云函数）2026-09-30 已移出本仓，
+//   本仓 clone 里找不到它时这 8 项会「假红」——那是环境未就绪，不是代码漂移。
+//   与 test_ai_gen_units / test_e2e_flow 口径一致：标记 SKIP（既不算失败，也不冒充通过）。
+//   一旦 h5_backend 就位（H5_BACKEND_DIR 或兄弟目录），这些用例会自动恢复为真实校验。
 function t(name, fn) {
   try { fn(); console.log('PASS  ' + name); pass++; }
-  catch (e) { console.log('FAIL  ' + name + '\n      ' + (e && e.message)); fail++; }
+  catch (e) {
+    if (e && e.code === 'H5_BACKEND_NOT_FOUND') {
+      console.log('SKIP  ' + name + '（缺 h5_backend/ai_gen，环境未就绪）');
+      skipped++;
+      return;
+    }
+    console.log('FAIL  ' + name + '\n      ' + (e && e.message)); fail++;
+  }
 }
 
 // 1) 三个云函数的 PRODUCTS 必须完全相同
@@ -560,5 +584,5 @@ t('去生成化后：端内 config.POINTS.redeem 刻意留空（不提供包内�
     '否则会重新露出「付费定制内容」门面，触发个人主体深度合成复审。若确要恢复某券，请先重新过合规评估。');
 });
 
-console.log('\n──────── 结果：' + pass + ' PASS / ' + fail + ' FAIL ────────');
+console.log("\n──────── 结果：" + pass + " PASS / " + fail + " FAIL" + (skipped ? " / " + skipped + " SKIP（h5_backend 未就位）" : "") + " ────────");
 process.exitCode = fail ? 1 : 0;

@@ -242,7 +242,11 @@ t('三个文案库内容合规：纯中文、18-48字、无重复、无英文/�
 t('每日一句已并入今日应景（农历 + 干支 + 节气/节日文案）', () => {
   const js = rd(ROOT, 'pages', 'spark', 'spark.js');
   const wxml = rd(ROOT, 'pages', 'spark', 'spark.wxml');
-  const data = (js.match(/data:\s*\{([\s\S]*?)\n {2}\},/) || ['', ''])[1];
+  // ⚠️ 2026-10-25：spark 接入出图设置 mixin 后 data 写成
+  //   `data: Object.assign({ ... }, cardStyle.defaults('literary'))`，
+  //   旧正则 `/data:\s*\{/` 抓不到 → 4 个应景字段被判「未声明」假红。
+  //   这里两种写法都要认，但**不放宽**：仍然必须是真实的 data 块，字段仍须逐项声明。
+  const data = (js.match(/data:\s*(?:Object\.assign\(\s*)?\{([\s\S]*?)\n {2}\},/) || ['', ''])[1];
   ['almanacText', 'ganzhiZodiac', 'todayName', 'todayText'].forEach(f => {
     assert.ok(new RegExp('\\b' + f + ':').test(data), 'spark data 未声明 ' + f);
   });

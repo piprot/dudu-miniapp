@@ -20,7 +20,10 @@ const KEY = 'dudu_quotes_v1';
 // 用户手动新增的条目（随机 id，非 q_seed_）保留不动。这样「存量用户升级」也能
 // 拿到干净的新种子库，不必依赖脆弱的文本回填迁移。
 const SEED_VER_KEY = 'dudu_quotes_seed_ver';
-const SEED_VERSION = 3; // 2026-10-07：每来源类型 ≥60 条，紧凑格式下 kind 由 id 反解
+// ⚠️ 每次扩充 SEED_QUOTES 都必须 +1：种子按版本号重播，否则老用户永远拿不到新文案
+// v3 2026-10-07：每来源类型 ≥60 条，紧凑格式下 kind 由 id 反解
+// v4 2026-10-25：静态库翻倍 1260 → 2520 条（7 种来源各 360 条）
+const SEED_VERSION = 4;
 
 function readAll() {
   try { return wx.getStorageSync(KEY) || []; } catch (e) { return []; }
