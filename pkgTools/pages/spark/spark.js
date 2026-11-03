@@ -25,6 +25,7 @@ const __pageCfg = {
     themes: THEME_LIST.map(t => ({ id: t.id, name: t.name, color: t.colors.primary })),
     theme: 'warm',
     quote: { text: '', c: '' },
+    userText: '',        // 用户自己写的句子（可选；写了就优先于库里今日句）
     dateLabel: '',
     // ── 今日应景（2026-10-06 从「节气」页并入「每日一句」）──
     // 原来节气/节日文案只在 solar 页，用户要专门切页才能看到今天是什么日子。
@@ -105,18 +106,25 @@ const __pageCfg = {
   },
 
   // 随机换一句（本地确定性轮换，跨天不撞车）
+  // 用户自写了句子时「换一句」会让位给用户内容——先提示，避免覆盖用户写的。
   onShuffle() {
+    if ((this.data.userText || '').trim()) {
+      wx.showToast({ title: '你写了自己的句子，清空后才会换', icon: 'none', duration: 2200 });
+      return;
+    }
     this._offset = (this._offset || 0) + 1;
     const q = daily.todayQuote(this._offset);
     this.setData({ quote: { text: q.text, c: q.c } });
+    if (this._cardOpts) this.refreshPreview();
   },
 
-  // 存进金句收藏馆
+  // 存进金句收藏馆：优先存用户自己写的句子，没有则存库里今日句
   onSaveToVault() {
-    const text = this.data.quote.text;
+    const text = this.effectiveText();
     if (!text) return;
+    const mine = !!((this.data.userText || '').trim());
     // kind='daily' 让金句馆能按来源筛选（2026-10-06 统一收藏库后新增）
-    addQuote({ text, tags: ['每日一句'], source: '每日一句', kind: 'daily' });
+    addQuote({ text, tags: ['每日一句'], source: mine ? '每日一句·我写的' : '每日一句', kind: 'daily' });
     wx.showToast({ title: '已存金句馆', icon: 'none' });
   },
 
@@ -126,24 +134,47 @@ const __pageCfg = {
       (e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id));
     if (!id || id === this.data.theme) return;
     this.setData({ theme: id });
-    // 换主题只重绘已出的卡（走 mixin.repaint，不重复扣费）。
-    if (this._cardOpts) cardStyle.repaint(this);
+    // 换主题只重绘已出的卡（免费），并即时反映当前文案（用户自写 / 库里句），不重复扣费。
+    if (this._cardOpts) this.refreshPreview();
   },
 
-  // 免费预览：进页即渲染一张，成卡前的换背景 / 换风格 / 换主题都能实时看到。
+  // 当前要绘制的文案：用户自写优先，否则库里今日句
+  effectiveText() {
+    const ut = (this.data.userText || '').trim();
+    return ut || ((this.data.quote && this.data.quote.text) || '');
+  },
+
+  // 免费预览：进页即渲染一张，成卡前的换背景 / 换风格 / 写自己的句子都能实时看到。
   // 保存需先「成卡」（onSaveImage 用 _charged 闸门拦截，防止免费存图）。
-  onReady() { this.seedPreview(); },
-  seedPreview() {
-    const base = { title: this.data.dateLabel, body: this.data.quote.text, author: '每日一句 · ' + (this.data.quote.c || '') };
+  onReady() { this.refreshPreview(); },
+  refreshPreview() {
+    const text = this.effectiveText();
+    const c = (this.data.userText || '').trim() ? '我写的' : (this.data.quote.c || '');
+    const base = { title: this.data.dateLabel, body: text, author: '每日一句 · ' + c };
     const data = cardStyle.applyCardStyle(this, base);   // 注入风格 + 背景（相册图优先）
     this._lastPreview = data;
     this._cardOpts = { canvasId: '#sparkCanvas', type: 'dailysign', theme: this.data.theme, data };
-    this._charged = false;
     renderCard(this, this._cardOpts).catch(() => {});
   },
 
+  // 用户自己写一句：实时回显到卡片区；已出过预览则免费重绘（不扣积分）。
+  // 清空后自动回落到库里今日句。
+  onUserText(e) {
+    const v = (e.detail.value || '');
+    this.setData({ userText: v });
+    if (v.trim()) {
+      this.setData({ quote: { text: v.trim(), c: '我写的' } });
+    } else {
+      const q = daily.todayQuote(this._offset || 0);
+      this.setData({ quote: { text: q.text, c: q.c } });
+    }
+    if (this._cardOpts) this.refreshPreview();
+  },
+
   onPreview() {
-    const base = { title: this.data.dateLabel, body: this.data.quote.text, author: '每日一句 · ' + (this.data.quote.c || '') };
+    const text = this.effectiveText();
+    const c = (this.data.userText || '').trim() ? '我写的' : (this.data.quote.c || '');
+    const base = { title: this.data.dateLabel, body: text, author: '每日一句 · ' + c };
     const data = cardStyle.applyCardStyle(this, base);   // 注入风格 + 背景（相册图优先于内置，都空则主题渐变）
     const self = this;
     // ⚠️ 扣费在前、渲染在后：积分不足时**不产出**（charge 会 reject 并弹引导）。

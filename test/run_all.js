@@ -74,6 +74,7 @@ const SUITES = [
   'test/test_render_engine.js',
   'test/test_templates.js',
   'test/test_daily_quotes.js',
+  'test/test_spark_write.js',
   // ── 2026-10-06 静态内容库 + 每日轮换引擎（运营「一定要天天换」）──
   'test/test_content_library.js',
   'test/test_region_data.js',

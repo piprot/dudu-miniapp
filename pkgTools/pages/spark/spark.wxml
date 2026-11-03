@@ -15,6 +15,13 @@
     <view class="q-cat" wx:if="{{quote.c}}">#{{quote.c}}</view>
   </view>
 
+  <!-- 写一句自己的（2026-11-03 新增）：用户自写优先于库里今日句，免费，不扣积分 -->
+  <view class="block write">
+    <view class="block-title">写一句自己的（可选）</view>
+    <textarea class="ta" value="{{userText}}" bindinput="onUserText" placeholder="想写一句自己的话？写在这里，卡片就显示你写的" maxlength="-1" />
+    <view class="write-hint">写了就用你写的；清空就回到每日一句。不扣积分，只有「预览成卡」才扣 8 积分。</view>
+  </view>
+
   <!-- 今日应景：农历/干支生肖 + 节气或节日文案（2026-10-06 从节气页并入此处）。
        层级刻意压在主金句**下方**且用更浅的字色——主金句是主体，应景是补充。 -->
   <view class="almanac" wx:if="{{almanacText || todayName}}">

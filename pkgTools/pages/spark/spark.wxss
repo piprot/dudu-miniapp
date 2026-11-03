@@ -51,6 +51,14 @@
 .fest-badge { display: inline-block; font-size: 20rpx; color: #fff; background: var(--primary); border-radius: var(--r-pill); padding: 4rpx 16rpx; margin-bottom: 10rpx; }
 .fest-text { font-size: 24rpx; color: var(--text-sub); line-height: 1.7; }
 
+/* 写一句自己的（2026-11-03 新增） */
+.block { margin-top: 22rpx; }
+.block-title { font-size: 26rpx; color: var(--text-title); font-weight: 600; margin-bottom: 14rpx; }
+.ta { width: 100%; box-sizing: border-box; min-height: 150rpx; background: var(--bg-surface-1);
+  border: 1rpx solid var(--border); border-radius: 14rpx; padding: 18rpx; font-size: 28rpx;
+  color: var(--ink); line-height: 1.6; }
+.write-hint { font-size: 21rpx; color: var(--text-tertiary); line-height: 1.6; margin-top: 12rpx; }
+
 /* 积分余额条（2026-10-07 补：让扣费可见） */
 .points-bar { display: flex; align-items: center; justify-content: space-between;
   padding: 18rpx 22rpx; margin: 18rpx 0 4rpx;
