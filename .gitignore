@@ -19,3 +19,6 @@ test/local-paths.json
 # 系统 / 编辑器
 .DS_Store
 Thumbs.db
+
+# 微信开发者工具生成的预览二维码（本地产物，不进仓库）
+preview_*.png

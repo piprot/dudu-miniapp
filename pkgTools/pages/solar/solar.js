@@ -171,7 +171,13 @@ const __pageCfg = {
   },
 
   // 「换一条」：仅普通日可换（节气/节日是固定文案，换了就不应景了）。
-  // 每次点击 tap+1，并按新种子重新取一条，立即重绘预览。
+  // 每次点击 tap+1，并按新种子重新取一条。
+  //
+  // ⚠️ 2026-11-03：换一条**不扣积分**（用户拍板：全站只有「成卡/预览成卡」才扣 8 分）。
+  //   旧版这里调 this.preview() → 那就是成卡入口，第一步就 charge('solarCard') 扣 8 分，
+  //   「换一句看看」等于每次付费。现在改为：
+  //     · 还没成过卡（_cardOpts 为空）→ 只更新「今日文案」展示，不渲染、不扣费；
+  //     · 已经成过卡 → 走 renderPreview 免费重绘那张已付费的卡，保持卡面与展示一致。
   onShuffleToday() {
     if (this.data.today.type !== 'normal') {
       wx.showToast({ title: '节气/节日文案固定，不可换', icon: 'none', duration: 2000 });
@@ -180,10 +186,16 @@ const __pageCfg = {
     const tap = (this.data.todayTap || 1) + 1;
     const text = pickAnotherNormal(new Date(), tap);
     this.setData({ todayTap: tap, today: Object.assign({}, this.data.today, { text }) }, () => {
-      this.preview(dateLabelOf(), text, true);
+      if (!this._cardOpts) return;              // 还没出过卡：只换文案，不渲染、不扣费
+      this.renderPreview(dateLabelOf(), text, true);
     });
   },
 
+  // 成卡入口 —— **唯一**扣费点（onGenToday / onPickItem 走这里）。
+  //
+  // ⚠️ 2026-11-03 拆分：扣费与渲染必须解耦。
+  //   旧版 onShuffleToday 直接调本函数 → 「换一条」也被 charge('solarCard') 扣 8 分，
+  //   与用户拍板的「换一句免费、只有成卡才扣 8 分」冲突。现在换一条走 renderPreview（免费）。
   preview(name, text, withCalendar) {
     if (!text) return;
     const self = this;
@@ -191,7 +203,20 @@ const __pageCfg = {
     //    切主题/改风格走 mixin.repaint 只重绘已出的卡，不重复扣费。
     //    改价只动 utils/config.js 的 POINTS.cost.solarCard，云函数 GEN_COST 同名同值。
     charge('solarCard', { onDone: (r) => this.setData({ points: (r && r.points) || 0 }), label: '节气文案卡' }).then(() => {
-      this.setData({ sel: { name, text } });
+      self._charged = true;
+      return self.renderPreview(name, text, withCalendar);
+    }).catch(() => {
+      self.setData({ err: '' });   // charge 已弹积分不足引导
+    });
+  },
+
+  // 纯渲染（**不扣费**）。只做「把给定的 name/text 画到卡上 + 记录 _cardOpts」。
+  // 调用方：preview（成卡，已扣费后）、onShuffleToday（换一条，免费）、
+  //         切主题/换背景（走 cardStyle.repaint，不经过这里）。
+  renderPreview(name, text, withCalendar) {
+    if (!text) return Promise.resolve();
+    const self = this;
+    this.setData({ sel: { name, text } });
       // ⚠️ 不再传 author 落款：节气/节日卡右下角已有小程序码、右上角已有「dudu 画面感」
       //    品牌水印，左下角落款会与右上角品牌重复（2026-10-07 设计整改）。左下角留白更干净。
       // solarLines：公历/农历/干支生肖（2026-10-07 用户要求左对齐放左下角）。
@@ -229,9 +254,6 @@ const __pageCfg = {
           }
         })
         .catch(err => { self.setData({ err: (err && err.message) || '生成失败' }); });
-    }).catch(() => {
-      self.setData({ err: '' });   // charge 已弹积分不足引导
-    });
   },
 
   // 直接生成「今日」卡片 —— withCalendar=true，这是唯一展示日历三行的入口（2026-10-07）

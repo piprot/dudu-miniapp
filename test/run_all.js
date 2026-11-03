@@ -88,6 +88,8 @@ const SUITES = [
   'test/test_poster.js',
   'test/test_cat_picker.js',
   'test/test_picker_wiring.js',
+  // ── 2026-11-03 视图绑定 + 计费口径守卫（直接改 this.data 导致选择器空白 / 换一句误扣费）──
+  'test/test_view_binding.js',
   'test/test_add_mine.js',
   'test/test_card_config_wiring.js',
   'test/test_calendar_mix.js',

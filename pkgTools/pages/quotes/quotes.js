@@ -137,7 +137,11 @@ const __pageCfg = {
       groupLabel: '按主题',
       itemLabel: '细选标签'
     });
-    Object.assign(this.data, picker.data);
+    // ⚠️⚠️ 必须 setData，不能 Object.assign(this.data, ...)！
+    //   直接改 this.data 不会推到视图层，WXML 的 pgGroups/pgHot/pgItems 恒为 undefined，
+    //   整个分类选择器渲染为空 —— 用户看到的就是「按钮全都没了 / 点不动」。
+    //   与天气页同一处 bug（2026-11-03 一并修）。改这里时请同步看 weather.js。
+    this.setData(picker.data);
     // 小类/常用选择器 → 更新筛选条件（分类 + 标签两级同时生效）
     //
     // ⚠️ 2026-10-24：groupKey 从 **回调参数** 取，不读 this.data.pgGroup。

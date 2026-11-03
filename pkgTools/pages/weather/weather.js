@@ -167,7 +167,12 @@ const __pageCfg = {
       groupLabel: '选择',
       itemLabel: '细选'
     });
-    Object.assign(this.data, picker.data);
+    // ⚠️⚠️ 必须 setData，不能 Object.assign(this.data, ...)！
+    //   直接改 this.data 只更新 JS 侧，**不会**把数据推到视图层（setData 才走渲染管线）。
+    //   后果：WXML 里 pgGroups/pgHot/pgItems 永远是 undefined →
+    //   整个分层选择器渲染为空 → 用户只能看到默认的「晴 · 开心」，无任何选项可点。
+    //   这正是 2026-11-03 用户反馈「天气选不了、只显示晴开心」的根因。
+    this.setData(picker.data);
     // 选中项写回页面字段（weather / mood）——这是分层选择器与旧页面的唯一接缝
     this._pickerOnChange = (it) => {
       if (!it) return;
